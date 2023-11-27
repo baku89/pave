@@ -1,0 +1,21 @@
+{
+	"compilerOptions": {
+		"target": "es2022",
+		"module": "ES2022",
+		"strict": true,
+		"moduleResolution": "Bundler",
+		"esModuleInterop": true,
+		"experimentalDecorators": true,
+		"inlineSourceMap": true,
+		"baseUrl": ".",
+		"outDir": "./lib/esm",
+		"isolatedModules": true,
+		"declaration": true,
+		"declarationMap": true,
+		"lib": ["esnext", "DOM"],
+		"skipLibCheck": true,
+		"skipDefaultLibCheck": true
+	},
+	"include": ["src/**/*.ts"],
+	"exclude": ["node_modules", "src/**/*.test.ts"]
+}
