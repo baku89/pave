@@ -27,6 +27,7 @@ module.exports = {
 		'prefer-const': 'error',
 		'@typescript-eslint/no-explicit-any': 'off',
 		'simple-import-sort/imports': 'error',
+		'simple-import-sort/exports': 'error',
 		'unused-imports/no-unused-imports-ts': 'error',
 	},
 }
