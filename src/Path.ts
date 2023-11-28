@@ -157,6 +157,7 @@ export namespace Path {
 	 * @param center The center of the circle
 	 * @param radius The radius of the circle
 	 * @returns The newly created path
+	 * @category Primitives
 	 */
 	export function circle(center: vec2, radius: number): Path {
 		return ellipse(center, [radius, radius])
@@ -182,6 +183,7 @@ export namespace Path {
 	 * @param start The line's starting point
 	 * @param end The line's ending point
 	 * @returns The newly created path
+	 * @category Primitives
 	 */
 	export function line(start: vec2, end: vec2): Path {
 		return [
@@ -194,6 +196,7 @@ export namespace Path {
 	 * Creates a closed polyline from the given points.
 	 * @param points The points describing the polygon
 	 * @returns The newly created path
+	 * @category Primitives
 	 */
 	export function polygon(...points: vec2[]): Path {
 		return [
@@ -209,6 +212,7 @@ export namespace Path {
 	 * @param radius The radius of the circumcircle of the polygon
 	 * @param sides The number o sides of the polygon
 	 * @returns The newly created path
+	 * @category Primitives
 	 */
 	export function regularPolygon(
 		center: vec2,
