@@ -11,6 +11,8 @@ export type CubicBezier = readonly [
 	end: vec2,
 ]
 
+export type QuadraticBezier = readonly [start: vec2, control: vec2, end: vec2]
+
 /**
  * A collection of functions to handle {@link CubicBezier}.
  */
@@ -30,6 +32,17 @@ export namespace CubicBezier {
 			)
 		}
 	)
+
+	export function fromQuadraticBezier(
+		quadraticBezier: QuadraticBezier
+	): CubicBezier {
+		const [start, control, end] = quadraticBezier
+
+		const control1 = vec2.lerp(start, control, 2 / 3)
+		const control2 = vec2.lerp(end, control, 2 / 3)
+
+		return [start, control1, control2, end]
+	}
 
 	/**
 	 * Calculates the length of the Bezier curve. Length is calculated using numerical approximation, specifically the Legendre-Gauss quadrature algorithm.
