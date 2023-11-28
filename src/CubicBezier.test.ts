@@ -1,4 +1,4 @@
-import '../jest.config'
+import '../jest.setup'
 
 import {CubicBezier} from './CubicBezier'
 
@@ -17,8 +17,8 @@ describe('CubicBezier', () => {
 	]
 
 	it('should compute the `length` correctly', () => {
-		expect(CubicBezier.length(a)).toBeCloseTo(2, 10)
-		expect(CubicBezier.length(b)).toBeCloseTo(2, 10)
+		expect(CubicBezier.length(a)).toEqual(2)
+		expect(CubicBezier.length(b)).toEqual(2)
 	})
 
 	it('should compute the `bound` correctly', () => {

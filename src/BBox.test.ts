@@ -1,4 +1,4 @@
-import '../jest.config'
+import '../jest.setup'
 
 import {BBox} from './BBox'
 
