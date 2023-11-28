@@ -7,8 +7,11 @@
 	"types": "./lib/esm/index.d.ts",
 	"sideEffects": false,
 	"scripts": {
+		"dev": "vite",
 		"build": "tsc && tsc -p tsconfig.cjs.json",
 		"build:doc": "typedoc",
+		"build:demo": "vite build",
+		"build:static": "rm -rf ./static && npm run build:demo && npm run build:doc",
 		"lint": "eslint",
 		"test": "jest",
 		"prepare": "npm run build",
@@ -50,11 +53,14 @@
 		"jest-runner-eslint": "^2.1.1",
 		"lodash": "^4.17.21",
 		"prettier": "^3.0.3",
+		"safer-eval": "^1.3.6",
 		"ts-jest": "^29.1.1",
 		"ts-node": "^10.9.1",
 		"typedoc": "^0.25.1",
 		"typedoc-plugin-markdown": "^3.16.0",
-		"typescript": "^5.2.2"
+		"typescript": "^5.2.2",
+		"vite": "^5.0.2",
+		"vite-plugin-eslint": "^1.8.1"
 	},
 	"dependencies": {
 		"@types/bezier-js": "^4.1.3",

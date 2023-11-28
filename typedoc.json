@@ -2,5 +2,6 @@
 	"$schema": "https://typedoc.org/schema.json",
 	"entryPoints": ["./src/index.ts"],
 	"readme": "README.md",
+	"out": "./static/docs",
 	"sort": ["alphabetical"]
 }

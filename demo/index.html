@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&display=swap"
+			rel="stylesheet"
+		/>
+		<link rel="stylesheet" href="./style.css" />
+		<title>bndr.js demo</title>
+	</head>
+	<body>
+		<h1>Pathed</h1>
+		<p>
+			<a href="https://github.com/baku89/pathed">Pathed</a> is toolkit for
+			manipulating SVG paths. See the
+			<a href="./docs">Full API documentation</a> for more details.
+		</p>
+		<h2>Sample Code</h2>
+		<select id="example"></select>
+		<div class="panes">
+			<div class="editor-wrapper">
+				<div class="editor-wrapper-inner">
+					<div id="editor"></div>
+				</div>
+			</div>
+			<canvas id="canvas" />
+		</div>
+
+		<script
+			src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.21.0/ace.js"
+			integrity="sha512-Fv048ivDjkHY/u2gRxmZCeewXHbP/f17sH3KPpyfkVlmNrbzR3EVVoEzLBoB44o3GRw7CRUobhrv5j0M0VaTFA=="
+			crossorigin="anonymous"
+			referrerpolicy="no-referrer"
+		></script>
+		<script type="module" src="main.ts"></script>
+	</body>
+</html>

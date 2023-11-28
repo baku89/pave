@@ -20,9 +20,9 @@ export type CommandZ = readonly ['Z']
 export type CommandA = [
 	'A',
 	r: vec2,
-	rotation: number,
-	largeArc: boolean,
-	sweep: boolean,
+	xAxisRotation: number,
+	largeArcFlag: boolean,
+	sweepFlag: boolean,
 	end: vec2,
 ]
 
