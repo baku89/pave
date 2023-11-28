@@ -50,23 +50,26 @@ export function drawPath(path: Path, context: CanvasRenderingContext2D) {
 				break
 			}
 			case 'A': {
-				const [, [rx, ry], xAxisRotation, , sweepFlag, end] = seg
+				const [, radii, xAxisRotation, largeArcFlag, sweepFlag, end] = seg
 
-				if (xAxisRotation !== 0) throw new Error('Not implemented')
-
-				const startAngle = 0
-				const endAngle = Math.PI * 2
+				const ret = Path.arcCommandToCenterParameterization(
+					prev!,
+					radii,
+					xAxisRotation,
+					largeArcFlag,
+					sweepFlag,
+					end
+				)
 
 				context.ellipse(
-					prev![0],
-					prev![1],
-					rx,
-					ry,
-					xAxisRotation,
-					startAngle,
-					endAngle,
-					!sweepFlag
+					...ret.center,
+					...ret.radii,
+					ret.xAxisRotation,
+					ret.startAngle,
+					ret.endAngle,
+					ret.counterclockwise
 				)
+
 				prev = end
 				break
 			}

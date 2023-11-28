@@ -1,4 +1,4 @@
-import {mat2d, vec2} from 'linearly'
+import {mat2d, scalar, vec2} from 'linearly'
 
 import {Bezier} from './Bezier'
 import {memoize, toFixedSimple} from './utils'
@@ -59,7 +59,7 @@ export type CommandZ = readonly ['Z']
  */
 export type CommandA = [
 	'A',
-	r: vec2,
+	radii: vec2,
 	xAxisRotation: number,
 	largeArcFlag: boolean,
 	sweepFlag: boolean,
@@ -236,6 +236,37 @@ export namespace Path {
 	}
 
 	/**
+	 * Creates an arc path.
+	 * @param center The center of the arc
+	 * @param radius The radius of the arc
+	 * @param startAngle The start angle in radians
+	 * @param endAngle The end angle in radians
+	 * @returns The newly created path
+	 */
+	export function arc(
+		center: vec2,
+		radius: number,
+		startAngle: number,
+		endAngle: number
+	): Path {
+		const start = vec2.add(center, vec2.direction(startAngle, radius))
+		const radii: vec2 = [radius, radius]
+		const sweepFlag = endAngle > startAngle
+
+		const commands: CommandA[] = []
+
+		while (Math.abs(endAngle - startAngle) > Math.PI) {
+			startAngle += Math.PI * (sweepFlag ? 1 : -1)
+			const through = vec2.add(center, vec2.direction(startAngle, radius))
+			commands.push(['A', radii, 0, false, sweepFlag, through])
+		}
+
+		const end = vec2.add(center, vec2.direction(endAngle, radius))
+
+		return [['M', start], ...commands, ['A', radii, 0, false, sweepFlag, end]]
+	}
+
+	/**
 	 * Creates a linear path from two points describing a line.
 	 * @param start The line's starting point
 	 * @param end The line's ending point
@@ -311,5 +342,91 @@ export namespace Path {
 				return [command, ...strs].join(' ')
 			})
 			.join(' ')
+	}
+
+	/**
+	 * Converts the Arc command to a center parameterization that can be used in Context2D.ellipse().
+	 * https://observablehq.com/@awhitty/svg-2-elliptical-arc-to-canvas-path2d
+	 * */
+	export function arcCommandToCenterParameterization(
+		start: vec2,
+		radii: vec2,
+		xAxisRotationDeg: number,
+		largeArcFlag: boolean,
+		sweepFlag: boolean,
+		end: vec2
+	) {
+		const xAxisRotation = scalar.rad(xAxisRotationDeg)
+
+		const [x1p, y1p] = vec2.rotate(
+			vec2.scale(vec2.sub(start, end), 0.5),
+			xAxisRotation
+		)
+
+		const [rx, ry] = correctRadii(radii, [x1p, y1p])
+
+		const sign = largeArcFlag !== sweepFlag ? 1 : -1
+		const n = pow(rx) * pow(ry) - pow(rx) * pow(y1p) - pow(ry) * pow(x1p)
+		const d = pow(rx) * pow(y1p) + pow(ry) * pow(x1p)
+
+		const [cxp, cyp] = vec2.scale(
+			[(rx * y1p) / ry, (-ry * x1p) / rx],
+			sign * Math.sqrt(Math.abs(n / d))
+		)
+
+		const center = vec2.add(
+			vec2.rotate([cxp, cyp], -xAxisRotation),
+			vec2.lerp(start, end, 0.5)
+		)
+
+		const a = vec2.div(vec2.sub([x1p, y1p], [cxp, cyp]), [rx, ry])
+		const b = vec2.div(vec2.sub(vec2.zero, [x1p, y1p], [cxp, cyp]), [rx, ry])
+		const startAngle = vec2Angle(vec2.unitX, a)
+		const deltaAngle0 = vec2Angle(a, b) % (2 * Math.PI)
+
+		const deltaAngle =
+			!sweepFlag && deltaAngle0 > 0
+				? deltaAngle0 - 2 * Math.PI
+				: sweepFlag && deltaAngle0 < 0
+				? deltaAngle0 + 2 * Math.PI
+				: deltaAngle0
+
+		const endAngle = startAngle + deltaAngle
+
+		return {
+			center,
+			radii: [rx, ry] as vec2,
+			startAngle,
+			endAngle,
+			xAxisRotation,
+			counterclockwise: deltaAngle < 0,
+		}
+
+		function pow(n: number) {
+			return n * n
+		}
+
+		function vec2Angle(u: vec2, v: vec2) {
+			const [ux, uy] = u
+			const [vx, vy] = v
+			const sign = ux * vy - uy * vx >= 0 ? 1 : -1
+			return (
+				sign * Math.acos(vec2.dot(u, v) / (vec2.sqrLen(u) * vec2.sqrLen(v)))
+			)
+		}
+
+		function correctRadii(signedRadii: vec2, p: vec2): vec2 {
+			const [signedRx, signedRy] = signedRadii
+			const [x1p, y1p] = p
+			const prx = Math.abs(signedRx)
+			const pry = Math.abs(signedRy)
+
+			const A = pow(x1p) / pow(prx) + pow(y1p) / pow(pry)
+
+			const rx = A > 1 ? Math.sqrt(A) * prx : prx
+			const ry = A > 1 ? Math.sqrt(A) * pry : pry
+
+			return [rx, ry]
+		}
 	}
 }
