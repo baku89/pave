@@ -1,6 +1,6 @@
 import '../jest.config'
 
-import {BBox, unite} from './BBox'
+import {BBox} from './BBox'
 
 describe('unite', () => {
 	it('should unite multiple bounding boxes correctly', () => {
@@ -16,7 +16,7 @@ describe('unite', () => {
 			[-1, -1],
 			[1, 1],
 		]
-		const result = unite(bbox1, bbox2, bbox3)
+		const result = BBox.unite(bbox1, bbox2, bbox3)
 		expect(result).toEqual([
 			[-1, -1],
 			[3, 3],

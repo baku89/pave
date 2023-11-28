@@ -2,7 +2,5 @@
 	"$schema": "https://typedoc.org/schema.json",
 	"entryPoints": ["./src/index.ts"],
 	"readme": "README.md",
-	"sort": ["alphabetical"],
-	"defaultCategory": "Functions",
-	"categoryOrder": ["Types", "Constants", "Generators", "Functions", "Aliases"]
+	"sort": ["alphabetical"]
 }

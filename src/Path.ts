@@ -36,3 +36,5 @@ export type Command =
 	| CommandA
 
 export type Path = Command[]
+
+export namespace Path {}
