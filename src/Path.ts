@@ -1,7 +1,7 @@
 import {mat2d, vec2} from 'linearly'
 
 import {toFixedSimple} from './utils'
-import { CubicBezier } from './CubicBezier'
+import { Bezier } from './Bezier'
 
 // Line commands
 export type CommandM = ['M', end: vec2]
@@ -96,39 +96,39 @@ export namespace Path {
 					prev = [prev![0], seg[1]]
 					break
 				case 'C': {
-					const bezier: CubicBezier = [prev!, seg[1], seg[2], seg[3]]
-					length += CubicBezier.length(bezier)
+					const bezier: Bezier = [prev!, seg[1], seg[2], seg[3]]
+					length += Bezier.length(bezier)
 					prevControl = seg[2]
 					prev = seg[3]
 					break
 				}
 				case 'S': {
 					const control1 = vec2.add(seg[1], vec2.sub(seg[1], prevControl!))
-					const bezier: CubicBezier = [prev!, control1, seg[1], seg[2]]
-					length += CubicBezier.length(bezier)
+					const bezier: Bezier = [prev!, control1, seg[1], seg[2]]
+					length += Bezier.length(bezier)
 					prevControl = seg[1]
 					prev = seg[2]
 					break
 				}
 				case 'Q': {
-					const bezier = CubicBezier.fromQuadraticBezier([
+					const bezier = Bezier.fromQuadraticBezier([
 						prev!,
 						seg[1],
 						seg[2],
 					])
-					length += CubicBezier.length(bezier)
+					length += Bezier.length(bezier)
 					prevControl = seg[1]
 					prev = seg[2]
 					break
 				}
 				case 'T': {
 					const control = vec2.add(seg[1], vec2.sub(seg[1], prevControl!))
-					const bezier = CubicBezier.fromQuadraticBezier([
+					const bezier = Bezier.fromQuadraticBezier([
 						prev!,
 						control,
 						seg[1],
 					])
-					length += CubicBezier.length(bezier)
+					length += Bezier.length(bezier)
 					prevControl = seg[1]
 					prev = seg[1]
 					break

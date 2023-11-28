@@ -4,7 +4,7 @@ import {vec2} from 'linearly'
 /**
  * A cubic Bezier curve, whose control points are specified in absolute coordinates.
  */
-export type CubicBezier = readonly [
+export type Bezier = readonly [
 	start: vec2,
 	control1: vec2,
 	control2: vec2,
@@ -14,11 +14,11 @@ export type CubicBezier = readonly [
 export type QuadraticBezier = readonly [start: vec2, control: vec2, end: vec2]
 
 /**
- * A collection of functions to handle {@link CubicBezier}.
+ * A collection of functions to handle {@link Bezier}.
  */
-export namespace CubicBezier {
-	export const toBezierJS = memoizeCubicBezierFunction(
-		(bezier: CubicBezier): BezierJS => {
+export namespace Bezier {
+	export const toBezierJS = memoizeBezierFunction(
+		(bezier: Bezier): BezierJS => {
 			const [start, control1, control2, end] = bezier
 			return new BezierJS(
 				start[0],
@@ -35,7 +35,7 @@ export namespace CubicBezier {
 
 	export function fromQuadraticBezier(
 		quadraticBezier: QuadraticBezier
-	): CubicBezier {
+	): Bezier {
 		const [start, control, end] = quadraticBezier
 
 		const control1 = vec2.lerp(start, control, 2 / 3)
@@ -47,32 +47,28 @@ export namespace CubicBezier {
 	/**
 	 * Calculates the length of the Bezier curve. Length is calculated using numerical approximation, specifically the Legendre-Gauss quadrature algorithm.
 	 */
-	export const length = memoizeCubicBezierFunction(
-		(bezier: CubicBezier): number => {
-			const bezierJS = toBezierJS(bezier)
-			return bezierJS.length()
-		}
-	)
+	export const length = memoizeBezierFunction((bezier: Bezier): number => {
+		const bezierJS = toBezierJS(bezier)
+		return bezierJS.length()
+	})
 
 	/**
 	 * Calculates the bounding box of this Bezier curve.
 	 */
-	export const bound = memoizeCubicBezierFunction(
-		(bezier: CubicBezier): [vec2, vec2] => {
-			const bezierJS = toBezierJS(bezier)
-			const {x, y} = bezierJS.bbox()
+	export const bound = memoizeBezierFunction((bezier: Bezier): [vec2, vec2] => {
+		const bezierJS = toBezierJS(bezier)
+		const {x, y} = bezierJS.bbox()
 
-			return [
-				[x.min, y.min],
-				[x.max, y.max],
-			]
-		}
-	)
+		return [
+			[x.min, y.min],
+			[x.max, y.max],
+		]
+	})
 
 	/**
 	 * Calculates the point on the curve at the specified `t` value.
 	 */
-	export function atT(bezier: CubicBezier, t: number): vec2 {
+	export function atT(bezier: Bezier, t: number): vec2 {
 		const bezierJS = toBezierJS(bezier)
 		const {x, y} = bezierJS.get(t)
 		return [x, y]
@@ -81,7 +77,7 @@ export namespace CubicBezier {
 	/**
 	 * Calculates the curve tangent at the specified `t` value. Note that this yields a not-normalized vector.
 	 */
-	export function derivative(bezier: CubicBezier, t: number): vec2 {
+	export function derivative(bezier: Bezier, t: number): vec2 {
 		const bezierJS = toBezierJS(bezier)
 		const {x, y} = bezierJS.derivative(t)
 		return [x, y]
@@ -90,14 +86,14 @@ export namespace CubicBezier {
 	/**
 	 * Calculates the curve tangent at the specified `t` value. Unlike {@link derivative}, this yields a normalized vector.
 	 */
-	export function tangent(bezier: CubicBezier, t: number): vec2 {
+	export function tangent(bezier: Bezier, t: number): vec2 {
 		return vec2.normalize(derivative(bezier, t))
 	}
 
 	/**
 	 * Calculates the curve normal at the specified `t` value. Note that this yields a normalized vector.
 	 */
-	export function normal(bezier: CubicBezier, t: number): vec2 {
+	export function normal(bezier: Bezier, t: number): vec2 {
 		const bezierJS = toBezierJS(bezier)
 		const {x, y} = bezierJS.normal(t)
 		return [x, y]
@@ -107,7 +103,7 @@ export namespace CubicBezier {
 	 * Finds the on-curve point closest to the specific off-curve point
 	 */
 	export function project(
-		bezier: CubicBezier,
+		bezier: Bezier,
 		origin: vec2
 	): {position: vec2; t?: number; distance?: number} {
 		const bezierJS = toBezierJS(bezier)
@@ -120,13 +116,13 @@ function toPoint([x, y]: vec2): Point {
 	return {x, y}
 }
 
-function memoizeCubicBezierFunction<T>(f: (bezier: CubicBezier) => T) {
+function memoizeBezierFunction<T>(f: (bezier: Bezier) => T) {
 	const cache = new WeakMap<
 		vec2,
 		WeakMap<vec2, WeakMap<vec2, WeakMap<vec2, T>>>
 	>()
 
-	return (bezier: CubicBezier): T => {
+	return (bezier: Bezier): T => {
 		const [start, control1, control2, end] = bezier
 
 		if (!cache.has(start)) {

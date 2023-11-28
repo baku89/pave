@@ -1,3 +1,3 @@
 export {BBox} from './BBox'
-export {CubicBezier} from './CubicBezier'
+export {Bezier} from './Bezier'
 export * from './Path'
