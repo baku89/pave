@@ -1,22 +1,62 @@
 import {mat2d, vec2} from 'linearly'
 
 import {Bezier} from './Bezier'
-import {toFixedSimple} from './utils'
+import {memoize, toFixedSimple} from './utils'
 
-// Line commands
+/**
+ * Move-to command.
+ */
 export type CommandM = readonly ['M', end: vec2]
+
+/**
+ * Line-to command.
+ */
 export type CommandL = readonly ['L', end: vec2]
+
+/**
+ * Horizontal line-to command.
+ */
 export type CommandH = readonly ['H', end: number]
+
+/**
+ * Vertical line-to command.
+ */
 export type CommandV = readonly ['V', end: number]
 
-// Curve commands
+/**
+ * Cubic Bézier curve command.
+ * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Paths#b%C3%A9zier_curves
+ */
 export type CommandC = readonly ['C', control1: vec2, control2: vec2, end: vec2]
+
+/**
+ * Cubic Bézier curve command with implicit first control point (the reflection of the previous control point).
+ * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Paths#b%C3%A9zier_curves:~:text=Several%20B%C3%A9zier%20curves%20can%20be%20strung%20together%20to%20create%20extended%2C%20smooth%20shapes.
+ */
 export type CommandS = readonly ['S', control2: vec2, end: vec2]
+
+/**
+ * Quadratic Bézier curve command.
+ * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Paths#b%C3%A9zier_curves:~:text=The%20other%20type%20of%20B%C3%A9zier%20curve%2C%20the%20quadratic%20curve%20called%20with%20Q
+ */
 export type CommandQ = readonly ['Q', control: vec2, end: vec2]
+
+/**
+ * Quadratic Bézier curve command with implicit control point (the reflection of the previous control point).
+ * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Paths#line_commands:~:text=As%20with%20the%20cubic%20B%C3%A9zier%20curve%2C%20there%20is%20a%20shortcut%20for%20stringing%20together%20multiple%20quadratic%20B%C3%A9ziers%2C%20called%20with%20T.
+ */
 export type CommandT = readonly ['T', end: vec2]
+
+/**
+ * Close path command
+ * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Paths#line_commands:~:text=We%20can%20shorten%20the%20above%20path%20declaration%20a%20little%20bit%20by%20using%20the%20%22Close%20Path%22%20command%2C%20called%20with%20Z.
+ */
 export type CommandZ = readonly ['Z']
 
-// Arc commands
+/**
+ * Arc command
+ * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Paths#arcs
+ */
 export type CommandA = [
 	'A',
 	r: vec2,
@@ -38,9 +78,21 @@ export type Command =
 	| CommandZ
 	| CommandA
 
+/**
+ * A path represented as an array of commands. All of the points are represented as tuple of vector `[x: number, y: number]` and represented in absolute coordinates.
+ */
 export type Path = Command[]
 
+/**
+ * Functions for manipulating paths represented as {@link Path}.
+ */
 export namespace Path {
+	/**
+	 * Transforms the given path by the given matrix.
+	 * @param path The path to transform
+	 * @param matrix The matrix to transform the path by
+	 * @returns The transformed path
+	 */
 	export function transform(path: Path, matrix: mat2d): Path {
 		return path.map(([command, ...points]) => {
 			switch (command) {
@@ -72,7 +124,12 @@ export namespace Path {
 		}) as Path
 	}
 
-	export function length(path: Path) {
+	/**
+	 * Returns the length of the given path. The returned value is memoized.
+	 * @param path The path to measure
+	 * @returns The length of the path
+	 */
+	export const length = memoize((path: Path) => {
 		let length = 0
 		let start: vec2 | undefined
 		let prevControl: vec2 | undefined
@@ -133,7 +190,7 @@ export namespace Path {
 		}
 
 		return length
-	}
+	})
 
 	/**
 	 * Creates a rectangle pat hfrom the given two points.
@@ -230,6 +287,12 @@ export namespace Path {
 		return polygon(...points)
 	}
 
+	/**
+	 * Converts the given path to a string that can be used as the d attribute of an SVG path element.
+	 * @param path The path to convert
+	 * @param fractionDigits The number of digits to appear after the decimal point
+	 * @returns The string for the d attribute of the SVG path element
+	 */
 	export function toSVG(path: Path, fractionDigits = 2): string {
 		return path
 			.map(([command, ...ps]) => {
