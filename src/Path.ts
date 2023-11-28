@@ -1,7 +1,7 @@
 import {mat2d, vec2} from 'linearly'
 
+import {Bezier} from './Bezier'
 import {toFixedSimple} from './utils'
-import { Bezier } from './Bezier'
 
 // Line commands
 export type CommandM = ['M', end: vec2]
@@ -78,7 +78,6 @@ export namespace Path {
 		let prevControl: vec2 | undefined
 		let prev: vec2 | undefined
 		for (const seg of path) {
-
 			switch (seg[0]) {
 				case 'M':
 					start = prev = seg[1]
@@ -111,11 +110,7 @@ export namespace Path {
 					break
 				}
 				case 'Q': {
-					const bezier = Bezier.fromQuadraticBezier([
-						prev!,
-						seg[1],
-						seg[2],
-					])
+					const bezier = Bezier.fromQuadraticBezier([prev!, seg[1], seg[2]])
 					length += Bezier.length(bezier)
 					prevControl = seg[1]
 					prev = seg[2]
@@ -123,11 +118,7 @@ export namespace Path {
 				}
 				case 'T': {
 					const control = vec2.add(seg[1], vec2.sub(seg[1], prevControl!))
-					const bezier = Bezier.fromQuadraticBezier([
-						prev!,
-						control,
-						seg[1],
-					])
+					const bezier = Bezier.fromQuadraticBezier([prev!, control, seg[1]])
 					length += Bezier.length(bezier)
 					prevControl = seg[1]
 					prev = seg[1]
@@ -138,7 +129,10 @@ export namespace Path {
 				case 'Z':
 					length += vec2.distance(prev!, start!)
 					break
+			}
 		}
+
+		return length
 	}
 
 	export function toSVG(path: Path, fractionDigits = 2): string {
