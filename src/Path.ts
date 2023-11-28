@@ -4,17 +4,17 @@ import {Bezier} from './Bezier'
 import {toFixedSimple} from './utils'
 
 // Line commands
-export type CommandM = ['M', end: vec2]
-export type CommandL = ['L', end: vec2]
-export type CommandH = ['H', end: number]
-export type CommandV = ['V', end: number]
+export type CommandM = readonly ['M', end: vec2]
+export type CommandL = readonly ['L', end: vec2]
+export type CommandH = readonly ['H', end: number]
+export type CommandV = readonly ['V', end: number]
 
 // Curve commands
-export type CommandC = ['C', control1: vec2, control2: vec2, end: vec2]
-export type CommandS = ['S', control2: vec2, end: vec2]
-export type CommandQ = ['Q', control: vec2, end: vec2]
-export type CommandT = ['T', end: vec2]
-export type CommandZ = ['Z']
+export type CommandC = readonly ['C', control1: vec2, control2: vec2, end: vec2]
+export type CommandS = readonly ['S', control2: vec2, end: vec2]
+export type CommandQ = readonly ['Q', control: vec2, end: vec2]
+export type CommandT = readonly ['T', end: vec2]
+export type CommandZ = readonly ['Z']
 
 // Arc commands
 export type CommandA = [
@@ -133,6 +133,97 @@ export namespace Path {
 		}
 
 		return length
+	}
+
+	/**
+	 * Creates a rectangle pat hfrom the given two points.
+	 * @param start The first point defining the rectangle
+	 * @param end The second point defining the rectangle
+	 * @returns The newly created path
+	 * @category Primitives
+	 */
+	export function rectangle(start: vec2, end: vec2): Path {
+		return [
+			['M', start],
+			['L', [end[0], start[1]]],
+			['L', end],
+			['L', [start[0], end[1]]],
+			['Z'],
+		]
+	}
+
+	/**
+	 * Creates a circle path from the given center and radius.
+	 * @param center The center of the circle
+	 * @param radius The radius of the circle
+	 * @returns The newly created path
+	 */
+	export function circle(center: vec2, radius: number): Path {
+		return ellipse(center, [radius, radius])
+	}
+
+	/**
+	 * Creates an ellipse path from the given center and radius.
+	 * @param center The center of the ellipse
+	 * @param radius The radius of the ellipse
+	 * @returns The newly created path
+	 */
+	export function ellipse(center: vec2, radius: vec2): Path {
+		return [
+			['M', [center[0] + radius[0], center[1]]],
+			['A', radius, 0, false, true, [center[0] - radius[0], center[1]]],
+			['A', radius, 0, false, true, [center[0] + radius[0], center[1]]],
+			['Z'],
+		]
+	}
+
+	/**
+	 * Creates a linear path from two points describing a line.
+	 * @param start The line's starting point
+	 * @param end The line's ending point
+	 * @returns The newly created path
+	 */
+	export function line(start: vec2, end: vec2): Path {
+		return [
+			['M', start],
+			['L', end],
+		]
+	}
+
+	/**
+	 * Creates a closed polyline from the given points.
+	 * @param points The points describing the polygon
+	 * @returns The newly created path
+	 */
+	export function polygon(...points: vec2[]): Path {
+		return [
+			['M', points[0]],
+			...points.slice(1).map(p => ['L', p] as const),
+			['Z'],
+		]
+	}
+
+	/**
+	 * Creates a regular polygon. The first vertex will be placed at the +X axis relative to the center.
+	 * @param center The center of the polygon
+	 * @param radius The radius of the circumcircle of the polygon
+	 * @param sides The number o sides of the polygon
+	 * @returns The newly created path
+	 */
+	export function regularPolygon(
+		center: vec2,
+		radius: number,
+		sides: number
+	): Path {
+		const angleStep = (2 * Math.PI) / sides
+		const points: vec2[] = []
+
+		for (let i = 0; i < sides; i++) {
+			const p = vec2.add(center, vec2.rotate([radius, 0], angleStep * i))
+			points.push(p)
+		}
+
+		return polygon(...points)
 	}
 
 	export function toSVG(path: Path, fractionDigits = 2): string {
