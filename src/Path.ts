@@ -59,10 +59,25 @@ export type CommandZ = readonly ['Z']
  */
 export type CommandA = [
 	'A',
+	/**
+	 * The radii of the ellipse used to draw the arc.
+	 */
 	radii: vec2,
+	/**
+	 * The rotation angle of the ellipse's x-axis relative to the x-axis of the current coordinate system, expressed in degrees.
+	 */
 	xAxisRotation: number,
+	/**
+	 * If true, then draw the arc spanning greather than 180 degrees. Otherwise, draw the arc spanning less than 180 degrees.
+	 */
 	largeArcFlag: boolean,
+	/**
+	 * If true, then draw the arc in a "positive-angle" direction in the current coordinate system. Otherwise, draw it in a "negative-angle" direction.
+	 */
 	sweepFlag: boolean,
+	/**
+	 * The end point of the arc.
+	 */
 	end: vec2,
 ]
 
