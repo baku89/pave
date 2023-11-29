@@ -1,7 +1,7 @@
 {
 	"name": "pathed",
 	"version": "0.0.0",
-	"description": "A low level toolkit for SVG paths.",
+	"description": "A low level toolkit for manipulating SVG/Path2D paths.",
 	"main": "./lib/cjs/index.js",
 	"module": "./lib/esm/index.js",
 	"types": "./lib/esm/index.d.ts",
