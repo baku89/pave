@@ -96,7 +96,7 @@ export type Command =
 /**
  * A path represented as an array of commands. All of the points are represented as tuple of vector `[x: number, y: number]` and represented in absolute coordinates.
  */
-export type Path = Command[]
+export type Path = readonly Command[]
 
 /**
  * Functions for manipulating paths represented as {@link Path}.
@@ -331,6 +331,167 @@ export namespace Path {
 		}
 
 		return polygon(...points)
+	}
+
+	/**
+	 * Returns the new path with the new M (move-to) command at the end.
+	 * @param path The base path
+	 * @param point The point to move to
+	 * @returns The newely created path
+	 */
+	export function moveTo(path: Path, point: vec2): Path {
+		return [...path, ['M', point]]
+	}
+
+	/**
+	 * Returns the new path with the new L (line-to) command at the end.
+	 * @param path The base path
+	 * @param point The point to draw a line to
+	 * @returns The newely created path
+	 */
+	export function lineTo(path: Path, point: vec2): Path {
+		return [...path, ['L', point]]
+	}
+
+	/**
+	 * Returns the new path with the new H (horizontal line-to) command at the end.
+	 * @param path The base path
+	 * @param x The x coordinate to draw a line to
+	 * @returns The newely created path
+	 */
+	export function horizontalLineTo(path: Path, x: number): Path {
+		return [...path, ['H', x]]
+	}
+
+	/**
+	 * Returns the new path with the new V (vertical line-to) command at the end.
+	 * @param path The base path
+	 * @param y The y coordinate to draw a line to
+	 * @returns The newely created path
+	 */
+	export function verticalLineTo(path: Path, y: number): Path {
+		return [...path, ['V', y]]
+	}
+
+	/**
+	 * Returns the new path with the new C (cubic Bézier curve) command at the end.
+	 * @param path The base path
+	 * @param control1 The first control point
+	 * @param control2 The second control point
+	 * @param end The end point
+	 * @returns The newely created path
+	 */
+	export function cubicBezierTo(
+		path: Path,
+		control1: vec2,
+		control2: vec2,
+		end: vec2
+	): Path {
+		return [...path, ['C', control1, control2, end]]
+	}
+
+	/**
+	 * Returns the new path with the new S (cubic Bézier curve with implicit first control point) command at the end.
+	 * @param path The base path
+	 * @param control2 The second control point
+	 * @param end The end point
+	 * @returns The newely created path
+	 */
+	export function smoothCubicBezierTo(
+		path: Path,
+		control2: vec2,
+		end: vec2
+	): Path {
+		return [...path, ['S', control2, end]]
+	}
+
+	/**
+	 * Returns the new path with the new Q (quadratic Bézier curve) command at the end.
+	 * @param path The base path
+	 * @param control The control point
+	 * @param end The end point
+	 * @returns The newely created path
+	 */
+	export function quadraticBezierTo(
+		path: Path,
+		control: vec2,
+		end: vec2
+	): Path {
+		return [...path, ['Q', control, end]]
+	}
+
+	/**
+	 * Returns the new path with the new T (quadratic Bézier curve with implicit control point) command at the end.
+	 * @param path The base path
+	 * @param end The end point
+	 * @returns The newely created path
+	 */
+	export function smoothQuadraticBezierTo(path: Path, end: vec2): Path {
+		return [...path, ['T', end]]
+	}
+
+	/**
+	 * Returns the new path with the new A (arc) command at the end.
+	 * @param path The base path
+	 * @param radii The radii of the ellipse used to draw the arc
+	 * @param xAxisRotation The rotation angle of the ellipse's x-axis relative to the x-axis of the current coordinate system, expressed in degrees
+	 * @param largeArcFlag The large arc flag. If true, then draw the arc spanning greather than 180 degrees. Otherwise, draw the arc spanning less than 180 degrees.
+	 * @param sweepFlag The sweep flag. If true, then draw the arc in a "positive-angle" direction in the current coordinate system. Otherwise, draw it in a "negative-angle" direction.
+	 * @param end The end point of the arc
+	 * @returns The newely created path
+	 */
+	export function arcTo(
+		path: Path,
+		radii: vec2,
+		xAxisRotation: number,
+		largeArcFlag: boolean,
+		sweepFlag: boolean,
+		end: vec2
+	): Path {
+		return [...path, ['A', radii, xAxisRotation, largeArcFlag, sweepFlag, end]]
+	}
+
+	/**
+	 * Returns the new path with the new Z (close path) command at the end.
+	 * @param path The base path
+	 * @returns The newely created path
+	 */
+	export function closePath(path: Path): Path {
+		return [...path, ['Z']]
+	}
+
+	/**
+	 * Joins the given paths into a single paths. If the last point of the previous path is approximately equal to point of the M command at the beginning of the next path, then the M command is omitted.
+	 * @param paths The paths to join
+	 * @returns The joined path
+	 */
+	export function join(...paths: Path[]): Path {
+		return paths.reduce((acc, path) => {
+			// Check if the last point of the previous path is approximately equal to
+			// the first point of the next path.
+			if (acc.length > 0 && path.length > 0) {
+				const lastSeg = acc.at(-1)!
+				const firstSeg = path[0]
+				if (lastSeg[0] !== 'Z' && firstSeg[0] === 'M') {
+					let lastPoint = lastSeg.at(-1) as number | vec2
+
+					if (typeof lastPoint === 'number') {
+						const secondLastPoint = acc.at(-2)!.at(-1) as vec2
+						if (lastSeg[0] === 'H') {
+							lastPoint = [lastPoint, secondLastPoint[1]]
+						} else if (lastSeg[0] === 'V') {
+							lastPoint = [secondLastPoint[0], lastPoint]
+						}
+					}
+
+					if (vec2.equals(lastPoint as vec2, firstSeg[1])) {
+						return [...acc, ...path.slice(1)]
+					}
+				}
+			}
+
+			return [...acc, ...path]
+		}, [])
 	}
 
 	/**
