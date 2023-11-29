@@ -109,8 +109,8 @@ export namespace Path {
 	 * @returns The transformed path
 	 */
 	export function transform(path: Path, matrix: mat2d): Path {
-		return path.map(([command, ...points]) => {
-			switch (command) {
+		return path.map(seg => {
+			switch (seg[0]) {
 				case 'M':
 				case 'L':
 				case 'Q':
@@ -118,19 +118,15 @@ export namespace Path {
 				case 'C':
 				case 'S':
 					return [
-						command,
-						...(points as vec2[]).map(p => vec2.transformMat2d(p, matrix)),
+						seg[0],
+						...(seg.slice(1) as vec2[]).map(p =>
+							vec2.transformMat2d(p, matrix)
+						),
 					]
 				case 'H':
-					return [
-						command,
-						vec2.transformMat2d([points[0] as number, 0], matrix)[0],
-					]
+					return ['L', vec2.transformMat2d([seg[1], 0], matrix)[0]]
 				case 'V':
-					return [
-						command,
-						vec2.transformMat2d([0, points[0] as number], matrix)[0],
-					]
+					return ['L', vec2.transformMat2d([0, seg[1]], matrix)[0]]
 				case 'A':
 					throw new Error('Not implemented')
 				case 'Z':
