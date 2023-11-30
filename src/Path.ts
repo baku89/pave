@@ -218,6 +218,33 @@ export namespace Path {
 		return toPaperPath(path).area
 	})
 
+	/**
+	 * Calculates the point on the path at the offset. Note that if the path consists of multiple subpaths and the offset concides exactly with the endpoints of two subpaths, the position of the start point of the later subpath will be returned.
+	 * @param path The path to calculate
+	 * @param offset The offset on the path, where `0` is at the beginning of the path and `Path.length(path)` at the end. It will be clamped if it's negative or more than the length of the path.
+	 * @returns The point at the given offset
+	 */
+	export function pointAtOffset(path: Path, offset: number): vec2 {
+		const paperPath = toPaperPath(path)
+
+		offset = scalar.clamp(offset, 0, paperPath.length)
+
+		if (paperPath instanceof paper.Path) {
+			return toVec2(paperPath.getPointAt(offset))
+		} else {
+			const subpaths = paperPath.children as paper.Path[]
+			for (let i = 0; i < subpaths.length; i++) {
+				const subpath = subpaths[i]
+				if (offset < subpath.length || i === subpaths.length - 1) {
+					return toVec2(subpath.getPointAt(offset))
+				}
+				offset -= subpath.length
+			}
+		}
+
+		throw new Error('Cannot find a point at the given offset')
+	}
+
 	interface OffsetOptions {
 		/**
 		 * The join style of offset path
@@ -902,10 +929,6 @@ export namespace Path {
 		}
 
 		return path
-
-		function toVec2(point: paper.Point): vec2 {
-			return [point.x, point.y]
-		}
 	})
 
 	/**
@@ -1008,4 +1031,8 @@ export namespace Path {
 			return [rx, ry]
 		}
 	}
+}
+
+function toVec2(point: paper.Point): vec2 {
+	return [point.x, point.y]
 }
