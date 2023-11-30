@@ -582,6 +582,46 @@ export namespace Path {
 	}
 
 	/**
+	 * Unites the given paths
+	 * @param paths The paths to unite
+	 * @returns The resulting path
+	 * @geometry Boolean Operations
+	 */
+	export function unite(...paths: Path[]): Path {
+		const paperPath = paths
+			.map(toPaperPath)
+			.reduce(
+				(merged, p) => merged.unite(p, {insert: false}) as paper.CompoundPath,
+				new paper.CompoundPath({})
+			)
+
+		return fromPaperPath(paperPath)
+	}
+
+	/**
+	 * Subtracts the given paths
+	 * @param paths The paths to subtract. The first path is substracted by the following paths.
+	 * @returns The resulting path
+	 * @geometry Boolean Operations
+	 */
+	export function subtract(...paths: Path[]): Path {
+		if (paths.length === 0) {
+			return []
+		} else if (paths.length === 1) {
+			return paths[0]
+		}
+
+		const [subject, ...tools] = paths.map(toPaperPath)
+
+		const paperPath = tools.reduce(
+			(merged, p) => merged.subtract(p, {insert: false}) as paper.CompoundPath,
+			subject
+		)
+
+		return fromPaperPath(paperPath)
+	}
+
+	/**
 	 * Converts the given path to a string that can be used as the d attribute of an SVG path element.
 	 * @param path The path to convert
 	 * @param fractionDigits The number of digits to appear after the decimal point
