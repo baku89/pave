@@ -366,6 +366,16 @@ export namespace Path {
 	}
 
 	/**
+	 * Creates a “dot“ path, which consists of only a M command to the specified point followd by Z command. This will be rendered only if the lineCap of the drawing context is set to `'round'` or `'square'`.
+	 * @param point The center point of the dot
+	 * @returns The newly created paths
+	 * @category Primitives
+	 */
+	export function dot(point: vec2): Path {
+		return [['M', point], ['Z']]
+	}
+
+	/**
 	 * Creates a closed polyline from the given points.
 	 * @param points The points describing the polygon
 	 * @returns The newly created path
