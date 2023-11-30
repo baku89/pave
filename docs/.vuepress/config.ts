@@ -1,11 +1,12 @@
 import palettePlugin from '@vuepress/plugin-palette'
-import {defineUserConfig} from 'vuepress'
+import {defineUserConfig, defaultTheme} from 'vuepress'
 
 // @ts-ignore
 import {typedocPlugin} from 'vuepress-plugin-typedoc/next'
 
 module.exports = defineUserConfig({
 	title: 'Pathed',
+	base: '/pathed/',
 	head: [
 		['link', {rel: 'preconnect', href: 'https://fonts.googleapis.com'}],
 		[
@@ -20,6 +21,22 @@ module.exports = defineUserConfig({
 			},
 		],
 	],
+	theme: defaultTheme({
+		navbar: [
+			{
+				text: 'Home',
+				link: '/',
+			},
+			{
+				text: 'API',
+				link: '/api/modules',
+			},
+			{
+				text: 'Github',
+				link: 'https://github.com/baku89/pathed',
+			},
+		],
+	}),
 	plugins: [
 		typedocPlugin({
 			entryPoints: ['./src/index.ts'],
