@@ -517,6 +517,92 @@ export namespace Path {
 	}
 
 	/**
+	 * Creates a Path2D instance with the given path data.
+	 * @param path The path to convert
+	 * @returns The newly created Path2D
+	 */
+	export const toPath2D = memoize((path: Path): Path2D => {
+		const path2d = new Path2D()
+
+		let prev: vec2 | undefined
+		let prevControl: vec2 | undefined
+
+		for (const seg of path) {
+			switch (seg[0]) {
+				case 'M':
+					path2d.moveTo(...seg[1])
+					prev = seg[1]
+					break
+				case 'L':
+					path2d.lineTo(...seg[1])
+					prev = seg[1]
+					break
+				case 'H':
+					path2d.lineTo(seg[1], prev![1])
+					prev = [seg[1], prev![1]]
+					break
+				case 'V':
+					path2d.lineTo(prev![0], seg[1])
+					prev = [prev![0], seg[1]]
+					break
+				case 'C':
+					path2d.bezierCurveTo(...seg[1], ...seg[2], ...seg[3])
+					prevControl = seg[2]
+					prev = seg[3]
+					break
+				case 'S': {
+					const control1 = vec2.add(seg[1], vec2.sub(seg[1], prevControl!))
+					path2d.bezierCurveTo(...control1, ...seg[1], ...seg[2])
+					prevControl = seg[1]
+					prev = seg[2]
+					break
+				}
+				case 'Q':
+					path2d.quadraticCurveTo(...seg[1], ...seg[2])
+					prevControl = seg[1]
+					prev = seg[2]
+					break
+				case 'T': {
+					const control = vec2.add(seg[1], vec2.sub(seg[1], prevControl!))
+					path2d.quadraticCurveTo(...control, ...seg[1])
+					prevControl = seg[1]
+					prev = seg[1]
+					break
+				}
+				case 'A': {
+					const [, radii, xAxisRotation, largeArcFlag, sweepFlag, end] = seg
+
+					const ret = Path.arcCommandToCenterParameterization(
+						prev!,
+						radii,
+						xAxisRotation,
+						largeArcFlag,
+						sweepFlag,
+						end
+					)
+
+					path2d.ellipse(
+						...ret.center,
+						...ret.radii,
+						ret.xAxisRotation,
+						ret.startAngle,
+						ret.endAngle,
+						ret.counterclockwise
+					)
+
+					prev = end
+					break
+				}
+				case 'Z':
+					path2d.closePath()
+					break
+			}
+		}
+
+		return path2d
+	})
+
+	/**
 	 * Converts the Arc command to a center parameterization that can be used in Context2D.ellipse().
 	 * https://observablehq.com/@awhitty/svg-2-elliptical-arc-to-canvas-path2d
 	 * */
