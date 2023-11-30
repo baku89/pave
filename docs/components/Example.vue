@@ -4,24 +4,21 @@
 			<Editor v-model:code="editingCode" />
 		</ClientOnly>
 		<div class="canvas-wrapper">
-			<canvas class="canvas" ref="canvas" />
+			<canvas ref="canvas" class="canvas" />
 		</div>
 	</div>
 </template>
 
 <script lang="ts" setup>
-import {ref, onMounted, watch, watchEffect} from 'vue'
 import {mat2d, scalar, vec2} from 'linearly'
 import {type Path} from 'pathed'
 import saferEval from 'safer-eval'
+import {onMounted, ref, watch, watchEffect} from 'vue'
+
 import Editor from './Editor.vue'
 
 const props = defineProps<{
 	code: string
-}>()
-
-const emit = defineEmits<{
-	'update:code': [code: string]
 }>()
 
 const editingCode = ref(props.code)
@@ -69,6 +66,7 @@ onMounted(async () => {
 					stroke,
 				})
 			} catch (e) {
+				// eslint-disable-next-line no-console
 				console.error(e)
 			}
 		},

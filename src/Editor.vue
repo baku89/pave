@@ -1,23 +1,23 @@
 <template>
 	<MonacoEditor
-		class="Editor"
 		ref="monaco"
+		class="Editor"
 		:theme="theme"
 		:value="code"
-		@update:value="emit('update:code', $event)"
-		@editorWillMount="onEditorWillMount"
 		:options="options"
 		:style="{height: height + 'px'}"
+		@update:value="emit('update:code', $event)"
+		@editor-will-mount="onEditorWillMount"
 	/>
 </template>
 
 <script lang="ts" setup>
-import {ref, defineAsyncComponent} from 'vue'
-import {type editor} from 'monaco-editor'
 import {whenever} from '@vueuse/core'
+import {useMutationObserver} from '@vueuse/core'
+import {type editor} from 'monaco-editor'
 import Tomorrow from 'monaco-themes/themes/Tomorrow.json'
 import TomorrowNight from 'monaco-themes/themes/Tomorrow-Night.json'
-import {useMutationObserver} from '@vueuse/core'
+import {defineAsyncComponent, ref} from 'vue'
 
 defineProps<{
 	code: string

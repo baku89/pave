@@ -44,7 +44,7 @@ module.exports = defineUserConfig({
 	plugins: [
 		typedocPlugin({
 			entryPoints: ['./src/index.ts'],
-			tsconfig: './tsconfig.json',
+			tsconfig: '../../tsconfig.json',
 			cleanOutputDir: true,
 			hideInPageTOC: true,
 			sidebar: {

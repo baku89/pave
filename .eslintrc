@@ -16,12 +16,7 @@
 		"ecmaVersion": 2022,
 		"sourceType": "module"
 	},
-	"plugins": [
-		"@typescript-eslint",
-		"simple-import-sort",
-		"unused-imports",
-		"jest"
-	],
+	"plugins": ["@typescript-eslint", "simple-import-sort", "unused-imports"],
 	"rules": {
 		"no-console": "warn",
 		"no-debugger": "warn",
@@ -37,9 +32,14 @@
 		"vue/no-multiple-template-root": "off",
 		"vue/multi-word-component-names": "off",
 		"vue/no-v-model-argument": "off",
-		"vue/attribute-hyphenation": "off"
+		"vue/attribute-hyphenation": "off",
+		"vue/v-on-event-hyphenation": "off"
 	},
 	"overrides": [
+		{
+			"files": ["**/*.test.ts"],
+			"plugins": ["jest"]
+		},
 		{
 			"files": ["docs/examples/*.js"],
 			"globals": {
