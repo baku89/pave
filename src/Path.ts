@@ -4,6 +4,8 @@ import paper from 'paper'
 import {Bezier} from './Bezier'
 import {memoize, toFixedSimple} from './utils'
 
+paper.setup(document.createElement('canvas'))
+
 /**
  * Move-to command.
  */
@@ -214,13 +216,7 @@ export namespace Path {
 	 * @category Primitives
 	 */
 	export function rectangle(start: vec2, end: vec2): Path {
-		return [
-			['M', start],
-			['L', [end[0], start[1]]],
-			['L', end],
-			['L', [start[0], end[1]]],
-			['Z'],
-		]
+		return [['M', start], ['H', end[0]], ['V', end[1]], ['H', start[0]], ['Z']]
 	}
 
 	/**
@@ -698,6 +694,59 @@ export namespace Path {
 
 		function toPoint(point: vec2): paper.PointLike {
 			return {x: point[0], y: point[1]}
+		}
+	})
+
+	/**
+	 * Creates a path from the given paper.Path instance.
+	 * @paperPath The paper.Path instance to convert
+	 * @returns The newly created path
+	 * @category Converters
+	 */
+	export const fromPaperPath = memoize((paperPath: paper.Path): Path => {
+		const path: Command[] = []
+		let started = false
+
+		for (const curve of paperPath.curves) {
+			if (!started) {
+				path.push(['M', toVec2(curve.point1)])
+				started = true
+			}
+			if (curve.isStraight()) {
+				if (curve.isHorizontal()) {
+					path.push(['H', curve.point2.x])
+				} else if (curve.isVertical()) {
+					path.push(['V', curve.point2.y])
+				} else {
+					path.push(['L', toVec2(curve.point2)])
+				}
+			} else {
+				path.push([
+					'C',
+					toVec2(curve.handle1),
+					toVec2(curve.handle2),
+					toVec2(curve.point2),
+				])
+			}
+		}
+
+		if (paperPath.closed) {
+			// Delete the  redundant segment if it is a line segment
+			const lastSeg = path.at(-1)
+			if (
+				lastSeg &&
+				(lastSeg[0] === 'L' || lastSeg[0] === 'H' || lastSeg[0] === 'V')
+			) {
+				path.pop()
+			}
+			// Close the path
+			path.push(['Z'])
+		}
+
+		return path
+
+		function toVec2(point: paper.Point): vec2 {
+			return [point.x, point.y]
 		}
 	})
 
