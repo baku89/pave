@@ -17,6 +17,7 @@ import {type editor} from 'monaco-editor'
 import {whenever} from '@vueuse/core'
 import Tomorrow from 'monaco-themes/themes/Tomorrow.json'
 import TomorrowNight from 'monaco-themes/themes/Tomorrow-Night.json'
+import {useMutationObserver} from '@vueuse/core'
 
 defineProps<{
 	code: string
@@ -43,11 +44,16 @@ const theme = ref<'Tomorrow' | 'TomorrowNight'>(
 		: 'Tomorrow'
 )
 
-setInterval(() => {
-	theme.value = document.documentElement.classList.contains('dark')
-		? 'TomorrowNight'
-		: 'Tomorrow'
-}, 500)
+useMutationObserver(
+	document.documentElement,
+	m => {
+		console.log(m)
+		theme.value = document.documentElement.classList.contains('dark')
+			? 'TomorrowNight'
+			: 'Tomorrow'
+	},
+	{attributeFilter: ['class']}
+)
 
 const options = {
 	language: 'javascript',
@@ -80,8 +86,3 @@ function onEditorWillMount(monaco: typeof import('monaco-editor')) {
 	monaco.editor.defineTheme('TomorrowNight', TomorrowNight as any)
 }
 </script>
-
-<style lang="stylus" scoped>
-:global(.monaco-editor)
-	background transparent !important
-</style>
