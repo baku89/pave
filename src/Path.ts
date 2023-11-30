@@ -694,7 +694,7 @@ export namespace Path {
 	 */
 	export const toPaperPath = memoize(
 		(path: Path): paper.Path | paper.CompoundPath => {
-			const paperPaths = [...iteratePerSinglePath(path)].map(path => {
+			const paperPaths = [...iterateSubpath(path)].map(path => {
 				const paperPath = new paper.Path()
 				let prev: vec2 | undefined
 				let prevControl: vec2 | undefined
