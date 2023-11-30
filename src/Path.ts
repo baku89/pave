@@ -599,16 +599,7 @@ export namespace Path {
 					break
 				}
 				case 'A': {
-					const [, radii, xAxisRotation, largeArcFlag, sweepFlag, end] = seg
-
-					const ret = Path.arcCommandToCenterParameterization(
-						prev!,
-						radii,
-						xAxisRotation,
-						largeArcFlag,
-						sweepFlag,
-						end
-					)
+					const ret = Path.arcCommandToCenterParameterization(prev!, seg)
 
 					path2d.ellipse(
 						...ret.center,
@@ -619,7 +610,7 @@ export namespace Path {
 						ret.counterclockwise
 					)
 
-					prev = end
+					prev = seg[5]
 					break
 				}
 				case 'Z':
@@ -638,12 +629,9 @@ export namespace Path {
 	 * */
 	export function arcCommandToCenterParameterization(
 		start: vec2,
-		radii: vec2,
-		xAxisRotationDeg: number,
-		largeArcFlag: boolean,
-		sweepFlag: boolean,
-		end: vec2
+		seg: CommandA
 	) {
+		const [, radii, xAxisRotationDeg, largeArcFlag, sweepFlag, end] = seg
 		const xAxisRotation = scalar.rad(xAxisRotationDeg)
 
 		const [x1p, y1p] = vec2.rotate(
