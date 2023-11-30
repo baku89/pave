@@ -107,6 +107,7 @@ export namespace Path {
 	 * @param path The path to transform
 	 * @param matrix The matrix to transform the path by
 	 * @returns The transformed path
+	 * @category Modifiers
 	 */
 	export function transform(path: Path, matrix: mat2d): Path {
 		return path.map(seg => {
@@ -139,6 +140,7 @@ export namespace Path {
 	 * Returns the length of the given path. The returned value is memoized.
 	 * @param path The path to measure
 	 * @returns The length of the path
+	 * @category Properties
 	 */
 	export const length = memoize((path: Path) => {
 		let length = 0
@@ -204,7 +206,7 @@ export namespace Path {
 	})
 
 	/**
-	 * Creates a rectangle pat hfrom the given two points.
+	 * Creates a rectangle path from the given two points.
 	 * @param start The first point defining the rectangle
 	 * @param end The second point defining the rectangle
 	 * @returns The newly created path
@@ -219,6 +221,12 @@ export namespace Path {
 			['Z'],
 		]
 	}
+
+	/**
+	 * Alias for {@link rectangle}
+	 * @category Primitives
+	 */
+	export const rect = rectangle
 
 	/**
 	 * Creates a circle path from the given center and radius.
@@ -236,6 +244,7 @@ export namespace Path {
 	 * @param center The center of the ellipse
 	 * @param radius The radius of the ellipse
 	 * @returns The newly created path
+	 * @category Primitives
 	 */
 	export function ellipse(center: vec2, radius: vec2): Path {
 		return [
@@ -253,6 +262,7 @@ export namespace Path {
 	 * @param startAngle The start angle in radians
 	 * @param endAngle The end angle in radians
 	 * @returns The newly created path
+	 * @category Primitives
 	 */
 	export function arc(
 		center: vec2,
@@ -330,10 +340,17 @@ export namespace Path {
 	}
 
 	/**
+	 * Alias for {@link regularPolygon}
+	 * @category Primitives
+	 */
+	export const ngon = regularPolygon
+
+	/**
 	 * Returns the new path with the new M (move-to) command at the end.
 	 * @param path The base path
 	 * @param point The point to move to
 	 * @returns The newely created path
+	 * @category Draw Functions
 	 */
 	export function moveTo(path: Path, point: vec2): Path {
 		return [...path, ['M', point]]
@@ -344,6 +361,7 @@ export namespace Path {
 	 * @param path The base path
 	 * @param point The point to draw a line to
 	 * @returns The newely created path
+	 * @category Draw Functions
 	 */
 	export function lineTo(path: Path, point: vec2): Path {
 		return [...path, ['L', point]]
@@ -354,6 +372,7 @@ export namespace Path {
 	 * @param path The base path
 	 * @param x The x coordinate to draw a line to
 	 * @returns The newely created path
+	 * @category Draw Functions
 	 */
 	export function horizontalLineTo(path: Path, x: number): Path {
 		return [...path, ['H', x]]
@@ -364,6 +383,7 @@ export namespace Path {
 	 * @param path The base path
 	 * @param y The y coordinate to draw a line to
 	 * @returns The newely created path
+	 * @category Draw Functions
 	 */
 	export function verticalLineTo(path: Path, y: number): Path {
 		return [...path, ['V', y]]
@@ -376,6 +396,7 @@ export namespace Path {
 	 * @param control2 The second control point
 	 * @param end The end point
 	 * @returns The newely created path
+	 * @category Draw Functions
 	 */
 	export function cubicBezierTo(
 		path: Path,
@@ -392,6 +413,7 @@ export namespace Path {
 	 * @param control2 The second control point
 	 * @param end The end point
 	 * @returns The newely created path
+	 * @category Draw Functions
 	 */
 	export function smoothCubicBezierTo(
 		path: Path,
@@ -407,6 +429,7 @@ export namespace Path {
 	 * @param control The control point
 	 * @param end The end point
 	 * @returns The newely created path
+	 * @category Draw Functions
 	 */
 	export function quadraticBezierTo(
 		path: Path,
@@ -421,6 +444,7 @@ export namespace Path {
 	 * @param path The base path
 	 * @param end The end point
 	 * @returns The newely created path
+	 * @category Draw Functions
 	 */
 	export function smoothQuadraticBezierTo(path: Path, end: vec2): Path {
 		return [...path, ['T', end]]
@@ -435,6 +459,7 @@ export namespace Path {
 	 * @param sweepFlag The sweep flag. If true, then draw the arc in a "positive-angle" direction in the current coordinate system. Otherwise, draw it in a "negative-angle" direction.
 	 * @param end The end point of the arc
 	 * @returns The newely created path
+	 * @category Draw Functions
 	 */
 	export function arcTo(
 		path: Path,
@@ -451,6 +476,7 @@ export namespace Path {
 	 * Returns the new path with the new Z (close path) command at the end.
 	 * @param path The base path
 	 * @returns The newely created path
+	 * @category Draw Functions
 	 */
 	export function closePath(path: Path): Path {
 		return [...path, ['Z']]
@@ -460,6 +486,7 @@ export namespace Path {
 	 * Joins the given paths into a single paths. If the last point of the previous path is approximately equal to point of the M command at the beginning of the next path, then the M command is omitted.
 	 * @param paths The paths to join
 	 * @returns The joined path
+	 * @category Modifiers
 	 */
 	export function join(...paths: Path[]): Path {
 		return paths.reduce((acc, path) => {
@@ -495,6 +522,7 @@ export namespace Path {
 	 * @param path The path to convert
 	 * @param fractionDigits The number of digits to appear after the decimal point
 	 * @returns The string for the d attribute of the SVG path element
+	 * @category Converters
 	 */
 	export function toSVG(path: Path, fractionDigits = 2): string {
 		return path
@@ -520,6 +548,7 @@ export namespace Path {
 	 * Creates a Path2D instance with the given path data.
 	 * @param path The path to convert
 	 * @returns The newly created Path2D
+	 * @category Converters
 	 */
 	export const toPath2D = memoize((path: Path): Path2D => {
 		const path2d = new Path2D()
@@ -605,6 +634,7 @@ export namespace Path {
 	/**
 	 * Converts the Arc command to a center parameterization that can be used in Context2D.ellipse().
 	 * https://observablehq.com/@awhitty/svg-2-elliptical-arc-to-canvas-path2d
+	 * @category Utilities
 	 * */
 	export function arcCommandToCenterParameterization(
 		start: vec2,
