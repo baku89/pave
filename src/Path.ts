@@ -1,5 +1,6 @@
 import {mat2d, scalar, vec2} from 'linearly'
 import paper from 'paper'
+import {OffsetOptions as PaperOffsetOptions, PaperOffset} from 'paperjs-offset'
 
 import {Bezier} from './Bezier'
 import {memoize, toFixedSimple} from './utils'
@@ -207,6 +208,72 @@ export namespace Path {
 
 		return length
 	})
+
+	interface OffsetOptions {
+		/**
+		 * The join style of offset path
+		 * @defaultValue 'miter'
+		 */
+		join?: CanvasLineJoin
+		/**
+		 * The limit for miter style
+		 * @see https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/miterLimit
+		 * @defaultValue 10
+		 */
+		miterLimit?: number
+	}
+
+	/**
+	 * Creates an offset path from the given path.
+	 * @param path The path to offset
+	 * @param offset The width of offset
+	 * @param options The options
+	 * @returns The newly created path
+	 */
+	export function offset(
+		path: Path,
+		offset: number,
+		options?: OffsetOptions
+	): Path {
+		const paperPath = toPaperPath(path)
+
+		const _options: PaperOffsetOptions = {
+			...options,
+			limit: options?.miterLimit,
+		}
+
+		return fromPaperPath(PaperOffset.offset(paperPath, offset, _options))
+	}
+
+	interface OffsetStrokeOptions extends OffsetOptions {
+		/**
+		 * The cap style of offset path (`'square'` will be supported in future)
+		 * @defaultValue 'butt'
+		 */
+		cap?: 'butt' | 'round'
+	}
+
+	/**
+	 * Creates an offset path from the given path.
+	 * @param path The path to offset
+	 * @param offset The width of stroke
+	 * @param options The options
+	 * @returns The newly created path
+	 */
+	export function offsetStroke(
+		path: Path,
+		offset: number,
+		options?: OffsetStrokeOptions
+	) {
+		const paperPath = toPaperPath(path)
+
+		const _options: PaperOffsetOptions = {
+			...options,
+			limit: options?.miterLimit,
+		}
+
+		return fromPaperPath(PaperOffset.offsetStroke(paperPath, offset, _options))
+	}
 
 	/**
 	 * Creates a rectangle path from the given two points.

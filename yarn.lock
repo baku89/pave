@@ -3084,10 +3084,17 @@ p-try@^2.0.0:
   resolved "https://registry.yarnpkg.com/p-try/-/p-try-2.2.0.tgz#cb2868540e313d61de58fafbe35ce9004d5540e6"
   integrity sha512-R4nPAVTAU0B9D35/Gk3uJf/7XYbQcyohSKdvAxIRSNghFl4e71hVoGnBNQz9cWaXxO2I10KTC+3jMdvvoKw6dQ==
 
-paper@^0.12.17:
+paper@^0.12.17, paper@^0.12.4:
   version "0.12.17"
   resolved "https://registry.yarnpkg.com/paper/-/paper-0.12.17.tgz#57215615f3db5a32826ab60d3e08bc7953614052"
   integrity sha512-oCe+e1C2w8hKIcGoAqUjD0GGxGPv+itrRXlEFUmp3H8tY/NTnHOkYgpJFPGw6OJ8Q1Wa6+RgzlY7Dx/2WWHtkA==
+
+paperjs-offset@^1.0.8:
+  version "1.0.8"
+  resolved "https://registry.yarnpkg.com/paperjs-offset/-/paperjs-offset-1.0.8.tgz#3ddb297785a45b99126e3da3bca852e3612b3d68"
+  integrity sha512-rUXMtHH4bTNVrCgDcu+x71qyGoPe+01yZtrPD7bowji4VfWiDWzl4EUdRxiZnG5ooPg7b07mk6jVx33hNSojaA==
+  dependencies:
+    paper "^0.12.4"
 
 parent-module@^1.0.0:
   version "1.0.1"
