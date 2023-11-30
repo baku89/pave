@@ -90,7 +90,7 @@ const runCode = (code = lastCode) => {
 
 	lastCode = code
 	try {
-		saferEval(`(() => {${code}})()`, {
+		saferEval(`(() => {\n${code}\n})()`, {
 			context,
 			Path,
 			scalar,
@@ -99,7 +99,7 @@ const runCode = (code = lastCode) => {
 			draw,
 		})
 	} catch (e) {
-		null
+		console.error(e)
 	}
 }
 
