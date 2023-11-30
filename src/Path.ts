@@ -1,4 +1,5 @@
 import {mat2d, scalar, vec2} from 'linearly'
+import paper from 'paper'
 
 import {Bezier} from './Bezier'
 import {memoize, toFixedSimple} from './utils'
@@ -620,6 +621,84 @@ export namespace Path {
 		}
 
 		return path2d
+	})
+
+	/**
+	 * Converts the given path to paper.Path
+	 * @see http://paperjs.org/reference/pathitem/
+	 * @param path The path to convert
+	 * @returns The newly created paper.Path instance
+	 */
+	export const toPaperPath = memoize((path: Path): paper.Path => {
+		const paperPath = new paper.Path()
+
+		let prev: vec2 | undefined
+		let prevControl: vec2 | undefined
+
+		for (const seg of path) {
+			switch (seg[0]) {
+				case 'M':
+					paperPath.moveTo(toPoint(seg[1]))
+					prev = seg[1]
+					break
+				case 'L':
+					paperPath.lineTo(toPoint(seg[1]))
+					prev = seg[1]
+					break
+				case 'H':
+					paperPath.lineTo({x: seg[1], y: prev![1]})
+					prev = [seg[1], prev![1]]
+					break
+				case 'V':
+					paperPath.lineTo({x: prev![0], y: seg[1]})
+					prev = [prev![0], seg[1]]
+					break
+				case 'C':
+					paperPath.cubicCurveTo(
+						toPoint(seg[1]),
+						toPoint(seg[2]),
+						toPoint(seg[3])
+					)
+					prevControl = seg[2]
+					prev = seg[3]
+					break
+				case 'S': {
+					const control1 = vec2.add(seg[1], vec2.sub(seg[1], prevControl!))
+					paperPath.cubicCurveTo(
+						toPoint(control1),
+						toPoint(seg[1]),
+						toPoint(seg[2])
+					)
+					prevControl = seg[1]
+					prev = seg[2]
+					break
+				}
+				case 'Q':
+					paperPath.quadraticCurveTo(toPoint(seg[1]), toPoint(seg[2]))
+					prevControl = seg[1]
+					prev = seg[2]
+					break
+				case 'T': {
+					const control = vec2.add(seg[1], vec2.sub(seg[1], prevControl!))
+					paperPath.quadraticCurveTo(toPoint(control), toPoint(seg[1]))
+					prevControl = seg[1]
+					prev = seg[1]
+					break
+				}
+				case 'A': {
+					throw new Error('Not supported yet')
+				}
+				case 'Z':
+					paperPath.closePath()
+					break
+			}
+		}
+
+		return paperPath
+
+		function toPoint(point: vec2): paper.PointLike {
+			return {x: point[0], y: point[1]}
+		}
 	})
 
 	/**
