@@ -625,77 +625,84 @@ export namespace Path {
 	 * @param path The path to convert
 	 * @returns The newly created paper.Path instance
 	 */
-	export const toPaperPath = memoize((path: Path): paper.Path => {
-		const paperPath = new paper.Path()
+	export const toPaperPath = memoize(
+		(path: Path): paper.Path | paper.CompoundPath => {
+			const paperPaths = [...iteratePerSinglePath(path)].map(path => {
+				const paperPath = new paper.Path()
+				let prev: vec2 | undefined
+				let prevControl: vec2 | undefined
 
-		let prev: vec2 | undefined
-		let prevControl: vec2 | undefined
+				for (const seg of path) {
+					switch (seg[0]) {
+						case 'M':
+							paperPath.moveTo(toPoint(seg[1]))
+							prev = seg[1]
+							break
+						case 'L':
+							paperPath.lineTo(toPoint(seg[1]))
+							prev = seg[1]
+							break
+						case 'H':
+							paperPath.lineTo({x: seg[1], y: prev![1]})
+							prev = [seg[1], prev![1]]
+							break
+						case 'V':
+							paperPath.lineTo({x: prev![0], y: seg[1]})
+							prev = [prev![0], seg[1]]
+							break
+						case 'C':
+							paperPath.cubicCurveTo(
+								toPoint(seg[1]),
+								toPoint(seg[2]),
+								toPoint(seg[3])
+							)
+							prevControl = seg[2]
+							prev = seg[3]
+							break
+						case 'S': {
+							const control1 = vec2.add(seg[1], vec2.sub(seg[1], prevControl!))
+							paperPath.cubicCurveTo(
+								toPoint(control1),
+								toPoint(seg[1]),
+								toPoint(seg[2])
+							)
+							prevControl = seg[1]
+							prev = seg[2]
+							break
+						}
+						case 'Q':
+							paperPath.quadraticCurveTo(toPoint(seg[1]), toPoint(seg[2]))
+							prevControl = seg[1]
+							prev = seg[2]
+							break
+						case 'T': {
+							const control = vec2.add(seg[1], vec2.sub(seg[1], prevControl!))
+							paperPath.quadraticCurveTo(toPoint(control), toPoint(seg[1]))
+							prevControl = seg[1]
+							prev = seg[1]
+							break
+						}
+						case 'A': {
+							throw new Error('Not supported yet')
+						}
+						case 'Z':
+							paperPath.closePath()
+							break
+					}
+				}
 
-		for (const seg of path) {
-			switch (seg[0]) {
-				case 'M':
-					paperPath.moveTo(toPoint(seg[1]))
-					prev = seg[1]
-					break
-				case 'L':
-					paperPath.lineTo(toPoint(seg[1]))
-					prev = seg[1]
-					break
-				case 'H':
-					paperPath.lineTo({x: seg[1], y: prev![1]})
-					prev = [seg[1], prev![1]]
-					break
-				case 'V':
-					paperPath.lineTo({x: prev![0], y: seg[1]})
-					prev = [prev![0], seg[1]]
-					break
-				case 'C':
-					paperPath.cubicCurveTo(
-						toPoint(seg[1]),
-						toPoint(seg[2]),
-						toPoint(seg[3])
-					)
-					prevControl = seg[2]
-					prev = seg[3]
-					break
-				case 'S': {
-					const control1 = vec2.add(seg[1], vec2.sub(seg[1], prevControl!))
-					paperPath.cubicCurveTo(
-						toPoint(control1),
-						toPoint(seg[1]),
-						toPoint(seg[2])
-					)
-					prevControl = seg[1]
-					prev = seg[2]
-					break
-				}
-				case 'Q':
-					paperPath.quadraticCurveTo(toPoint(seg[1]), toPoint(seg[2]))
-					prevControl = seg[1]
-					prev = seg[2]
-					break
-				case 'T': {
-					const control = vec2.add(seg[1], vec2.sub(seg[1], prevControl!))
-					paperPath.quadraticCurveTo(toPoint(control), toPoint(seg[1]))
-					prevControl = seg[1]
-					prev = seg[1]
-					break
-				}
-				case 'A': {
-					throw new Error('Not supported yet')
-				}
-				case 'Z':
-					paperPath.closePath()
-					break
+				return paperPath
+			})
+
+			return paperPaths.length > 1
+				? new paper.CompoundPath({children: paperPaths})
+				: paperPaths[0]
+
+			function toPoint(point: vec2): paper.PointLike {
+				return {x: point[0], y: point[1]}
 			}
 		}
-
-		return paperPath
-
-		function toPoint(point: vec2): paper.PointLike {
-			return {x: point[0], y: point[1]}
-		}
-	})
+	)
 
 	/**
 	 * Creates a path from the given paper.Path instance.
@@ -703,44 +710,53 @@ export namespace Path {
 	 * @returns The newly created path
 	 * @category Converters
 	 */
-	export const fromPaperPath = memoize((paperPath: paper.Path): Path => {
+	export const fromPaperPath = memoize((paperPath: paper.PathItem): Path => {
 		const path: Command[] = []
 		let started = false
 
-		for (const curve of paperPath.curves) {
-			if (!started) {
-				path.push(['M', toVec2(curve.point1)])
-				started = true
-			}
-			if (curve.isStraight()) {
-				if (curve.isHorizontal()) {
-					path.push(['H', curve.point2.x])
-				} else if (curve.isVertical()) {
-					path.push(['V', curve.point2.y])
-				} else {
-					path.push(['L', toVec2(curve.point2)])
+		if (
+			paperPath instanceof paper.Path ||
+			paperPath instanceof paper.CompoundPath
+		) {
+			for (const curve of paperPath.curves) {
+				if (!started) {
+					path.push(['M', toVec2(curve.point1)])
+					started = true
 				}
-			} else {
-				path.push([
-					'C',
-					toVec2(curve.handle1),
-					toVec2(curve.handle2),
-					toVec2(curve.point2),
-				])
+				if (curve.isStraight()) {
+					if (curve.isHorizontal()) {
+						path.push(['H', curve.point2.x])
+					} else if (curve.isVertical()) {
+						path.push(['V', curve.point2.y])
+					} else {
+						path.push(['L', toVec2(curve.point2)])
+					}
+				} else {
+					path.push([
+						'C',
+						toVec2(curve.point1.add(curve.handle1)),
+						toVec2(curve.point2.add(curve.handle2)),
+						toVec2(curve.point2),
+					])
+				}
 			}
-		}
 
-		if (paperPath.closed) {
-			// Delete the  redundant segment if it is a line segment
-			const lastSeg = path.at(-1)
-			if (
-				lastSeg &&
-				(lastSeg[0] === 'L' || lastSeg[0] === 'H' || lastSeg[0] === 'V')
-			) {
-				path.pop()
+			if (paperPath.closed) {
+				// Delete the  redundant segment if it is a line segment
+				const lastSeg = path.at(-1)
+				if (
+					lastSeg &&
+					(lastSeg[0] === 'L' || lastSeg[0] === 'H' || lastSeg[0] === 'V')
+				) {
+					path.pop()
+				}
+				// Close the path
+				path.push(['Z'])
 			}
-			// Close the path
-			path.push(['Z'])
+		} else {
+			throw new Error(
+				'paperPath is not an instance of paper.Path or CompountPath'
+			)
 		}
 
 		return path
