@@ -39,7 +39,7 @@ module.exports = {
 				scalar: 'readonly',
 				vec2: 'readonly',
 				mat2d: 'readonly',
-				draw: 'readonly',
+				stroke: 'readonly',
 				context: 'readonly',
 			},
 		},

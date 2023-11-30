@@ -78,8 +78,9 @@ editor.on('change', () => {
 	runCode(code)
 })
 
-const draw = (path: Path, color = '#000', lineWidth = 1) => {
-	context.strokeStyle = color
+const stroke = (path: Path, color = '#000', lineWidth = 1) => {
+	context.strokeStyle = color || '#000'
+	context.lineCap = 'round'
 	context.lineWidth = lineWidth
 	context.stroke(Path.toPath2D(path))
 }
@@ -96,7 +97,7 @@ const runCode = (code = lastCode) => {
 			scalar,
 			vec2,
 			mat2d,
-			draw,
+			stroke,
 		})
 	} catch (e) {
 		console.error(e)

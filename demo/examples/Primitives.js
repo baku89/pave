@@ -9,17 +9,17 @@
  * context: CanvasRenderingContext2D
  *
  * // Draws a stroke with the given path
- * draw: (path: Path, color: string, width: number) => void
+ * stroke: (path: Path, color: string, width: number) => void
  */
 
 const c = Path.circle([50, 50], 40)
-draw(c, 'PaleGreen', 1)
+stroke(c, 'PaleGreen', 1)
 
 const r = Path.rectangle([10, 10], [50, 50])
-draw(r, 'PowderBlue')
+stroke(r, 'PowderBlue')
 
 const t = Path.regularPolygon([50, 50], 40, 5)
-draw(t, 'MediumSlateBlue')
+stroke(t, 'MediumSlateBlue')
 
 const b = Path.cubicBezierTo(
 	Path.moveTo([], [10, 50]),
@@ -27,4 +27,4 @@ const b = Path.cubicBezierTo(
 	[90, 0],
 	[90, 50]
 )
-draw(b, 'plum')
+stroke(b, 'plum')
