@@ -31,4 +31,17 @@ module.exports = {
 		'unused-imports/no-unused-imports-ts': 'error',
 		'@typescript-eslint/no-namespace': 'off',
 	},
+	overrides: [
+		{
+			files: ['demo/examples/*.js'],
+			globals: {
+				Path: 'readonly',
+				scalar: 'readonly',
+				vec2: 'readonly',
+				mat2d: 'readonly',
+				draw: 'readonly',
+				context: 'readonly',
+			},
+		},
+	],
 }

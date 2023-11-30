@@ -1,1 +1,3 @@
-export default new Map<string, string>([['circle', 'console.log(10)']])
+import Primitives from './Primitives?raw'
+
+export default new Map<string, string>([['Primitives', Primitives]])

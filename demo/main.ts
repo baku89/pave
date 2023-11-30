@@ -1,28 +1,30 @@
 import {mat2d, scalar, vec2} from 'linearly'
-import {debounce} from 'lodash'
 import {Path} from 'pathed'
 import saferEval from 'safer-eval'
 
-import {drawPath} from './draw'
 import Examples from './examples'
 
 // Setup canvas and drawing context
 const canvas = document.getElementById('canvas') as HTMLCanvasElement
 const context = canvas.getContext('2d')!
 
-window.addEventListener('resize', () => {
+function fitCanvas() {
 	const {width, height} = canvas.getBoundingClientRect()
 	const dpi = window.devicePixelRatio
 	canvas.width = width * dpi
 	canvas.height = height * dpi
+	const scale = (width * dpi) / 100
 	context.resetTransform()
-	context.transform(dpi, 0, 0, dpi, 0, 0)
+	context.transform(...mat2d.fromScaling([scale, scale]))
+}
+
+window.addEventListener('resize', () => {
+	fitCanvas()
 	runCode()
 })
-window.dispatchEvent(new Event('resize'))
 
 const code =
-	localStorage.getItem('com.baku89.pathed.code') || Examples.get('circle')
+	localStorage.getItem('com.baku89.pathed.code') || Examples.get('Primitives')
 
 // Setup Ace Editor
 const editor = (window as any).ace.edit('editor')
@@ -76,24 +78,30 @@ editor.on('change', () => {
 	runCode(code)
 })
 
-const draw = (path: Path, color = '#000', lineWidth = 5) => {
+const draw = (path: Path, color = '#000', lineWidth = 1) => {
 	context.strokeStyle = color
 	context.lineWidth = lineWidth
-	drawPath(path, context)
-	context.stroke()
+	context.stroke(Path.toPath2D(path))
 }
 
-const runCode = debounce((code = '') => {
+let lastCode = code
+const runCode = (code = lastCode) => {
 	context.clearRect(0, 0, canvas.width, canvas.height)
 
-	saferEval(`(() => {${code}\n})()`, {
-		context,
-		Path,
-		scalar,
-		vec2,
-		mat2d,
-		draw,
-	})
-}, 10)
+	lastCode = code
+	try {
+		saferEval(`(() => {${code}})()`, {
+			context,
+			Path,
+			scalar,
+			vec2,
+			mat2d,
+			draw,
+		})
+	} catch (e) {
+		null
+	}
+}
 
+fitCanvas()
 runCode(code)
