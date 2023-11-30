@@ -209,6 +209,15 @@ export namespace Path {
 		return length
 	})
 
+	/**
+	 * Calculates an area of the given path.
+	 * @param path The path to calculate
+	 * @returns The area of the path
+	 */
+	export const area = memoize((path: Path) => {
+		return toPaperPath(path).area
+	})
+
 	interface OffsetOptions {
 		/**
 		 * The join style of offset path
