@@ -1,0 +1,111 @@
+@font-face {
+	font-family: Gestures;
+	src:
+		url(https://baku89.com/wp-content/themes/baku89/assets/gestures/Gestures-Regular.woff2)
+			format('woff2'),
+		url(https://baku89.com/wp-content/themes/baku89/assets/gestures/Gestures-Regular.woff)
+			format('woff');
+}
+@font-face {
+	font-weight: 500;
+	font-family: Gestures;
+	src:
+		url(https://baku89.com/wp-content/themes/baku89/assets/gestures/Gestures-Medium.woff2)
+			format('woff2'),
+		url(https://baku89.com/wp-content/themes/baku89/assets/gestures/Gestures-Medium.woff)
+			format('woff');
+}
+@font-face {
+	font-weight: 700;
+	font-family: Gestures;
+	src:
+		url(https://baku89.com/wp-content/themes/baku89/assets/gestures/Gestures-Bold.woff2)
+			format('woff2'),
+		url(https://baku89.com/wp-content/themes/baku89/assets/gestures/Gestures-Bold.woff)
+			format('woff');
+}
+@font-face {
+	font-weight: 900;
+	font-family: Gestures;
+	src:
+		url(https://baku89.com/wp-content/themes/baku89/assets/gestures/Gestures-Heavy.woff2)
+			format('woff2'),
+		url(https://baku89.com/wp-content/themes/baku89/assets/gestures/Gestures-Heavy.woff)
+			format('woff');
+}
+
+:root {
+	--c-brand: #0000ff;
+	--c-brand-light: #4545ff;
+	--c-tip: #0000ff;
+	--c-text: black;
+	--c-text-lightest: #0000ff;
+	--font-family: 'Inter', sans-serif;
+	--font-family-code: 'Fira Code', monospace;
+	--c-navbar-bg: rgba(255, 255, 255, 0.8);
+
+	--gradient-data: #2638ff 0%, #f37ea5 16%, #f0a59b 28%, #f1caca 35%,
+		#ccdce6 44%, #bef1ee 54%, #8ef6b7 63%, #6fc8d9 82%, #2638ff 100%;
+	--gradient-bg: linear-gradient(to right, var(--gradient-data));
+}
+
+html.dark {
+	--c-brand: #7070ff;
+	--c-text: white;
+	--c-border: #666;
+	--c-bg: #1d1f21;
+	--c-tip: #4343e3;
+	--c-tip-bg: var(--code-bg-color);
+	--c-text-lightest: var(--c-brand);
+}
+
+.navbar {
+	background: transparent;
+	backdrop-filter: blur(10px);
+	background-size: 100% 4px;
+	background-repeat: repeat-x;
+	background-image: var(--gradient-bg);
+
+	.site-name {
+		font-size: 1.8rem;
+	}
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.sidebar-items,
+.site-name {
+	font-family: Gestures, sans-serif;
+}
+
+.site-name,
+h1::first-letter {
+	font-feature-settings: 'salt';
+}
+
+.home .hero {
+	#main-title {
+		font-family: Gestures, sans-serif;
+		font-feature-settings: 'salt';
+	}
+
+	.description {
+		font-family: Gestures, sans-serif;
+
+		&::first-letter {
+			font-feature-settings: 'salt';
+		}
+	}
+}
+
+.toggle-color-mode-button {
+	opacity: 1;
+}
+
+.home {
+	margin-bottom: 2rem;
+}

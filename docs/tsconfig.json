@@ -5,5 +5,5 @@
 			"pathed": ["./src/index.ts"]
 		}
 	},
-	"include": ["./**/*.ts", "./**/*.js"]
+	"include": ["./**/*.ts", "./**/*.js", "**/*.vue"]
 }

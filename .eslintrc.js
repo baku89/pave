@@ -1,12 +1,14 @@
 module.exports = {
 	root: true,
-	parser: '@typescript-eslint/parser',
+	parser: 'vue-eslint-parser',
 	env: {
 		node: true,
 	},
 	extends: [
 		'eslint:recommended',
 		'plugin:@typescript-eslint/recommended',
+		'plugin:vue/recommended',
+		'plugin:prettier-vue/recommended',
 		'prettier',
 	],
 	parserOptions: {
@@ -30,10 +32,15 @@ module.exports = {
 		'simple-import-sort/exports': 'error',
 		'unused-imports/no-unused-imports-ts': 'error',
 		'@typescript-eslint/no-namespace': 'off',
+		'vue/require-default-prop': 'off',
+		'vue/no-multiple-template-root': 'off',
+		'vue/multi-word-component-names': 'off',
+		'vue/no-v-model-argument': 'off',
+		'vue/attribute-hyphenation': 'off',
 	},
 	overrides: [
 		{
-			files: ['demo/examples/*.js'],
+			files: ['docs/examples/*.js'],
 			globals: {
 				Path: 'readonly',
 				scalar: 'readonly',

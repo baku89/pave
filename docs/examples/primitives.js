@@ -1,7 +1,7 @@
 /**
  * The range of canvas is fixed to the size [100, 100].
  *
- * The variables shown below are available in the global scope:
+ * The variables shown below are also available:
  * import {Path} from 'pathed'
  * import {scalar, vec2, mat2d} from 'linearly'
  *
@@ -18,8 +18,11 @@ stroke(c, 'PaleGreen', 1)
 const r = Path.rectangle([10, 10], [50, 50])
 stroke(r, 'PowderBlue')
 
-const t = Path.regularPolygon([50, 50], 40, 5)
+const t = Path.regularPolygon([50, 50], 30, 5)
 stroke(t, 'MediumSlateBlue')
+
+const o = Path.offset(t, 10, {join: 'round'})
+stroke(o, 'gold')
 
 const b = Path.cubicBezierTo(
 	Path.moveTo([], [10, 50]),

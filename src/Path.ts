@@ -9,6 +9,7 @@ paper.setup(document.createElement('canvas'))
 
 /**
  * Move-to command.
+ * @category Path Commands
  */
 export type CommandM = readonly ['M', end: vec2]
 
@@ -334,6 +335,11 @@ export namespace Path {
 	 * @param radius The radius of the circle
 	 * @returns The newly created path
 	 * @category Primitives
+	 * @example
+	 * ```
+	 * const c = Path.circle([50, 50], 40)
+	 * stroke(c)
+	 * ```
 	 */
 	export function circle(center: vec2, radius: number): Path {
 		return ellipse(center, [radius, radius])
