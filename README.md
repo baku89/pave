@@ -1,7 +1,7 @@
 <div align="center">
 <h1>Pathed</h1>
 
-<a href="https://baku89.github.io/pathed/">Demo</a> ⌇ <a href="https://baku89.github.io/pathed/docs/">API</a> ⌇ <a href="https://github.com/sponsors/baku89">Become a Sponsor</a>
+<a href="https://baku89.github.io/pathed/">Demo</a> ⌇ <a href="https://baku89.github.io/pathed/api/modules">API</a> ⌇ <a href="https://github.com/sponsors/baku89">Become a Sponsor</a>
 
 <p>
   <a href="https://www.npmjs.org/package/pathed">
@@ -17,7 +17,7 @@
 
 Pathed is a low-level toolkit for manipulating SVG/Path2D paths, which includes creating primitives, calculating positions/normals/tangents, offsetting, and resampling paths. All functions are provided in a functional programming manner, and the path data is represented as a plain object with immutability.
 
-Currently, the library heavily depends on [Bazier.js](https://pomax.github.io/bezierjs) by [@Pomax](https://github.com/Pomax) and [Paper.js](http://paperjs.org) by [Jürg Lehni
+Currently, the library heavily depends on [Bazier.js](https://pomax.github.io/bezierjs) by [Pomax](https://github.com/Pomax) and [Paper.js](http://paperjs.org) by [Jürg Lehni
 ](https://github.com/lehni) -- or it might be said that this library is a thin wrapper for them to provide FP-oriented interfaces. Although I'm going to rewrite the whole library with zero dependencies for performance and file size, please consider sponsoring them if you think it'd be useful.
 
 ```ts
