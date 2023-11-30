@@ -12,7 +12,7 @@
 <script lang="ts" setup>
 import {ref, onMounted, watch, watchEffect} from 'vue'
 import {mat2d, scalar, vec2} from 'linearly'
-import {type Path} from '../../../src'
+import {type Path} from 'pathed'
 import saferEval from 'safer-eval'
 import Editor from './Editor.vue'
 
@@ -35,7 +35,7 @@ const context = ref<null | CanvasRenderingContext2D>(null)
 onMounted(async () => {
 	context.value = canvas.value?.getContext('2d') ?? null
 
-	const {Path} = await import('../../../src')
+	const {Path} = await import('pathed')
 
 	watch(
 		() => [editingCode.value, canvas.value, context.value] as const,

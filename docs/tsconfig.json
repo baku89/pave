@@ -1,9 +1,0 @@
-{
-	"extends": "../tsconfig.json",
-	"compilerOptions": {
-		"paths": {
-			"pathed": ["./src/index.ts"]
-		}
-	},
-	"include": ["./**/*.ts", "./**/*.js", "**/*.vue"]
-}

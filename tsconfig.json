@@ -14,8 +14,9 @@
 		"declarationMap": true,
 		"lib": ["esnext", "DOM"],
 		"skipLibCheck": true,
-		"skipDefaultLibCheck": true
+		"skipDefaultLibCheck": true,
+		"allowJs": true
 	},
-	"include": ["src/**/*.ts", "docs/**/*.ts", "docs/**/*.vue"],
+	"include": ["src/**/*.ts"],
 	"exclude": ["node_modules", "src/**/*.test.ts"]
 }
