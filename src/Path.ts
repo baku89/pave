@@ -783,6 +783,23 @@ export namespace Path {
 	})
 
 	/**
+	 * Iterate over the split sections of path, each of which begins with a M command
+	 * @param path The path to subdivide
+	 * @returns The iterator for subpaths
+	 */
+	export const iterateSubpath = memoize(function* (
+		path: Path
+	): Generator<Path> {
+		let start = 0
+		for (let end = start + 1; end <= path.length; end++) {
+			if (end === path.length || path[end][0] === 'M') {
+				yield path.slice(start, end)
+				start = end
+			}
+		}
+	})
+
+	/**
 	 * Converts the Arc command to a center parameterization that can be used in Context2D.ellipse().
 	 * https://observablehq.com/@awhitty/svg-2-elliptical-arc-to-canvas-path2d
 	 * @category Utilities
