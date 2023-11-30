@@ -683,7 +683,23 @@ export namespace Path {
 							break
 						}
 						case 'A': {
-							throw new Error('Not supported yet')
+							const [, [rx, ry], xAxisRotation, , , end] = seg
+
+							if (rx !== ry || xAxisRotation !== 0) {
+								throw new Error('Ellipse or tilted arc is not yet supported')
+							}
+
+							const ret = arcCommandToCenterParameterization(prev!, seg)
+
+							const midAngle = (ret.startAngle + ret.endAngle) / 2
+
+							const through = vec2.add(ret.center, vec2.direction(midAngle, rx))
+
+							paperPath.arcTo(toPoint(through), toPoint(end))
+
+							prev = end
+
+							break
 						}
 						case 'Z':
 							paperPath.closePath()
