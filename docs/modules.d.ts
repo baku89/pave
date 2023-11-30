@@ -1,6 +1,6 @@
 declare module 'safer-eval' {
 	function saferEval(code: string, context?: object): void
-	export = saferEval
+	export default saferEval
 }
 
 declare module '*?raw' {
@@ -10,6 +10,6 @@ declare module '*?raw' {
 
 declare module '*.vue' {
 	import {DefineComponent} from 'vue'
-	const component: DefineComponent<{}, {}, any>
+	const component: DefineComponent<object, object, any>
 	export default component
 }

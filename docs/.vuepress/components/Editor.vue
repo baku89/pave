@@ -12,9 +12,9 @@
 </template>
 
 <script lang="ts" setup>
-import {ref, onMounted} from 'vue'
-import MonacoEditor from 'monaco-editor-vue3'
-import {editor} from 'monaco-editor'
+import {ref, defineAsyncComponent} from 'vue'
+import {type editor} from 'monaco-editor'
+import {whenever} from '@vueuse/core'
 import Tomorrow from 'monaco-themes/themes/Tomorrow.json'
 import TomorrowNight from 'monaco-themes/themes/Tomorrow-Night.json'
 
@@ -26,14 +26,14 @@ const emit = defineEmits<{
 	'update:code': [code: string]
 }>()
 
+const MonacoEditor = defineAsyncComponent(() => import('monaco-editor-vue3'))
+
 const monaco = ref<null | {editor: editor.IStandaloneCodeEditor}>(null)
 const height = ref(0)
 
-onMounted(() => {
-	const e = monaco.value!.editor
-
-	e.onDidContentSizeChange(() => {
-		height.value = e.getContentHeight()
+whenever(monaco, monaco => {
+	monaco.editor.onDidContentSizeChange(() => {
+		height.value = monaco.editor.getContentHeight()
 	})
 })
 

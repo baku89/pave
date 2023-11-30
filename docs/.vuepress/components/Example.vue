@@ -1,6 +1,8 @@
 <template>
 	<div class="Example">
-		<Editor v-model:code="editingCode" />
+		<ClientOnly>
+			<Editor v-model:code="editingCode" />
+		</ClientOnly>
 		<div class="canvas-wrapper">
 			<canvas class="canvas" ref="canvas" />
 		</div>
@@ -10,7 +12,7 @@
 <script lang="ts" setup>
 import {ref, onMounted, watch, watchEffect} from 'vue'
 import {mat2d, scalar, vec2} from 'linearly'
-import {Path} from '../../../src'
+import {type Path} from '../../../src'
 import saferEval from 'safer-eval'
 import Editor from './Editor.vue'
 
@@ -30,46 +32,49 @@ watchEffect(() => {
 const canvas = ref<null | HTMLCanvasElement>(null)
 const context = ref<null | CanvasRenderingContext2D>(null)
 
-onMounted(() => {
+onMounted(async () => {
 	context.value = canvas.value?.getContext('2d') ?? null
+
+	const {Path} = await import('../../../src')
+
+	watch(
+		() => [editingCode.value, canvas.value, context.value] as const,
+		([code, canvas, context]) => {
+			if (!canvas || !context) return
+
+			const stroke = (path: Path, color = '#000', lineWidth = 1) => {
+				context.strokeStyle = color || '#000'
+				context.lineCap = 'round'
+				context.lineWidth = lineWidth
+				context.stroke(Path.toPath2D(path))
+			}
+
+			const {width, height} = canvas.getBoundingClientRect()
+			const dpi = window.devicePixelRatio
+			canvas.width = width * dpi
+			canvas.height = height * dpi
+			const scale = (width * dpi) / 100
+
+			context.clearRect(0, 0, canvas.width, canvas.height)
+			context.resetTransform()
+			context.transform(...mat2d.fromScaling([scale, scale]))
+
+			try {
+				saferEval(`(() => {\n${code}\n})()`, {
+					context,
+					Path,
+					scalar,
+					vec2,
+					mat2d,
+					stroke,
+				})
+			} catch (e) {
+				console.error(e)
+			}
+		},
+		{immediate: true}
+	)
 })
-
-watch(
-	() => [editingCode.value, canvas.value, context.value] as const,
-	([code, canvas, context]) => {
-		if (!canvas || !context) return
-
-		const stroke = (path: Path, color = '#000', lineWidth = 1) => {
-			context.strokeStyle = color || '#000'
-			context.lineCap = 'round'
-			context.lineWidth = lineWidth
-			context.stroke(Path.toPath2D(path))
-		}
-
-		const {width, height} = canvas.getBoundingClientRect()
-		const dpi = window.devicePixelRatio
-		canvas.width = width * dpi
-		canvas.height = height * dpi
-		const scale = (width * dpi) / 100
-
-		context.clearRect(0, 0, canvas.width, canvas.height)
-		context.resetTransform()
-		context.transform(...mat2d.fromScaling([scale, scale]))
-
-		try {
-			saferEval(`(() => {\n${code}\n})()`, {
-				context,
-				Path,
-				scalar,
-				vec2,
-				mat2d,
-				stroke,
-			})
-		} catch (e) {
-			console.error(e)
-		}
-	}
-)
 </script>
 
 <style lang="stylus" scoped>
