@@ -2,9 +2,6 @@ import palettePlugin from '@vuepress/plugin-palette'
 import {defineUserConfig, defaultTheme} from 'vuepress'
 import {path} from '@vuepress/utils'
 
-// @ts-ignore
-import {typedocPlugin} from 'vuepress-plugin-typedoc/next'
-
 module.exports = defineUserConfig({
 	title: 'Pathed',
 	base: '/pathed/',
