@@ -238,6 +238,16 @@ export namespace Path {
 	})
 
 	/**
+	 * Returns if the given path is closed.
+	 * @param path The path to check
+	 * @returns True if the path is closed
+	 * @category Properties
+	 */
+	export const closed = (path: Path) => {
+		return path.at(-1)?.[0] === 'Z'
+	}
+
+	/**
 	 * Calculates the point on the path at the offset. Note that if the path consists of multiple subpaths and the offset concides exactly with the endpoints of two subpaths, the position of the start point of the later subpath will be returned.
 	 * @param path The path to calculate
 	 * @param offset The offset on the path, where `0` is at the beginning of the path and `Path.length(path)` at the end. It will be clamped if it's negative or more than the length of the path.
@@ -702,6 +712,8 @@ export namespace Path {
 			return [...acc, ...path]
 		}, [])
 	}
+
+	export function resample(path: Path)
 
 	/**
 	 * Unites the given paths
