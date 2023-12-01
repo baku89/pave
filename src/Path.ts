@@ -2,6 +2,7 @@ import {mat2d, scalar, vec2} from 'linearly'
 import paper from 'paper'
 import {OffsetOptions as PaperOffsetOptions, PaperOffset} from 'paperjs-offset'
 
+import {BBox} from './BBox'
 import {Bezier} from './Bezier'
 import {memoize, toFixedSimple} from './utils'
 
@@ -724,7 +725,27 @@ export namespace Path {
 		}, [])
 	}
 
-	export function resample(path: Path)
+	/**
+	 * Flattens the curves in path to straight lines.
+	 * @see http://paperjs.org/reference/path/#flatten
+	 * @param path The path to flatten
+	 * @param flatness The maximum distance between the path and the flattened path
+	 * @returns The flattened path consists of only M, L, and Z commands
+	 * @category Modifiers
+	 * @example
+	 * ```js:pathed
+	 * const c = Path.circle([50, 50], 40)
+	 * stroke(c, 'skyblue')
+	 *
+	 * const fc = Path.flatten(c, 10)
+	 * stroke(fc, 'purple')
+	 * ```
+	 */
+	export function flatten(path: Path, flatness = 0.25): Path {
+		const paperPath = toPaperPath(path).clone()
+		paperPath.flatten(flatness)
+		return fromPaperPath(paperPath)
+	}
 
 	/**
 	 * Unites the given paths
