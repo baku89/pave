@@ -166,66 +166,7 @@ export namespace Path {
 	 * @category Properties
 	 */
 	export const length = memoize((path: Path) => {
-		let length = 0
-		let start: vec2 | undefined
-		let prevControl: vec2 | undefined
-		let prev: vec2 | undefined
-		for (const seg of path) {
-			switch (seg[0]) {
-				case 'M':
-					start = prev = seg[1]
-					break
-				case 'L':
-					length += vec2.distance(prev!, seg[1])
-					prev = seg[1]
-					break
-				case 'H':
-					length += Math.abs(seg[1] - prev![0])
-					prev = [seg[1], prev![0]]
-					break
-				case 'V':
-					length += Math.abs(seg[1] - prev![1])
-					prev = [prev![0], seg[1]]
-					break
-				case 'C': {
-					const bezier: Bezier = [prev!, seg[1], seg[2], seg[3]]
-					length += Bezier.length(bezier)
-					prevControl = seg[2]
-					prev = seg[3]
-					break
-				}
-				case 'S': {
-					const control1 = vec2.add(seg[1], vec2.sub(seg[1], prevControl!))
-					const bezier: Bezier = [prev!, control1, seg[1], seg[2]]
-					length += Bezier.length(bezier)
-					prevControl = seg[1]
-					prev = seg[2]
-					break
-				}
-				case 'Q': {
-					const bezier = Bezier.fromQuadraticBezier([prev!, seg[1], seg[2]])
-					length += Bezier.length(bezier)
-					prevControl = seg[1]
-					prev = seg[2]
-					break
-				}
-				case 'T': {
-					const control = vec2.add(seg[1], vec2.sub(seg[1], prevControl!))
-					const bezier = Bezier.fromQuadraticBezier([prev!, control, seg[1]])
-					length += Bezier.length(bezier)
-					prevControl = seg[1]
-					prev = seg[1]
-					break
-				}
-				case 'A':
-					throw new Error('Not implemented')
-				case 'Z':
-					length += vec2.distance(prev!, start!)
-					break
-			}
-		}
-
-		return length
+		return toPaperPath(path).length
 	})
 
 	/**
