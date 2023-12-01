@@ -228,6 +228,17 @@ export namespace Path {
 	})
 
 	/**
+	 * Calculates the bounding box of the given path.
+	 * @param path The path to calculate
+	 * @returns The bounding box of the path
+	 * @category Properties
+	 */
+	export const bounds = memoize((path: Path): BBox => {
+		const bounds = toPaperPath(path).bounds
+		return [toVec2(bounds.topLeft), toVec2(bounds.bottomRight)]
+	})
+
+	/**
 	 * Calculates an area of the given path.
 	 * @param path The path to calculate
 	 * @returns The area of the path
