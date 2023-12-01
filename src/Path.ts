@@ -500,7 +500,7 @@ export namespace Path {
 	}
 
 	/**
-	 * Creates a closed polyline from the given points.
+	 * Creates a open polyline from the given points.
 	 * @param points The points describing the polygon
 	 * @returns The newly created path
 	 * @category Primitives
@@ -510,12 +510,29 @@ export namespace Path {
 	 * stroke(p)
 	 * ```
 	 */
+	export function polyline(...points: vec2[]): Path {
+		if (points.length === 0) return []
+
+		const [first, ...rest] = points
+
+		return [['M', first], ...rest.map(p => ['L', p] as const)]
+	}
+
+	/**
+	 * Creates a closed polyline from the given points.
+	 * @param points The points describing the polygon
+	 * @returns The newly created path
+	 * @category Primitives
+	 * @example
+	 * ```js:pathed
+	 * const p = Path.polygon([10, 10], [30, 80], [80, 50])
+	 * stroke(p)
+	 * ```
+	 */
 	export function polygon(...points: vec2[]): Path {
-		return [
-			['M', points[0]],
-			...points.slice(1).map(p => ['L', p] as const),
-			['Z'],
-		]
+		if (points.length === 0) return []
+
+		return closePath(polyline(...points))
 	}
 
 	/**
