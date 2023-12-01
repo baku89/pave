@@ -73,7 +73,6 @@ const options = {
 	automaticLayout: true,
 	scrollbar: {
 		vertical: 'hidden',
-		horizontal: 'hidden',
 		handleMouseWheel: false,
 	},
 	tabSize: 2,

@@ -86,7 +86,7 @@ onMounted(async () => {
 	position relative
 	border 1px solid var(--c-border-dark)
 	padding 1em
-	border-radius 6px
+	border-radius var(--border-radius)
 	font-family var(--font-family-code)
 	min-height 200px
 

@@ -40,37 +40,55 @@
 	--c-tip: #0000ff;
 	--c-text: black;
 	--c-text-lightest: #0000ff;
+	--c-border: var(--c-text);
+	--c-border-dark: var(--c-border);
+	--code-bg-color: black;
+	--code-ln-color: white;
 	--font-family: 'Inter', sans-serif;
 	--font-family-code: 'Fira Code', monospace;
-	--c-navbar-bg: rgba(255, 255, 255, 0.8);
 
 	--gradient-data: #2638ff 0%, #f37ea5 16%, #f0a59b 28%, #f1caca 35%,
 		#ccdce6 44%, #bef1ee 54%, #8ef6b7 63%, #6fc8d9 82%, #2638ff 100%;
 	--gradient-bg: linear-gradient(to right, var(--gradient-data));
+
+	--border-radius: 6px;
 }
 
 html.dark {
-	--c-brand: #7070ff;
+	--c-brand: #5757f5;
 	--c-text: white;
-	--c-border: #666;
+	--c-border: #777;
+	--c-border-dark: var(--c-border);
 	--c-bg: #1d1f21;
-	--c-tip: #4343e3;
+	--c-tip: var(--c-brand);
 	--c-tip-bg: var(--code-bg-color);
 	--c-text-lightest: var(--c-brand);
 }
 
+// Navbar
 .navbar {
-	background: transparent;
+	background: color-mix(in srgb, var(--c-bg) 30%, transparent);
 	backdrop-filter: blur(10px);
 	background-size: 100% 4px;
 	background-repeat: repeat-x;
 	background-image: var(--gradient-bg);
+
+	border-radius: 0 0 1rem 1rem;
+	border: 1px solid var(--c-border);
+	border-top: none;
+	margin-left: -1px;
+	margin-right: -1px;
 
 	.site-name {
 		font-size: 1.8rem;
 	}
 }
 
+.toggle-color-mode-button {
+	opacity: 1;
+}
+
+// Uses weird font
 h1,
 h2,
 h3,
@@ -90,6 +108,10 @@ h1::first-letter {
 	#main-title {
 		font-family: Gestures, sans-serif;
 		font-feature-settings: 'salt';
+		font-size: 5rem;
+		// Draws a outline of the text
+		-webkit-text-stroke: 1px var(--c-text);
+		-webkit-text-fill-color: transparent;
 	}
 
 	.description {
@@ -101,10 +123,57 @@ h1::first-letter {
 	}
 }
 
-.toggle-color-mode-button {
-	opacity: 1;
+.custom-container {
+	border: none !important;
+	padding-left: 2rem !important;
+	border-radius: var(--border-radius);
+
+	.custom-container-title {
+		font-family: Gestures, sans-serif;
+
+		&::first-letter {
+			font-feature-settings: 'salt';
+		}
+	}
+
+	// Make the border gradient
+	background-image: linear-gradient(
+		to right,
+		var(--border-color) 0rem,
+		color-mix(in srgb, var(--border-color) 50%, transparent) 0.75rem,
+		color-mix(in srgb, var(--border-color) 20%, transparent) 1.5rem,
+		color-mix(in srgb, var(--border-color) 5%, transparent) 2rem,
+		transparent 3rem
+	);
+
+	&.tip {
+		--border-color: var(--c-tip);
+	}
+
+	&.warning {
+		--border-color: var(--c-warning);
+	}
 }
 
-.home {
-	margin-bottom: 2rem;
+// Code Blocks
+div[class*='language-']::before {
+	font-family: 'Gestures', sans-serif;
+	font-size: 1rem;
+	font-feature-settings: 'salt';
+}
+
+main {
+	margin-bottom: 2rem !important;
+
+	li {
+		list-style: none;
+
+		&:before {
+			content: '❊';
+			color: var(--c-text-quote);
+			display: inline-block;
+			width: 1em;
+			margin-left: -1em;
+		}
+	}
 }
