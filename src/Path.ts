@@ -585,20 +585,6 @@ export namespace Path {
 		return transformAtOffset(path, normalizedOffset * length(path))
 	}
 
-	interface OffsetOptions {
-		/**
-		 * The join style of offset path
-		 * @defaultValue 'miter'
-		 */
-		join?: CanvasLineJoin
-		/**
-		 * The limit for miter style
-		 * @see https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/miterLimit
-		 * @defaultValue 10
-		 */
-		miterLimit?: number
-	}
-
 	/**
 	 * Transforms the given path by the given matrix.
 	 * @param path The path to transform
@@ -633,6 +619,20 @@ export namespace Path {
 		}) as Path
 	}
 
+	export interface OffsetOptions {
+		/**
+		 * The join style of offset path
+		 * @defaultValue 'miter'
+		 */
+		lineJoin?: CanvasLineJoin
+		/**
+		 * The limit for miter style
+		 * @see https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/miterLimit
+		 * @defaultValue 10
+		 */
+		miterLimit?: number
+	}
+
 	/**
 	 * Creates an offset path from the given path.
 	 * @param path The path to offset
@@ -644,7 +644,7 @@ export namespace Path {
 	 * ```js:pathed
 	 * const p = Path.ngon([50, 50], 20, 5)
 	 * stroke(p, 'skyblue')
-	 * const po = Path.offset(p, 10, {join: 'round'})
+	 * const po = Path.offset(p, 10, {lineJoin: 'round'})
 	 * stroke(po, 'tomato')
 	 * ```
 	 */
@@ -656,19 +656,19 @@ export namespace Path {
 		const paperPath = toPaperPath(path)
 
 		const _options: PaperOffsetOptions = {
-			...options,
+			join: options?.lineJoin,
 			limit: options?.miterLimit,
 		}
 
 		return fromPaperPath(PaperOffset.offset(paperPath, offset, _options))
 	}
 
-	interface OffsetStrokeOptions extends OffsetOptions {
+	export interface OffsetStrokeOptions extends OffsetOptions {
 		/**
 		 * The cap style of offset path (`'square'` will be supported in future)
 		 * @defaultValue 'butt'
 		 */
-		cap?: 'butt' | 'round'
+		lineCap?: 'butt' | 'round'
 	}
 
 	/**
@@ -682,7 +682,7 @@ export namespace Path {
 	 * ```js:pathed
 	 * const p = Path.ngon([50, 50], 20, 5)
 	 * stroke(p, 'skyblue')
-	 * const po = Path.offsetStroke(p, 10, {join: 'round'})
+	 * const po = Path.offsetStroke(p, 20, {lineJoin: 'round'})
 	 * stroke(po, 'tomato')
 	 * ```
 	 */
@@ -694,7 +694,8 @@ export namespace Path {
 		const paperPath = toPaperPath(path)
 
 		const _options: PaperOffsetOptions = {
-			...options,
+			join: options?.lineJoin,
+			cap: options?.lineCap,
 			limit: options?.miterLimit,
 		}
 
