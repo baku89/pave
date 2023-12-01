@@ -46,6 +46,11 @@ onMounted(async () => {
 				context.stroke(Path.toPath2D(path))
 			}
 
+			const fill = (path: Path, color = '#000') => {
+				context.fillStyle = color || '#000'
+				context.stroke(Path.toPath2D(path))
+			}
+
 			const {width, height} = canvas.getBoundingClientRect()
 			const dpi = window.devicePixelRatio
 			canvas.width = width * dpi
@@ -64,6 +69,7 @@ onMounted(async () => {
 					vec2,
 					mat2d,
 					stroke,
+					fill,
 				})
 			} catch (e) {
 				// eslint-disable-next-line no-console
@@ -82,6 +88,7 @@ onMounted(async () => {
 	padding 1em
 	border-radius 6px
 	font-family var(--font-family-code)
+	min-height 200px
 
 .canvas-wrapper
 	width 200px

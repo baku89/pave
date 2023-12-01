@@ -8,8 +8,9 @@
  * // The 2D context of the canvas
  * context: CanvasRenderingContext2D
  *
- * // Draws a stroke with the given path
+ * // Shorhands for drawing functions
  * stroke: (path: Path, color: string, width: number) => void
+ * fill: (path: Path, color: string) => void
  */
 
 const c = Path.circle([50, 50], 40)
