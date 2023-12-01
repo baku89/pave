@@ -125,340 +125,6 @@ export type Path = readonly Command[]
  */
 export namespace Path {
 	/**
-	 * Transforms the given path by the given matrix.
-	 * @param path The path to transform
-	 * @param matrix The matrix to transform the path by
-	 * @returns The transformed path
-	 * @category Modifiers
-	 */
-	export function transform(path: Path, matrix: mat2d): Path {
-		return path.map(seg => {
-			switch (seg[0]) {
-				case 'M':
-				case 'L':
-				case 'Q':
-				case 'T':
-				case 'C':
-				case 'S':
-					return [
-						seg[0],
-						...(seg.slice(1) as vec2[]).map(p =>
-							vec2.transformMat2d(p, matrix)
-						),
-					]
-				case 'H':
-					return ['L', vec2.transformMat2d([seg[1], 0], matrix)[0]]
-				case 'V':
-					return ['L', vec2.transformMat2d([0, seg[1]], matrix)[0]]
-				case 'A':
-					throw new Error('Not implemented')
-				case 'Z':
-					return ['Z']
-			}
-		}) as Path
-	}
-
-	/**
-	 * Returns the length of the given path. The returned value is memoized.
-	 * @param path The path to measure
-	 * @returns The length of the path
-	 * @category Properties
-	 */
-	export const length = memoize((path: Path) => {
-		return toPaperPath(path).length
-	})
-
-	/**
-	 * Calculates the bounding box of the given path.
-	 * @param path The path to calculate
-	 * @returns The bounding box of the path
-	 * @category Properties
-	 */
-	export const bounds = memoize((path: Path): BBox => {
-		const bounds = toPaperPath(path).bounds
-		return [toVec2(bounds.topLeft), toVec2(bounds.bottomRight)]
-	})
-
-	/**
-	 * Calculates an area of the given path.
-	 * @param path The path to calculate
-	 * @returns The area of the path
-	 * @category Properties
-	 */
-	export const area = memoize((path: Path) => {
-		return toPaperPath(path).area
-	})
-
-	/**
-	 * Returns if the given path is closed.
-	 * @param path The path to check
-	 * @returns True if the path is closed
-	 * @category Properties
-	 */
-	export const closed = (path: Path) => {
-		return path.at(-1)?.[0] === 'Z'
-	}
-
-	/**
-	 * Calculates the point on the path at the offset. If the path consists of multiple subpaths and the offset concides exactly with the endpoints of two subpaths, the start point of the later subpath will be returned.
-	 * @param path The path to calculate
-	 * @param offset The offset on the path, where `0` is at the beginning of the path and `Path.length(path)` at the end. It will be clamped when it's out of range.
-	 * @returns The point at the given offset
-	 * @category Properties
-	 */
-	export function pointAtOffset(path: Path, offset: number): vec2 {
-		const paperPath = toPaperPath(path)
-
-		offset = scalar.clamp(offset, 0, paperPath.length)
-
-		const subpaths =
-			paperPath instanceof paper.Path
-				? [paperPath]
-				: (paperPath.children as paper.Path[])
-
-		for (let i = 0; i < subpaths.length; i++) {
-			const subpath = subpaths[i]
-			if (offset < subpath.length || i === subpaths.length - 1) {
-				return toVec2(subpath.getPointAt(offset))
-			}
-			offset -= subpath.length
-		}
-
-		throw new Error('Cannot find a point at the given offset')
-	}
-
-	/**
-	 * The same as {@link pointAtOffset} but the offset ranges between [0, 1].
-	 * @param path The path to calculate
-	 * @param normalizedOffset The offset on the path, where `0` is at the beginning of the path and `1` at the end.
-	 * @category Properties
-	 */
-	export function pointAtNormalizedOffset(
-		path: Path,
-		normalizedOffset: number
-	): vec2 {
-		return pointAtOffset(path, normalizedOffset * length(path))
-	}
-
-	/**
-	 * Calculates the normalized tangent vector of the path at the given offset.
-	 * @param path The path to calcuate
-	 * @param offset The offset on the path, where `0` is at the beginning of the path and `Path.length(path)` at the end. It will be clamped when it's out of range.
-	 * @returns The normalized tangent vector at the given offset
-	 * @category Properties
-	 */
-	export function tangentAtOffset(path: Path, offset: number): vec2 {
-		const paperPath = toPaperPath(path)
-
-		offset = scalar.clamp(offset, 0, paperPath.length)
-
-		const subpaths =
-			paperPath instanceof paper.Path
-				? [paperPath]
-				: (paperPath.children as paper.Path[])
-
-		for (let i = 0; i < subpaths.length; i++) {
-			const subpath = subpaths[i]
-			if (offset < subpath.length || i === subpaths.length - 1) {
-				return toVec2(subpath.getTangentAt(offset))
-			}
-			offset -= subpath.length
-		}
-
-		throw new Error('Cannot find a point at the given offset')
-	}
-
-	/**
-	 * The same as {@link tangentAtOffset} but the offset ranges between [0, 1].
-	 * @param path The path to calculate
-	 * @param normalizedOffset The offset on the path, where `0` is at the beginning of the path and `1` at the end.
-	 * @category Properties
-	 */
-	export function tangentAtNormalizedOffset(
-		path: Path,
-		normalizedOffset: number
-	): vec2 {
-		return tangentAtOffset(path, normalizedOffset * length(path))
-	}
-
-	/**
-	 * Calculates the normal vector (the perpendicular vector) of the path at the given offset.
-	 * @param path The path to calcuate
-	 * @param offset The offset on the path, where `0` is at the beginning of the path and `Path.length(path)` at the end. It will be clamped when it's out of range.
-	 * @returns The normal vector at the given offset
-	 * @category Properties
-	 */
-	export function normalAtOffset(path: Path, offset: number): vec2 {
-		const tangent = tangentAtOffset(path, offset)
-		return vec2.rotate(tangent, Math.PI / 2)
-	}
-
-	/**
-	 * The same as {@link normalAtOffset} but the offset ranges between [0, 1].
-	 * @param path The path to calculate
-	 * @param normalizedOffset The offset on the path, where `0` is at the beginning of the path and `1` at the end.
-	 * @category Properties
-	 */
-	export function normalAtNormalizedOffset(
-		path: Path,
-		normalizedOffset: number
-	): vec2 {
-		return normalAtOffset(path, normalizedOffset * length(path))
-	}
-
-	/**
-	 * Calculates the curvature of the path at the given offset. Curvatures indicate how sharply a path changes direction. A straight line has zero curvature, where as a circle has a constant curvature. The path’s radius at the given offset is the reciprocal value of its curvature.
-	 * @see http://paperjs.org/reference/path/#getcurvatureat-offset
-	 * @param path The path to calcuate
-	 * @param offset The offset on the path, where `0` is at the beginning of the path and `Path.length(path)` at the end. It will be clamped when it's out of range.
-	 * @returns The curvature at the given offset
-	 * @category Properties
-	 */
-	export function curvatureAtOffset(path: Path, offset: number): number {
-		const paperPath = toPaperPath(path)
-
-		offset = scalar.clamp(offset, 0, paperPath.length)
-
-		const subpaths =
-			paperPath instanceof paper.Path
-				? [paperPath]
-				: (paperPath.children as paper.Path[])
-
-		for (let i = 0; i < subpaths.length; i++) {
-			const subpath = subpaths[i]
-			if (offset < subpath.length || i === subpaths.length - 1) {
-				return subpath.getCurvatureAt(offset)
-			}
-			offset -= subpath.length
-		}
-
-		throw new Error('Cannot find a point at the given offset')
-	}
-
-	/**
-	 * The same as {@link curvatureAtOffset} but the offset ranges between [0, 1].
-	 * @param path The path to calculate
-	 * @param normalizedOffset The offset on the path, where `0` is at the beginning of the path and `1` at the end.
-	 * @category Properties
-	 */
-	export function curvatureAtNormalizedOffset(
-		path: Path,
-		normalizedOffset: number
-	): vec2 {
-		return tangentAtOffset(path, normalizedOffset * length(path))
-	}
-
-	/**
-	 * Calculates the transformation matrix of the path at the given offset. The x-axis of the matrix is the tangent vector and the y-axis is the normal vector, and the translation is the point on the path.
-	 * @param path The path to calculate
-	 * @param normalizedOffset The offset on the path, where `0` is at the beginning of the path and `Path.length(path)` at the end. It will be clamped when it's out of range.
-	 * @returns The transformation matrix at the given offset
-	 * @category Properties
-	 */
-	export function transformAtOffset(path: Path, offset: number): mat2d {
-		const point = pointAtOffset(path, offset)
-		const xAxis = tangentAtOffset(path, offset)
-		const yAxis = vec2.rotate(xAxis, Math.PI / 2)
-		return [...xAxis, ...yAxis, ...point]
-	}
-
-	/**
-	 * The same as {@link transformAtOffset} but the offset ranges between [0, 1].
-	 * @param path The path to calculate
-	 * @param normalizedOffset The offset on the path, where `0` is at the beginning of the path and `1` at the end.
-	 * @returns The transformation matrix at the given offset
-	 * @category Properties
-	 */
-	export function transformAtNormalizedOffset(
-		path: Path,
-		normalizedOffset: number
-	): mat2d {
-		return transformAtOffset(path, normalizedOffset * length(path))
-	}
-
-	interface OffsetOptions {
-		/**
-		 * The join style of offset path
-		 * @defaultValue 'miter'
-		 */
-		join?: CanvasLineJoin
-		/**
-		 * The limit for miter style
-		 * @see https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/miterLimit
-		 * @defaultValue 10
-		 */
-		miterLimit?: number
-	}
-
-	/**
-	 * Creates an offset path from the given path.
-	 * @param path The path to offset
-	 * @param offset The width of offset
-	 * @param options The options
-	 * @returns The newly created path
-	 * @category Modifiers
-	 * @example
-	 * ```js:pathed
-	 * const p = Path.ngon([50, 50], 20, 5)
-	 * stroke(p, 'skyblue')
-	 * const po = Path.offset(p, 10, {join: 'round'})
-	 * stroke(po, 'tomato')
-	 * ```
-	 */
-	export function offset(
-		path: Path,
-		offset: number,
-		options?: OffsetOptions
-	): Path {
-		const paperPath = toPaperPath(path)
-
-		const _options: PaperOffsetOptions = {
-			...options,
-			limit: options?.miterLimit,
-		}
-
-		return fromPaperPath(PaperOffset.offset(paperPath, offset, _options))
-	}
-
-	interface OffsetStrokeOptions extends OffsetOptions {
-		/**
-		 * The cap style of offset path (`'square'` will be supported in future)
-		 * @defaultValue 'butt'
-		 */
-		cap?: 'butt' | 'round'
-	}
-
-	/**
-	 * Creates an offset path from the given path.
-	 * @param path The path to offset
-	 * @param offset The width of stroke
-	 * @param options The options
-	 * @returns The newly created path
-	 * @category Modifiers
-	 * @example
-	 * ```js:pathed
-	 * const p = Path.ngon([50, 50], 20, 5)
-	 * stroke(p, 'skyblue')
-	 * const po = Path.offsetStroke(p, 10, {join: 'round'})
-	 * stroke(po, 'tomato')
-	 * ```
-	 */
-	export function offsetStroke(
-		path: Path,
-		offset: number,
-		options?: OffsetStrokeOptions
-	) {
-		const paperPath = toPaperPath(path)
-
-		const _options: PaperOffsetOptions = {
-			...options,
-			limit: options?.miterLimit,
-		}
-
-		return fromPaperPath(PaperOffset.offsetStroke(paperPath, offset, _options))
-	}
-
-	/**
 	 * Creates a rectangle path from the given two points.
 	 * @param start The first point defining the rectangle
 	 * @param end The second point defining the rectangle
@@ -702,140 +368,337 @@ export namespace Path {
 	export const ngon = regularPolygon
 
 	/**
-	 * Returns the new path with the new M (move-to) command at the end.
-	 * @param path The base path
-	 * @param point The point to move to
-	 * @returns The newely created path
-	 * @category Draw Functions
+	 * Returns the length of the given path. The returned value is memoized.
+	 * @param path The path to measure
+	 * @returns The length of the path
+	 * @category Properties
 	 */
-	export function moveTo(path: Path, point: vec2): Path {
-		return [...path, ['M', point]]
+	export const length = memoize((path: Path) => {
+		return toPaperPath(path).length
+	})
+
+	/**
+	 * Calculates the bounding box of the given path.
+	 * @param path The path to calculate
+	 * @returns The bounding box of the path
+	 * @category Properties
+	 */
+	export const bounds = memoize((path: Path): BBox => {
+		const bounds = toPaperPath(path).bounds
+		return [toVec2(bounds.topLeft), toVec2(bounds.bottomRight)]
+	})
+
+	/**
+	 * Calculates an area of the given path.
+	 * @param path The path to calculate
+	 * @returns The area of the path
+	 * @category Properties
+	 */
+	export const area = memoize((path: Path) => {
+		return toPaperPath(path).area
+	})
+
+	/**
+	 * Returns if the given path is closed.
+	 * @param path The path to check
+	 * @returns True if the path is closed
+	 * @category Properties
+	 */
+	export const closed = (path: Path) => {
+		return path.at(-1)?.[0] === 'Z'
 	}
 
 	/**
-	 * Returns the new path with the new L (line-to) command at the end.
-	 * @param path The base path
-	 * @param point The point to draw a line to
-	 * @returns The newely created path
-	 * @category Draw Functions
+	 * Calculates the point on the path at the offset. If the path consists of multiple subpaths and the offset concides exactly with the endpoints of two subpaths, the start point of the later subpath will be returned.
+	 * @param path The path to calculate
+	 * @param offset The offset on the path, where `0` is at the beginning of the path and `Path.length(path)` at the end. It will be clamped when it's out of range.
+	 * @returns The point at the given offset
+	 * @category Properties
 	 */
-	export function lineTo(path: Path, point: vec2): Path {
-		return [...path, ['L', point]]
+	export function pointAtOffset(path: Path, offset: number): vec2 {
+		const paperPath = toPaperPath(path)
+
+		offset = scalar.clamp(offset, 0, paperPath.length)
+
+		const subpaths =
+			paperPath instanceof paper.Path
+				? [paperPath]
+				: (paperPath.children as paper.Path[])
+
+		for (let i = 0; i < subpaths.length; i++) {
+			const subpath = subpaths[i]
+			if (offset < subpath.length || i === subpaths.length - 1) {
+				return toVec2(subpath.getPointAt(offset))
+			}
+			offset -= subpath.length
+		}
+
+		throw new Error('Cannot find a point at the given offset')
 	}
 
 	/**
-	 * Returns the new path with the new H (horizontal line-to) command at the end.
-	 * @param path The base path
-	 * @param x The x coordinate to draw a line to
-	 * @returns The newely created path
-	 * @category Draw Functions
+	 * The same as {@link pointAtOffset} but the offset ranges between [0, 1].
+	 * @param path The path to calculate
+	 * @param normalizedOffset The offset on the path, where `0` is at the beginning of the path and `1` at the end.
+	 * @category Properties
 	 */
-	export function horizontalLineTo(path: Path, x: number): Path {
-		return [...path, ['H', x]]
-	}
-
-	/**
-	 * Returns the new path with the new V (vertical line-to) command at the end.
-	 * @param path The base path
-	 * @param y The y coordinate to draw a line to
-	 * @returns The newely created path
-	 * @category Draw Functions
-	 */
-	export function verticalLineTo(path: Path, y: number): Path {
-		return [...path, ['V', y]]
-	}
-
-	/**
-	 * Returns the new path with the new C (cubic Bézier curve) command at the end.
-	 * @param path The base path
-	 * @param control1 The first control point
-	 * @param control2 The second control point
-	 * @param end The end point
-	 * @returns The newely created path
-	 * @category Draw Functions
-	 */
-	export function cubicBezierTo(
+	export function pointAtNormalizedOffset(
 		path: Path,
-		control1: vec2,
-		control2: vec2,
-		end: vec2
-	): Path {
-		return [...path, ['C', control1, control2, end]]
+		normalizedOffset: number
+	): vec2 {
+		return pointAtOffset(path, normalizedOffset * length(path))
 	}
 
 	/**
-	 * Returns the new path with the new S (cubic Bézier curve with implicit first control point) command at the end.
-	 * @param path The base path
-	 * @param control2 The second control point
-	 * @param end The end point
-	 * @returns The newely created path
-	 * @category Draw Functions
+	 * Calculates the normalized tangent vector of the path at the given offset.
+	 * @param path The path to calcuate
+	 * @param offset The offset on the path, where `0` is at the beginning of the path and `Path.length(path)` at the end. It will be clamped when it's out of range.
+	 * @returns The normalized tangent vector at the given offset
+	 * @category Properties
 	 */
-	export function smoothCubicBezierTo(
+	export function tangentAtOffset(path: Path, offset: number): vec2 {
+		const paperPath = toPaperPath(path)
+
+		offset = scalar.clamp(offset, 0, paperPath.length)
+
+		const subpaths =
+			paperPath instanceof paper.Path
+				? [paperPath]
+				: (paperPath.children as paper.Path[])
+
+		for (let i = 0; i < subpaths.length; i++) {
+			const subpath = subpaths[i]
+			if (offset < subpath.length || i === subpaths.length - 1) {
+				return toVec2(subpath.getTangentAt(offset))
+			}
+			offset -= subpath.length
+		}
+
+		throw new Error('Cannot find a point at the given offset')
+	}
+
+	/**
+	 * The same as {@link tangentAtOffset} but the offset ranges between [0, 1].
+	 * @param path The path to calculate
+	 * @param normalizedOffset The offset on the path, where `0` is at the beginning of the path and `1` at the end.
+	 * @category Properties
+	 */
+	export function tangentAtNormalizedOffset(
 		path: Path,
-		control2: vec2,
-		end: vec2
-	): Path {
-		return [...path, ['S', control2, end]]
+		normalizedOffset: number
+	): vec2 {
+		return tangentAtOffset(path, normalizedOffset * length(path))
 	}
 
 	/**
-	 * Returns the new path with the new Q (quadratic Bézier curve) command at the end.
-	 * @param path The base path
-	 * @param control The control point
-	 * @param end The end point
-	 * @returns The newely created path
-	 * @category Draw Functions
+	 * Calculates the normal vector (the perpendicular vector) of the path at the given offset.
+	 * @param path The path to calcuate
+	 * @param offset The offset on the path, where `0` is at the beginning of the path and `Path.length(path)` at the end. It will be clamped when it's out of range.
+	 * @returns The normal vector at the given offset
+	 * @category Properties
 	 */
-	export function quadraticBezierTo(
+	export function normalAtOffset(path: Path, offset: number): vec2 {
+		const tangent = tangentAtOffset(path, offset)
+		return vec2.rotate(tangent, Math.PI / 2)
+	}
+
+	/**
+	 * The same as {@link normalAtOffset} but the offset ranges between [0, 1].
+	 * @param path The path to calculate
+	 * @param normalizedOffset The offset on the path, where `0` is at the beginning of the path and `1` at the end.
+	 * @category Properties
+	 */
+	export function normalAtNormalizedOffset(
 		path: Path,
-		control: vec2,
-		end: vec2
-	): Path {
-		return [...path, ['Q', control, end]]
+		normalizedOffset: number
+	): vec2 {
+		return normalAtOffset(path, normalizedOffset * length(path))
 	}
 
 	/**
-	 * Returns the new path with the new T (quadratic Bézier curve with implicit control point) command at the end.
-	 * @param path The base path
-	 * @param end The end point
-	 * @returns The newely created path
-	 * @category Draw Functions
+	 * Calculates the curvature of the path at the given offset. Curvatures indicate how sharply a path changes direction. A straight line has zero curvature, where as a circle has a constant curvature. The path’s radius at the given offset is the reciprocal value of its curvature.
+	 * @see http://paperjs.org/reference/path/#getcurvatureat-offset
+	 * @param path The path to calcuate
+	 * @param offset The offset on the path, where `0` is at the beginning of the path and `Path.length(path)` at the end. It will be clamped when it's out of range.
+	 * @returns The curvature at the given offset
+	 * @category Properties
 	 */
-	export function smoothQuadraticBezierTo(path: Path, end: vec2): Path {
-		return [...path, ['T', end]]
+	export function curvatureAtOffset(path: Path, offset: number): number {
+		const paperPath = toPaperPath(path)
+
+		offset = scalar.clamp(offset, 0, paperPath.length)
+
+		const subpaths =
+			paperPath instanceof paper.Path
+				? [paperPath]
+				: (paperPath.children as paper.Path[])
+
+		for (let i = 0; i < subpaths.length; i++) {
+			const subpath = subpaths[i]
+			if (offset < subpath.length || i === subpaths.length - 1) {
+				return subpath.getCurvatureAt(offset)
+			}
+			offset -= subpath.length
+		}
+
+		throw new Error('Cannot find a point at the given offset')
 	}
 
 	/**
-	 * Returns the new path with the new A (arc) command at the end.
-	 * @param path The base path
-	 * @param radii The radii of the ellipse used to draw the arc
-	 * @param xAxisRotation The rotation angle of the ellipse's x-axis relative to the x-axis of the current coordinate system, expressed in degrees
-	 * @param largeArcFlag The large arc flag. If true, then draw the arc spanning greather than 180 degrees. Otherwise, draw the arc spanning less than 180 degrees.
-	 * @param sweepFlag The sweep flag. If true, then draw the arc in a "positive-angle" direction in the current coordinate system. Otherwise, draw it in a "negative-angle" direction.
-	 * @param end The end point of the arc
-	 * @returns The newely created path
-	 * @category Draw Functions
+	 * The same as {@link curvatureAtOffset} but the offset ranges between [0, 1].
+	 * @param path The path to calculate
+	 * @param normalizedOffset The offset on the path, where `0` is at the beginning of the path and `1` at the end.
+	 * @category Properties
 	 */
-	export function arcTo(
+	export function curvatureAtNormalizedOffset(
 		path: Path,
-		radii: vec2,
-		xAxisRotation: number,
-		largeArcFlag: boolean,
-		sweepFlag: boolean,
-		end: vec2
-	): Path {
-		return [...path, ['A', radii, xAxisRotation, largeArcFlag, sweepFlag, end]]
+		normalizedOffset: number
+	): vec2 {
+		return tangentAtOffset(path, normalizedOffset * length(path))
 	}
 
 	/**
-	 * Returns the new path with the new Z (close path) command at the end.
-	 * @param path The base path
-	 * @returns The newely created path
-	 * @category Draw Functions
+	 * Calculates the transformation matrix of the path at the given offset. The x-axis of the matrix is the tangent vector and the y-axis is the normal vector, and the translation is the point on the path.
+	 * @param path The path to calculate
+	 * @param normalizedOffset The offset on the path, where `0` is at the beginning of the path and `Path.length(path)` at the end. It will be clamped when it's out of range.
+	 * @returns The transformation matrix at the given offset
+	 * @category Properties
 	 */
-	export function closePath(path: Path): Path {
-		return [...path, ['Z']]
+	export function transformAtOffset(path: Path, offset: number): mat2d {
+		const point = pointAtOffset(path, offset)
+		const xAxis = tangentAtOffset(path, offset)
+		const yAxis = vec2.rotate(xAxis, Math.PI / 2)
+		return [...xAxis, ...yAxis, ...point]
+	}
+
+	/**
+	 * The same as {@link transformAtOffset} but the offset ranges between [0, 1].
+	 * @param path The path to calculate
+	 * @param normalizedOffset The offset on the path, where `0` is at the beginning of the path and `1` at the end.
+	 * @returns The transformation matrix at the given offset
+	 * @category Properties
+	 */
+	export function transformAtNormalizedOffset(
+		path: Path,
+		normalizedOffset: number
+	): mat2d {
+		return transformAtOffset(path, normalizedOffset * length(path))
+	}
+
+	interface OffsetOptions {
+		/**
+		 * The join style of offset path
+		 * @defaultValue 'miter'
+		 */
+		join?: CanvasLineJoin
+		/**
+		 * The limit for miter style
+		 * @see https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/miterLimit
+		 * @defaultValue 10
+		 */
+		miterLimit?: number
+	}
+
+	/**
+	 * Transforms the given path by the given matrix.
+	 * @param path The path to transform
+	 * @param matrix The matrix to transform the path by
+	 * @returns The transformed path
+	 * @category Modifiers
+	 */
+	export function transform(path: Path, matrix: mat2d): Path {
+		return path.map(seg => {
+			switch (seg[0]) {
+				case 'M':
+				case 'L':
+				case 'Q':
+				case 'T':
+				case 'C':
+				case 'S':
+					return [
+						seg[0],
+						...(seg.slice(1) as vec2[]).map(p =>
+							vec2.transformMat2d(p, matrix)
+						),
+					]
+				case 'H':
+					return ['L', vec2.transformMat2d([seg[1], 0], matrix)[0]]
+				case 'V':
+					return ['L', vec2.transformMat2d([0, seg[1]], matrix)[0]]
+				case 'A':
+					throw new Error('Not implemented')
+				case 'Z':
+					return ['Z']
+			}
+		}) as Path
+	}
+
+	/**
+	 * Creates an offset path from the given path.
+	 * @param path The path to offset
+	 * @param offset The width of offset
+	 * @param options The options
+	 * @returns The newly created path
+	 * @category Modifiers
+	 * @example
+	 * ```js:pathed
+	 * const p = Path.ngon([50, 50], 20, 5)
+	 * stroke(p, 'skyblue')
+	 * const po = Path.offset(p, 10, {join: 'round'})
+	 * stroke(po, 'tomato')
+	 * ```
+	 */
+	export function offset(
+		path: Path,
+		offset: number,
+		options?: OffsetOptions
+	): Path {
+		const paperPath = toPaperPath(path)
+
+		const _options: PaperOffsetOptions = {
+			...options,
+			limit: options?.miterLimit,
+		}
+
+		return fromPaperPath(PaperOffset.offset(paperPath, offset, _options))
+	}
+
+	interface OffsetStrokeOptions extends OffsetOptions {
+		/**
+		 * The cap style of offset path (`'square'` will be supported in future)
+		 * @defaultValue 'butt'
+		 */
+		cap?: 'butt' | 'round'
+	}
+
+	/**
+	 * Creates an offset path from the given path.
+	 * @param path The path to offset
+	 * @param offset The width of stroke
+	 * @param options The options
+	 * @returns The newly created path
+	 * @category Modifiers
+	 * @example
+	 * ```js:pathed
+	 * const p = Path.ngon([50, 50], 20, 5)
+	 * stroke(p, 'skyblue')
+	 * const po = Path.offsetStroke(p, 10, {join: 'round'})
+	 * stroke(po, 'tomato')
+	 * ```
+	 */
+	export function offsetStroke(
+		path: Path,
+		offset: number,
+		options?: OffsetStrokeOptions
+	) {
+		const paperPath = toPaperPath(path)
+
+		const _options: PaperOffsetOptions = {
+			...options,
+			limit: options?.miterLimit,
+		}
+
+		return fromPaperPath(PaperOffset.offsetStroke(paperPath, offset, _options))
 	}
 
 	/**
@@ -1198,6 +1061,143 @@ export namespace Path {
 
 		return path
 	})
+
+	/**
+	 * Returns the new path with the new M (move-to) command at the end.
+	 * @param path The base path
+	 * @param point The point to move to
+	 * @returns The newely created path
+	 * @category Draw Functions
+	 */
+	export function moveTo(path: Path, point: vec2): Path {
+		return [...path, ['M', point]]
+	}
+
+	/**
+	 * Returns the new path with the new L (line-to) command at the end.
+	 * @param path The base path
+	 * @param point The point to draw a line to
+	 * @returns The newely created path
+	 * @category Draw Functions
+	 */
+	export function lineTo(path: Path, point: vec2): Path {
+		return [...path, ['L', point]]
+	}
+
+	/**
+	 * Returns the new path with the new H (horizontal line-to) command at the end.
+	 * @param path The base path
+	 * @param x The x coordinate to draw a line to
+	 * @returns The newely created path
+	 * @category Draw Functions
+	 */
+	export function horizontalLineTo(path: Path, x: number): Path {
+		return [...path, ['H', x]]
+	}
+
+	/**
+	 * Returns the new path with the new V (vertical line-to) command at the end.
+	 * @param path The base path
+	 * @param y The y coordinate to draw a line to
+	 * @returns The newely created path
+	 * @category Draw Functions
+	 */
+	export function verticalLineTo(path: Path, y: number): Path {
+		return [...path, ['V', y]]
+	}
+
+	/**
+	 * Returns the new path with the new C (cubic Bézier curve) command at the end.
+	 * @param path The base path
+	 * @param control1 The first control point
+	 * @param control2 The second control point
+	 * @param end The end point
+	 * @returns The newely created path
+	 * @category Draw Functions
+	 */
+	export function cubicBezierTo(
+		path: Path,
+		control1: vec2,
+		control2: vec2,
+		end: vec2
+	): Path {
+		return [...path, ['C', control1, control2, end]]
+	}
+
+	/**
+	 * Returns the new path with the new S (cubic Bézier curve with implicit first control point) command at the end.
+	 * @param path The base path
+	 * @param control2 The second control point
+	 * @param end The end point
+	 * @returns The newely created path
+	 * @category Draw Functions
+	 */
+	export function smoothCubicBezierTo(
+		path: Path,
+		control2: vec2,
+		end: vec2
+	): Path {
+		return [...path, ['S', control2, end]]
+	}
+
+	/**
+	 * Returns the new path with the new Q (quadratic Bézier curve) command at the end.
+	 * @param path The base path
+	 * @param control The control point
+	 * @param end The end point
+	 * @returns The newely created path
+	 * @category Draw Functions
+	 */
+	export function quadraticBezierTo(
+		path: Path,
+		control: vec2,
+		end: vec2
+	): Path {
+		return [...path, ['Q', control, end]]
+	}
+
+	/**
+	 * Returns the new path with the new T (quadratic Bézier curve with implicit control point) command at the end.
+	 * @param path The base path
+	 * @param end The end point
+	 * @returns The newely created path
+	 * @category Draw Functions
+	 */
+	export function smoothQuadraticBezierTo(path: Path, end: vec2): Path {
+		return [...path, ['T', end]]
+	}
+
+	/**
+	 * Returns the new path with the new A (arc) command at the end.
+	 * @param path The base path
+	 * @param radii The radii of the ellipse used to draw the arc
+	 * @param xAxisRotation The rotation angle of the ellipse's x-axis relative to the x-axis of the current coordinate system, expressed in degrees
+	 * @param largeArcFlag The large arc flag. If true, then draw the arc spanning greather than 180 degrees. Otherwise, draw the arc spanning less than 180 degrees.
+	 * @param sweepFlag The sweep flag. If true, then draw the arc in a "positive-angle" direction in the current coordinate system. Otherwise, draw it in a "negative-angle" direction.
+	 * @param end The end point of the arc
+	 * @returns The newely created path
+	 * @category Draw Functions
+	 */
+	export function arcTo(
+		path: Path,
+		radii: vec2,
+		xAxisRotation: number,
+		largeArcFlag: boolean,
+		sweepFlag: boolean,
+		end: vec2
+	): Path {
+		return [...path, ['A', radii, xAxisRotation, largeArcFlag, sweepFlag, end]]
+	}
+
+	/**
+	 * Returns the new path with the new Z (close path) command at the end.
+	 * @param path The base path
+	 * @returns The newely created path
+	 * @category Draw Functions
+	 */
+	export function closePath(path: Path): Path {
+		return [...path, ['Z']]
+	}
 
 	/**
 	 * Iterate over the split sections of path, each of which begins with a M command
