@@ -7,10 +7,10 @@
 	"types": "./lib/esm/index.d.ts",
 	"sideEffects": false,
 	"scripts": {
-		"dev": "npm run build:api & vuepress dev docs",
+		"dev": "npm run build:api; vuepress dev docs",
 		"build": "tsc && tsc -p tsconfig.cjs.json",
 		"build:api": "typedoc src/index.ts",
-		"build:doc": "npm run build:api & vuepress build docs",
+		"build:doc": "npm run build:api; vuepress build docs",
 		"lint": "eslint",
 		"test": "jest",
 		"prepare": "npm run build",
