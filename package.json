@@ -39,7 +39,6 @@
 	"homepage": "https://baku89.github.io/pathed",
 	"devDependencies": {
 		"@types/jest": "^29.5.4",
-		"@types/lodash": "^4.14.202",
 		"@typescript-eslint/eslint-plugin": "^6.7.0",
 		"@typescript-eslint/parser": "^6.7.0",
 		"@vuepress/plugin-palette": "^2.0.0-rc.0",
@@ -55,7 +54,6 @@
 		"jest-canvas-mock": "^2.5.2",
 		"jest-environment-jsdom": "^29.7.0",
 		"jest-runner-eslint": "^2.1.1",
-		"lodash": "^4.17.21",
 		"monaco-editor": "^0.44.0",
 		"monaco-editor-vue3": "^0.1.10",
 		"monaco-themes": "^0.4.4",
@@ -67,8 +65,6 @@
 		"typedoc": "^0.25.1",
 		"typedoc-plugin-markdown": "^3.16.0",
 		"typescript": "^5.2.2",
-		"vite": "^5.0.2",
-		"vite-plugin-eslint": "^1.8.1",
 		"vue-eslint-parser": "^9.3.2",
 		"vuepress": "^2.0.0-rc.0",
 		"vuepress-plugin-typedoc": "^0.13.0"
