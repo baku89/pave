@@ -46,7 +46,7 @@ stroke(b, 'plum')
 // All property functions for paths will be memoized.
 // Thus, the path is immutable.
 Path.length(path)
-Path.bound(path)
+Path.bounds(path)
 Path.area(path)
 
 // Manipulating and combining paths

@@ -22,11 +22,11 @@ describe('Bezier', () => {
 	})
 
 	it('should compute the `bound` correctly', () => {
-		expect(Bezier.bound(a)).toEqual([
+		expect(Bezier.bounds(a)).toEqual([
 			[0, 0],
 			[1, 0.75],
 		])
-		expect(Bezier.bound(b)).toEqual([
+		expect(Bezier.bounds(b)).toEqual([
 			[0, 0],
 			[1.25, 0.444444],
 		])

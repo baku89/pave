@@ -56,15 +56,17 @@ export namespace Bezier {
 	/**
 	 * Calculates the bounding box of this Bezier curve.
 	 */
-	export const bound = memoizeBezierFunction((bezier: Bezier): [vec2, vec2] => {
-		const bezierJS = toBezierJS(bezier)
-		const {x, y} = bezierJS.bbox()
+	export const bounds = memoizeBezierFunction(
+		(bezier: Bezier): [vec2, vec2] => {
+			const bezierJS = toBezierJS(bezier)
+			const {x, y} = bezierJS.bbox()
 
-		return [
-			[x.min, y.min],
-			[x.max, y.max],
-		]
-	})
+			return [
+				[x.min, y.min],
+				[x.max, y.max],
+			]
+		}
+	)
 
 	/**
 	 * Calculates the point on the curve at the specified `t` value.
