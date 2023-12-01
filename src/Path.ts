@@ -1255,12 +1255,14 @@ export namespace Path {
 		const startAngle = vec2Angle(vec2.unitX, a)
 		const deltaAngle0 = vec2Angle(a, b) % (2 * Math.PI)
 
-		const deltaAngle =
-			!sweepFlag && deltaAngle0 > 0
-				? deltaAngle0 - 2 * Math.PI
-				: sweepFlag && deltaAngle0 < 0
-				? deltaAngle0 + 2 * Math.PI
-				: deltaAngle0
+		let deltaAngle: number
+		if (!sweepFlag && deltaAngle0 > 0) {
+			deltaAngle = deltaAngle0 - 2 * Math.PI
+		} else if (sweepFlag && deltaAngle0 < 0) {
+			deltaAngle = deltaAngle0 + 2 * Math.PI
+		} else {
+			deltaAngle = deltaAngle0
+		}
 
 		const endAngle = startAngle + deltaAngle
 
