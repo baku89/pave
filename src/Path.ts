@@ -10,56 +10,69 @@ paper.setup(document.createElement('canvas'))
 /**
  * Move-to command.
  * @category Path Commands
+ * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Paths#line_commands
  */
 export type CommandM = readonly ['M', end: vec2]
 
 /**
  * Line-to command.
+ * @category Path Commands
+ * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Paths#line_commands
  */
 export type CommandL = readonly ['L', end: vec2]
 
 /**
  * Horizontal line-to command.
+ * @category Path Commands
+ * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Paths#line_commands
  */
 export type CommandH = readonly ['H', end: number]
 
 /**
  * Vertical line-to command.
+ * @category Path Commands
+ * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Paths#line_commands
  */
 export type CommandV = readonly ['V', end: number]
 
 /**
  * Cubic Bézier curve command.
- * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Paths#b%C3%A9zier_curves
+ * @category Path Commands
+ * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Paths#curve_commands
  */
 export type CommandC = readonly ['C', control1: vec2, control2: vec2, end: vec2]
 
 /**
  * Cubic Bézier curve command with implicit first control point (the reflection of the previous control point).
- * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Paths#b%C3%A9zier_curves:~:text=Several%20B%C3%A9zier%20curves%20can%20be%20strung%20together%20to%20create%20extended%2C%20smooth%20shapes.
+ * @category Path Commands
+ * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Paths#curve_commands
  */
 export type CommandS = readonly ['S', control2: vec2, end: vec2]
 
 /**
  * Quadratic Bézier curve command.
- * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Paths#b%C3%A9zier_curves:~:text=The%20other%20type%20of%20B%C3%A9zier%20curve%2C%20the%20quadratic%20curve%20called%20with%20Q
+ * @category Path Commands
+ * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Paths#curve_commands
  */
 export type CommandQ = readonly ['Q', control: vec2, end: vec2]
 
 /**
  * Quadratic Bézier curve command with implicit control point (the reflection of the previous control point).
- * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Paths#line_commands:~:text=As%20with%20the%20cubic%20B%C3%A9zier%20curve%2C%20there%20is%20a%20shortcut%20for%20stringing%20together%20multiple%20quadratic%20B%C3%A9ziers%2C%20called%20with%20T.
+ * @category Path Commands
+ * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Paths#curve_commands
  */
 export type CommandT = readonly ['T', end: vec2]
 
 /**
  * Close path command
- * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Paths#line_commands:~:text=We%20can%20shorten%20the%20above%20path%20declaration%20a%20little%20bit%20by%20using%20the%20%22Close%20Path%22%20command%2C%20called%20with%20Z.
+ * @category Path Commands
+ * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Paths#line_commands
  */
 export type CommandZ = readonly ['Z']
 
 /**
  * Arc command
+ * @category Path Commands
  * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Paths#arcs
  */
 export type CommandA = [
@@ -86,6 +99,9 @@ export type CommandA = [
 	end: vec2,
 ]
 
+/**
+ * @category Path Commands
+ */
 export type Command =
 	| CommandM
 	| CommandL
@@ -100,11 +116,13 @@ export type Command =
 
 /**
  * A path represented as an array of commands. All of the points are represented as tuple of vector `[x: number, y: number]` and represented in absolute coordinates.
+ * @category Path
  */
 export type Path = readonly Command[]
 
 /**
  * Functions for manipulating paths represented as {@link Path}.
+ * @category Path
  */
 export namespace Path {
 	/**
@@ -214,6 +232,7 @@ export namespace Path {
 	 * Calculates an area of the given path.
 	 * @param path The path to calculate
 	 * @returns The area of the path
+	 * @category Properties
 	 */
 	export const area = memoize((path: Path) => {
 		return toPaperPath(path).area
@@ -224,6 +243,7 @@ export namespace Path {
 	 * @param path The path to calculate
 	 * @param offset The offset on the path, where `0` is at the beginning of the path and `Path.length(path)` at the end. It will be clamped if it's negative or more than the length of the path.
 	 * @returns The point at the given offset
+	 * @category Properties
 	 */
 	export function pointAtOffset(path: Path, offset: number): vec2 {
 		const paperPath = toPaperPath(path)
@@ -266,6 +286,14 @@ export namespace Path {
 	 * @param offset The width of offset
 	 * @param options The options
 	 * @returns The newly created path
+	 * @category Modifiers
+	 * @example
+	 * ```js:pathed
+	 * const p = Path.ngon([50, 50], 20, 5)
+	 * stroke(p, 'skyblue')
+	 * const po = Path.offset(p, 10, {join: 'round'})
+	 * stroke(po, 'tomato')
+	 * ```
 	 */
 	export function offset(
 		path: Path,
@@ -296,6 +324,14 @@ export namespace Path {
 	 * @param offset The width of stroke
 	 * @param options The options
 	 * @returns The newly created path
+	 * @category Modifiers
+	 * @example
+	 * ```js:pathed
+	 * const p = Path.ngon([50, 50], 20, 5)
+	 * stroke(p, 'skyblue')
+	 * const po = Path.offsetStroke(p, 10, {join: 'round'})
+	 * stroke(po, 'tomato')
+	 * ```
 	 */
 	export function offsetStroke(
 		path: Path,
@@ -318,6 +354,11 @@ export namespace Path {
 	 * @param end The second point defining the rectangle
 	 * @returns The newly created path
 	 * @category Primitives
+	 * @example
+	 * ```js:pathed
+	 * const p = Path.rectangle([10, 30], [90, 70])
+	 * stroke(p)
+	 * ```
 	 */
 	export function rectangle(start: vec2, end: vec2): Path {
 		return [['M', start], ['H', end[0]], ['V', end[1]], ['H', start[0]], ['Z']]
@@ -336,7 +377,7 @@ export namespace Path {
 	 * @returns The newly created path
 	 * @category Primitives
 	 * @example
-	 * ```
+	 * ```js:pathed
 	 * const c = Path.circle([50, 50], 40)
 	 * stroke(c)
 	 * ```
@@ -351,6 +392,11 @@ export namespace Path {
 	 * @param radius The radius of the ellipse
 	 * @returns The newly created path
 	 * @category Primitives
+	 * @example
+	 * ```js:pathed
+	 * const e = Path.ellipse([50, 50], [20, 40])
+	 * stroke(e)
+	 * ```
 	 */
 	export function ellipse(center: vec2, radius: vec2): Path {
 		return [
@@ -369,6 +415,11 @@ export namespace Path {
 	 * @param endAngle The end angle in radians
 	 * @returns The newly created path
 	 * @category Primitives
+	 * @example
+	 * ```js:pathed
+	 * const a = Path.arc([50, 50], 40, 0, Math.PI / 2)
+	 * stroke(a)
+	 * ```
 	 */
 	export function arc(
 		center: vec2,
@@ -399,6 +450,11 @@ export namespace Path {
 	 * @param end The line's ending point
 	 * @returns The newly created path
 	 * @category Primitives
+	 * @example
+	 * ```js:pathed
+	 * const p = Path.line([10, 10], [90, 90])
+	 * stroke(p)
+	 * ```
 	 */
 	export function line(start: vec2, end: vec2): Path {
 		return [
@@ -412,6 +468,11 @@ export namespace Path {
 	 * @param point The center point of the dot
 	 * @returns The newly created paths
 	 * @category Primitives
+	 * @example
+	 * ```js:pathed
+	 * const a = Path.dot([50, 50])
+	 * stroke(a, 'skyblue', 10)
+	 * ```
 	 */
 	export function dot(point: vec2): Path {
 		return [['M', point], ['Z']]
@@ -422,6 +483,11 @@ export namespace Path {
 	 * @param points The points describing the polygon
 	 * @returns The newly created path
 	 * @category Primitives
+	 * @example
+	 * ```js:pathed
+	 * const p = Path.polyline([10, 10], [30, 80], [80, 50])
+	 * stroke(p)
+	 * ```
 	 */
 	export function polygon(...points: vec2[]): Path {
 		return [
@@ -438,6 +504,11 @@ export namespace Path {
 	 * @param sides The number o sides of the polygon
 	 * @returns The newly created path
 	 * @category Primitives
+	 * @example
+	 * ```js:pathed
+	 * const p = Path.regularPolygon([50, 50], 40, 5)
+	 * stroke(p)
+	 * ```
 	 */
 	export function regularPolygon(
 		center: vec2,
@@ -637,7 +708,7 @@ export namespace Path {
 	 * Unites the given paths
 	 * @param paths The paths to unite
 	 * @returns The resulting path
-	 * @geometry Boolean Operations
+	 * @category Boolean Operations
 	 */
 	export function unite(...paths: Path[]): Path {
 		const paperPath = paths
@@ -654,7 +725,7 @@ export namespace Path {
 	 * Subtracts the given paths
 	 * @param paths The paths to subtract. The first path is substracted by the following paths.
 	 * @returns The resulting path
-	 * @geometry Boolean Operations
+	 * @category Boolean Operations
 	 */
 	export function subtract(...paths: Path[]): Path {
 		if (paths.length === 0) {
@@ -783,6 +854,7 @@ export namespace Path {
 	 * @see http://paperjs.org/reference/pathitem/
 	 * @param path The path to convert
 	 * @returns The newly created paper.Path instance
+	 * @category Converters
 	 */
 	export const toPaperPath = memoize(
 		(path: Path): paper.Path | paper.CompoundPath => {
@@ -940,6 +1012,7 @@ export namespace Path {
 	 * Iterate over the split sections of path, each of which begins with a M command
 	 * @param path The path to subdivide
 	 * @returns The iterator for subpaths
+	 * @category Utilities
 	 */
 	export const iterateSubpath = memoize(function* (
 		path: Path
