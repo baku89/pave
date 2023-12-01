@@ -886,14 +886,17 @@ export namespace Path {
 	 * @category Converters
 	 */
 	export const fromPaperPath = memoize((paperPath: paper.PathItem): Path => {
-		const path: Command[] = []
-		let started = false
-
-		if (
-			paperPath instanceof paper.Path ||
+		const subpaths =
 			paperPath instanceof paper.CompoundPath
-		) {
-			for (const curve of paperPath.curves) {
+				? (paperPath.children as paper.Path[])
+				: ([paperPath] as paper.Path[])
+
+		const path: Command[] = []
+
+		for (const subpath of subpaths) {
+			let started = false
+
+			for (const curve of subpath.curves) {
 				if (!started) {
 					path.push(['M', toVec2(curve.point1)])
 					started = true
@@ -916,7 +919,7 @@ export namespace Path {
 				}
 			}
 
-			if (paperPath.closed) {
+			if (subpath.closed) {
 				// Delete the  redundant segment if it is a line segment
 				const lastSeg = path.at(-1)
 				if (
@@ -928,10 +931,6 @@ export namespace Path {
 				// Close the path
 				path.push(['Z'])
 			}
-		} else {
-			throw new Error(
-				'paperPath is not an instance of paper.Path or CompountPath'
-			)
 		}
 
 		return path
