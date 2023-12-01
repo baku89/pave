@@ -3,7 +3,6 @@ import paper from 'paper'
 import {OffsetOptions as PaperOffsetOptions, PaperOffset} from 'paperjs-offset'
 
 import {BBox} from './BBox'
-import {Bezier} from './Bezier'
 import {memoize, toFixedSimple} from './utils'
 
 paper.setup(document.createElement('canvas'))
@@ -201,9 +200,9 @@ export namespace Path {
 	}
 
 	/**
-	 * Calculates the point on the path at the offset. Note that if the path consists of multiple subpaths and the offset concides exactly with the endpoints of two subpaths, the position of the start point of the later subpath will be returned.
+	 * Calculates the point on the path at the offset. If the path consists of multiple subpaths and the offset concides exactly with the endpoints of two subpaths, the start point of the later subpath will be returned.
 	 * @param path The path to calculate
-	 * @param offset The offset on the path, where `0` is at the beginning of the path and `Path.length(path)` at the end. It will be clamped if it's negative or more than the length of the path.
+	 * @param offset The offset on the path, where `0` is at the beginning of the path and `Path.length(path)` at the end. It will be clamped when it's out of range.
 	 * @returns The point at the given offset
 	 * @category Properties
 	 */
@@ -212,20 +211,169 @@ export namespace Path {
 
 		offset = scalar.clamp(offset, 0, paperPath.length)
 
-		if (paperPath instanceof paper.Path) {
-			return toVec2(paperPath.getPointAt(offset))
-		} else {
-			const subpaths = paperPath.children as paper.Path[]
-			for (let i = 0; i < subpaths.length; i++) {
-				const subpath = subpaths[i]
-				if (offset < subpath.length || i === subpaths.length - 1) {
-					return toVec2(subpath.getPointAt(offset))
-				}
-				offset -= subpath.length
+		const subpaths =
+			paperPath instanceof paper.Path
+				? [paperPath]
+				: (paperPath.children as paper.Path[])
+
+		for (let i = 0; i < subpaths.length; i++) {
+			const subpath = subpaths[i]
+			if (offset < subpath.length || i === subpaths.length - 1) {
+				return toVec2(subpath.getPointAt(offset))
 			}
+			offset -= subpath.length
 		}
 
 		throw new Error('Cannot find a point at the given offset')
+	}
+
+	/**
+	 * The same as {@link pointAtOffset} but the offset ranges between [0, 1].
+	 * @param path The path to calculate
+	 * @param normalizedOffset The offset on the path, where `0` is at the beginning of the path and `1` at the end.
+	 * @category Properties
+	 */
+	export function pointAtNormalizedOffset(
+		path: Path,
+		normalizedOffset: number
+	): vec2 {
+		return pointAtOffset(path, normalizedOffset * length(path))
+	}
+
+	/**
+	 * Calculates the normalized tangent vector of the path at the given offset.
+	 * @param path The path to calcuate
+	 * @param offset The offset on the path, where `0` is at the beginning of the path and `Path.length(path)` at the end. It will be clamped when it's out of range.
+	 * @returns The normalized tangent vector at the given offset
+	 * @category Properties
+	 */
+	export function tangentAtOffset(path: Path, offset: number): vec2 {
+		const paperPath = toPaperPath(path)
+
+		offset = scalar.clamp(offset, 0, paperPath.length)
+
+		const subpaths =
+			paperPath instanceof paper.Path
+				? [paperPath]
+				: (paperPath.children as paper.Path[])
+
+		for (let i = 0; i < subpaths.length; i++) {
+			const subpath = subpaths[i]
+			if (offset < subpath.length || i === subpaths.length - 1) {
+				return toVec2(subpath.getTangentAt(offset))
+			}
+			offset -= subpath.length
+		}
+
+		throw new Error('Cannot find a point at the given offset')
+	}
+
+	/**
+	 * The same as {@link tangentAtOffset} but the offset ranges between [0, 1].
+	 * @param path The path to calculate
+	 * @param normalizedOffset The offset on the path, where `0` is at the beginning of the path and `1` at the end.
+	 * @category Properties
+	 */
+	export function tangentAtNormalizedOffset(
+		path: Path,
+		normalizedOffset: number
+	): vec2 {
+		return tangentAtOffset(path, normalizedOffset * length(path))
+	}
+
+	/**
+	 * Calculates the normal vector (the perpendicular vector) of the path at the given offset.
+	 * @param path The path to calcuate
+	 * @param offset The offset on the path, where `0` is at the beginning of the path and `Path.length(path)` at the end. It will be clamped when it's out of range.
+	 * @returns The normal vector at the given offset
+	 * @category Properties
+	 */
+	export function normalAtOffset(path: Path, offset: number): vec2 {
+		const tangent = tangentAtOffset(path, offset)
+		return vec2.rotate(tangent, Math.PI / 2)
+	}
+
+	/**
+	 * The same as {@link normalAtOffset} but the offset ranges between [0, 1].
+	 * @param path The path to calculate
+	 * @param normalizedOffset The offset on the path, where `0` is at the beginning of the path and `1` at the end.
+	 * @category Properties
+	 */
+	export function normalAtNormalizedOffset(
+		path: Path,
+		normalizedOffset: number
+	): vec2 {
+		return normalAtOffset(path, normalizedOffset * length(path))
+	}
+
+	/**
+	 * Calculates the curvature of the path at the given offset. Curvatures indicate how sharply a path changes direction. A straight line has zero curvature, where as a circle has a constant curvature. The path’s radius at the given offset is the reciprocal value of its curvature.
+	 * @see http://paperjs.org/reference/path/#getcurvatureat-offset
+	 * @param path The path to calcuate
+	 * @param offset The offset on the path, where `0` is at the beginning of the path and `Path.length(path)` at the end. It will be clamped when it's out of range.
+	 * @returns The curvature at the given offset
+	 * @category Properties
+	 */
+	export function curvatureAtOffset(path: Path, offset: number): number {
+		const paperPath = toPaperPath(path)
+
+		offset = scalar.clamp(offset, 0, paperPath.length)
+
+		const subpaths =
+			paperPath instanceof paper.Path
+				? [paperPath]
+				: (paperPath.children as paper.Path[])
+
+		for (let i = 0; i < subpaths.length; i++) {
+			const subpath = subpaths[i]
+			if (offset < subpath.length || i === subpaths.length - 1) {
+				return subpath.getCurvatureAt(offset)
+			}
+			offset -= subpath.length
+		}
+
+		throw new Error('Cannot find a point at the given offset')
+	}
+
+	/**
+	 * The same as {@link curvatureAtOffset} but the offset ranges between [0, 1].
+	 * @param path The path to calculate
+	 * @param normalizedOffset The offset on the path, where `0` is at the beginning of the path and `1` at the end.
+	 * @category Properties
+	 */
+	export function curvatureAtNormalizedOffset(
+		path: Path,
+		normalizedOffset: number
+	): vec2 {
+		return tangentAtOffset(path, normalizedOffset * length(path))
+	}
+
+	/**
+	 * Calculates the transformation matrix of the path at the given offset. The x-axis of the matrix is the tangent vector and the y-axis is the normal vector, and the translation is the point on the path.
+	 * @param path The path to calculate
+	 * @param normalizedOffset The offset on the path, where `0` is at the beginning of the path and `Path.length(path)` at the end. It will be clamped when it's out of range.
+	 * @returns The transformation matrix at the given offset
+	 * @category Properties
+	 */
+	export function transformAtOffset(path: Path, offset: number): mat2d {
+		const point = pointAtOffset(path, offset)
+		const xAxis = tangentAtOffset(path, offset)
+		const yAxis = vec2.rotate(xAxis, Math.PI / 2)
+		return [...xAxis, ...yAxis, ...point]
+	}
+
+	/**
+	 * The same as {@link transformAtOffset} but the offset ranges between [0, 1].
+	 * @param path The path to calculate
+	 * @param normalizedOffset The offset on the path, where `0` is at the beginning of the path and `1` at the end.
+	 * @returns The transformation matrix at the given offset
+	 * @category Properties
+	 */
+	export function transformAtNormalizedOffset(
+		path: Path,
+		normalizedOffset: number
+	): mat2d {
+		return transformAtOffset(path, normalizedOffset * length(path))
 	}
 
 	interface OffsetOptions {
