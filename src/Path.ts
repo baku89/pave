@@ -537,7 +537,16 @@ export namespace Path {
 		startAngle: number,
 		endAngle: number
 	): Path {
+		if (radius === 0) {
+			return [['M', center]]
+		}
+
 		const start = vec2.add(center, vec2.direction(startAngle, radius))
+
+		if (scalar.equals(startAngle, endAngle)) {
+			return [['M', start]]
+		}
+
 		const radii: vec2 = [radius, radius]
 		const sweepFlag = endAngle > startAngle
 
@@ -552,6 +561,39 @@ export namespace Path {
 		const end = vec2.add(center, vec2.direction(endAngle, radius))
 
 		return [['M', start], ...commands, ['A', radii, 0, false, sweepFlag, end]]
+	}
+
+	/**
+	 * Creates a fan path.
+	 * @param center The center of the fan
+	 * @param innerRadius The inner radius of the fan
+	 * @param outerRadius The outer radius of the fan
+	 * @param startAngle The start angle in radians
+	 * @param endAngle The end angle in radians
+	 * @returns The newly created path
+	 * @category Primitives
+	 * @example
+	 * ```js:pathed
+	 * const f = Path.fan([50, 50], 20, 40, 0, Math.PI / 2)
+	 * stroke(f)
+	 * ```
+	 */
+	export function fan(
+		center: vec2,
+		innerRadius: number,
+		outerRadius: number,
+		startAngle: number,
+		endAngle: number
+	): Path {
+		const outerRim = arc(center, outerRadius, startAngle, endAngle)
+		const innerRim = arc(center, innerRadius, endAngle, startAngle)
+
+		const innerRimL = [
+			['L', ...innerRim[0].slice(1)],
+			...innerRim.slice(1),
+		] as Path
+
+		return [...outerRim, ...innerRimL, ['Z']]
 	}
 
 	/**
