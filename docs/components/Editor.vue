@@ -72,12 +72,12 @@ const options = {
 	scrollBeyondLastLine: false,
 	automaticLayout: true,
 	scrollbar: {
-		horizontalSliderSize: 2,
-		useShadows: false,
-		verticalSliderSize: 2,
-		verticalScrollbarSize: 2,
+		vertical: 'hidden',
+		horizontal: 'hidden',
+		handleMouseWheel: false,
 	},
 	tabSize: 2,
+	wordWrap: 'on',
 }
 
 function onEditorWillMount(monaco: typeof import('monaco-editor')) {
