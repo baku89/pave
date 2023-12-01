@@ -10,7 +10,12 @@ Currently, the library heavily depends on [Bazier.js](https://pomax.github.io/be
 
 ## API
 
-See the full documentation on [API](./api/modules.md)
+See the full documentation on [API](./api)
+
+- [Path](./api/modules/Path): The basic module for manipulating paths.
+- [Bezier](./api/modules/Bezier): The cubic bezier functions which wraps Bezier.js.
+- [BBox](./api/modules/BBox): The functions for handling bounding boxes.
+- [Type Aliases](./api#type-aliases)
 
 ## Getting Started
 

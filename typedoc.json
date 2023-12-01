@@ -7,5 +7,14 @@
 	"sort": ["alphabetical"],
 	"cleanOutputDir": true,
 	"includeVersion": true,
-	"hideInPageTOC": true
+	"hideInPageTOC": true,
+	"categoryOrder": [
+		"Primitives",
+		"Properties",
+		"Modifiers",
+		"Boolean Operations",
+		"Converters",
+		"Draw Functions",
+		"Utilities"
+	]
 }

@@ -44,6 +44,7 @@ module.exports = defineUserConfig({
 	plugins: [palettePlugin({preset: 'sass'})],
 	markdown: {
 		linkify: true,
+		typographer: true,
 	},
 	extendsMarkdown: md => {
 		const defaultRender = md.renderer.rules.fence!
@@ -51,7 +52,8 @@ module.exports = defineUserConfig({
 		md.renderer.rules.fence = (tokens, idx, options, env, self) => {
 			const token = tokens[idx]
 			if (token.tag === 'code' && token.info === 'js:pathed') {
-				return `<Example code="${token.content}"></Example>`
+				const code = md.utils.escapeHtml(token.content)
+				return `<Example code="${code}"></Example>`
 			}
 			return defaultRender(tokens, idx, options, env, self)
 		}

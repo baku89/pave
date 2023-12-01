@@ -9,70 +9,70 @@ paper.setup(document.createElement('canvas'))
 
 /**
  * Move-to command.
- * @category Path Commands
+ * @category Type Aliases
  * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Paths#line_commands
  */
 export type CommandM = readonly ['M', end: vec2]
 
 /**
  * Line-to command.
- * @category Path Commands
+ * @category Type Aliases
  * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Paths#line_commands
  */
 export type CommandL = readonly ['L', end: vec2]
 
 /**
  * Horizontal line-to command.
- * @category Path Commands
+ * @category Type Aliases
  * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Paths#line_commands
  */
 export type CommandH = readonly ['H', end: number]
 
 /**
  * Vertical line-to command.
- * @category Path Commands
+ * @category Type Aliases
  * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Paths#line_commands
  */
 export type CommandV = readonly ['V', end: number]
 
 /**
  * Cubic Bézier curve command.
- * @category Path Commands
+ * @category Type Aliases
  * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Paths#curve_commands
  */
 export type CommandC = readonly ['C', control1: vec2, control2: vec2, end: vec2]
 
 /**
  * Cubic Bézier curve command with implicit first control point (the reflection of the previous control point).
- * @category Path Commands
+ * @category Type Aliases
  * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Paths#curve_commands
  */
 export type CommandS = readonly ['S', control2: vec2, end: vec2]
 
 /**
  * Quadratic Bézier curve command.
- * @category Path Commands
+ * @category Type Aliases
  * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Paths#curve_commands
  */
 export type CommandQ = readonly ['Q', control: vec2, end: vec2]
 
 /**
  * Quadratic Bézier curve command with implicit control point (the reflection of the previous control point).
- * @category Path Commands
+ * @category Type Aliases
  * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Paths#curve_commands
  */
 export type CommandT = readonly ['T', end: vec2]
 
 /**
  * Close path command
- * @category Path Commands
+ * @category Type Aliases
  * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Paths#line_commands
  */
 export type CommandZ = readonly ['Z']
 
 /**
  * Arc command
- * @category Path Commands
+ * @category Type Aliases
  * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Paths#arcs
  */
 export type CommandA = [
@@ -100,7 +100,7 @@ export type CommandA = [
 ]
 
 /**
- * @category Path Commands
+ * @category Type Aliases
  */
 export type Command =
 	| CommandM
@@ -116,13 +116,12 @@ export type Command =
 
 /**
  * A path represented as an array of commands. All of the points are represented as tuple of vector `[x: number, y: number]` and represented in absolute coordinates.
- * @category Path
+ * @category Type Aliases
  */
 export type Path = readonly Command[]
 
 /**
  * Functions for manipulating paths represented as {@link Path}.
- * @category Path
  */
 export namespace Path {
 	/**

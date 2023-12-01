@@ -2,6 +2,7 @@ import {vec2} from 'linearly'
 
 /**
  * A bounding box represented as a tuple of two diagonal points.
+ * @category Type Aliases
  */
 export type BBox = readonly [min: vec2, max: vec2]
 

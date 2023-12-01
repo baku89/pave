@@ -3,6 +3,7 @@ import {vec2} from 'linearly'
 
 /**
  * A cubic Bezier curve, whose control points are specified in absolute coordinates.
+ * @category Type Aliases
  */
 export type Bezier = readonly [
 	start: vec2,
