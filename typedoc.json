@@ -1,5 +1,11 @@
 {
 	"$schema": "https://typedoc.org/schema.json",
 	"entryPoints": ["./src/index.ts"],
-	"sort": ["alphabetical"]
+	"out": "./docs/api",
+	"plugin": ["typedoc-plugin-markdown"],
+	"readme": "none",
+	"sort": ["alphabetical"],
+	"cleanOutputDir": true,
+	"includeVersion": true,
+	"hideInPageTOC": true
 }

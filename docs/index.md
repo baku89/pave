@@ -23,7 +23,15 @@ yarn add pathed
 ```js:no-line-numbers
 import {Path} from 'pathed'
 
-console.log(Path.circle([0, 0], 100))
+const circle = Path.circle([0, 0], 100)
+
+// For SVG's path element
+const d = Path.toSVG(circle)
+svgPathElement.setAttribute('d', d)
+
+// For Canvas API
+const path2d = Path.toPath2D(circle)
+context.stroke(path2d)
 ```
 
 ### Example

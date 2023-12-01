@@ -33,7 +33,7 @@ module.exports = defineUserConfig({
 			},
 			{
 				text: 'API',
-				link: '/api/modules',
+				link: '/api',
 			},
 			{
 				text: 'Github',
@@ -41,18 +41,7 @@ module.exports = defineUserConfig({
 			},
 		],
 	}),
-	plugins: [
-		typedocPlugin({
-			entryPoints: ['./src/index.ts'],
-			tsconfig: '../../tsconfig.json',
-			cleanOutputDir: true,
-			hideInPageTOC: true,
-			sidebar: {
-				fullNames: true,
-			},
-		}),
-		palettePlugin({preset: 'sass'}),
-	],
+	plugins: [palettePlugin({preset: 'sass'})],
 	markdown: {
 		linkify: true,
 	},

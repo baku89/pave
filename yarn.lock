@@ -5078,11 +5078,6 @@ vue@^3.2.37, vue@^3.3.8:
     "@vue/server-renderer" "3.3.9"
     "@vue/shared" "3.3.9"
 
-vuepress-plugin-typedoc@^0.13.0:
-  version "0.13.0"
-  resolved "https://registry.yarnpkg.com/vuepress-plugin-typedoc/-/vuepress-plugin-typedoc-0.13.0.tgz#9e0272f5341db81dd66720c17c6a587d4c414210"
-  integrity sha512-3JNuR912ktT0M6kA8hWST09TzrJOm9OaA8O4xxLf5wUojeOmhczDR7VgYMriFRbfTnbpoDAw2AeD9gtW59686A==
-
 vuepress-vite@2.0.0-rc.0:
   version "2.0.0-rc.0"
   resolved "https://registry.yarnpkg.com/vuepress-vite/-/vuepress-vite-2.0.0-rc.0.tgz#edcb902881368143c24199e66c2300f4bcd2b61f"

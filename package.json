@@ -7,9 +7,10 @@
 	"types": "./lib/esm/index.d.ts",
 	"sideEffects": false,
 	"scripts": {
-		"dev": "vuepress dev docs",
+		"dev": "npm run build:api & vuepress dev docs",
 		"build": "tsc && tsc -p tsconfig.cjs.json",
-		"build:doc": "vuepress build docs",
+		"build:api": "typedoc src/index.ts",
+		"build:doc": "npm run build:api & vuepress build docs",
 		"lint": "eslint",
 		"test": "jest",
 		"prepare": "npm run build",
@@ -66,8 +67,7 @@
 		"typedoc-plugin-markdown": "^3.16.0",
 		"typescript": "^5.2.2",
 		"vue-eslint-parser": "^9.3.2",
-		"vuepress": "^2.0.0-rc.0",
-		"vuepress-plugin-typedoc": "^0.13.0"
+		"vuepress": "^2.0.0-rc.0"
 	},
 	"dependencies": {
 		"@types/bezier-js": "^4.1.3",
