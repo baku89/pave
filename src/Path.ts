@@ -674,7 +674,7 @@ export namespace Path {
 	/**
 	 * Creates an offset path from the given path.
 	 * @param path The path to offset
-	 * @param offset The width of stroke
+	 * @param width The width of stroke
 	 * @param options The options
 	 * @returns The newly created path
 	 * @category Modifiers
@@ -688,7 +688,7 @@ export namespace Path {
 	 */
 	export function offsetStroke(
 		path: Path,
-		offset: number,
+		width: number,
 		options?: OffsetStrokeOptions
 	) {
 		const paperPath = toPaperPath(path)
@@ -698,7 +698,9 @@ export namespace Path {
 			limit: options?.miterLimit,
 		}
 
-		return fromPaperPath(PaperOffset.offsetStroke(paperPath, offset, _options))
+		return fromPaperPath(
+			PaperOffset.offsetStroke(paperPath, width / 2, _options)
+		)
 	}
 
 	/**
