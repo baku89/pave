@@ -46,8 +46,7 @@ const theme = ref<'Tomorrow' | 'TomorrowNight'>(
 
 useMutationObserver(
 	document.documentElement,
-	m => {
-		console.log(m)
+	() => {
 		theme.value = document.documentElement.classList.contains('dark')
 			? 'TomorrowNight'
 			: 'Tomorrow'
