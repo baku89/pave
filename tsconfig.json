@@ -1,22 +1,33 @@
 {
 	"compilerOptions": {
-		"target": "es2022",
-		"module": "ES2022",
-		"strict": true,
-		"moduleResolution": "Bundler",
+		"target": "ES2022",
+		"useDefineForClassFields": true,
+		"module": "ESNext",
+		"lib": ["ES2022", "DOM", "DOM.Iterable"],
+		"skipLibCheck": true,
 		"esModuleInterop": true,
 		"experimentalDecorators": true,
 		"inlineSourceMap": true,
 		"baseUrl": ".",
 		"outDir": "./lib/esm",
-		"isolatedModules": true,
 		"declaration": true,
 		"declarationMap": true,
-		"lib": ["esnext", "DOM"],
-		"skipLibCheck": true,
 		"skipDefaultLibCheck": true,
-		"allowJs": true
+		"allowJs": true,
+
+		/* Bundler mode */
+		"moduleResolution": "bundler",
+		"allowImportingTsExtensions": true,
+		"resolveJsonModule": true,
+		"isolatedModules": true,
+		"noEmit": true,
+
+		/* Linting */
+		"strict": true,
+		"noUnusedLocals": true,
+		"noUnusedParameters": true,
+		"noFallthroughCasesInSwitch": true
 	},
-	"include": ["src/**/*.ts"],
+	"include": ["src", "docs"],
 	"exclude": ["node_modules", "src/**/*.test.ts"]
 }
