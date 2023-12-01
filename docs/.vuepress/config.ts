@@ -53,6 +53,9 @@ module.exports = defineUserConfig({
 		}),
 		palettePlugin({preset: 'sass'}),
 	],
+	markdown: {
+		linkify: true,
+	},
 	extendsMarkdown: md => {
 		const defaultRender = md.renderer.rules.fence!
 
