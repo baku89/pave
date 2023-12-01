@@ -10,6 +10,7 @@
 </template>
 
 <script lang="ts" setup>
+import {useCssVar} from '@vueuse/core'
 import {mat2d, scalar, vec2} from 'linearly'
 import {type Path} from 'pathed'
 import saferEval from 'safer-eval'
@@ -29,6 +30,8 @@ watchEffect(() => {
 const canvas = ref<null | HTMLCanvasElement>(null)
 const context = ref<null | CanvasRenderingContext2D>(null)
 
+const brandColor = useCssVar('--c-brand')
+
 onMounted(async () => {
 	context.value = canvas.value?.getContext('2d') ?? null
 
@@ -39,15 +42,15 @@ onMounted(async () => {
 		([code, canvas, context]) => {
 			if (!canvas || !context) return
 
-			const stroke = (path: Path, color = '#000', lineWidth = 1) => {
-				context.strokeStyle = color || '#000'
+			const stroke = (path: Path, color = '', lineWidth = 1) => {
+				context.strokeStyle = color || brandColor.value
 				context.lineCap = 'round'
 				context.lineWidth = lineWidth
 				context.stroke(Path.toPath2D(path))
 			}
 
-			const fill = (path: Path, color = '#000') => {
-				context.fillStyle = color || '#000'
+			const fill = (path: Path, color = '') => {
+				context.fillStyle = color || brandColor.value
 				context.stroke(Path.toPath2D(path))
 			}
 

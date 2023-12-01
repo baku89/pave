@@ -35,12 +35,12 @@
 }
 
 :root {
-	--c-brand: #0000ff;
-	--c-brand-light: #4545ff;
-	--c-tip: #0000ff;
+	--c-brand: #ed7c6e;
+	--c-brand-light: #ee998e;
+	--c-tip: var(--c-brand);
 	--c-text: black;
 	--c-text-lighter: #525368;
-	--c-text-lightest: #0000ff;
+	--c-text-lightest: var(--c-brand);
 	--c-border: var(--c-text);
 	--c-border-dark: var(--c-border);
 	--code-bg-color: black;
@@ -48,15 +48,19 @@
 	--font-family: 'Inter', sans-serif;
 	--font-family-code: 'Fira Code', monospace;
 
-	--gradient-data: #2638ff 0%, #f37ea5 16%, #f0a59b 28%, #f1caca 35%,
-		#ccdce6 44%, #bef1ee 54%, #8ef6b7 63%, #6fc8d9 82%, #2638ff 100%;
+	--gradient-data: rgba(245, 214, 142, 1) 0%, rgba(240, 165, 155, 1) 14%,
+		rgba(250, 100, 100, 1) 31%, rgba(190, 80, 172, 1) 45%,
+		rgba(123, 47, 154, 1) 58%, rgba(102, 37, 115, 1) 62%,
+		rgba(123, 47, 154, 1) 69%, rgba(174, 117, 186, 1) 75%,
+		rgba(211, 237, 200, 1) 84%, rgba(255, 255, 148, 1) 93%,
+		rgba(245, 214, 142, 1) 99%;
 	--gradient-bg: linear-gradient(to right, var(--gradient-data));
 
 	--border-radius: 6px;
 }
 
 html.dark {
-	--c-brand: #5757f5;
+	--c-brand: #ee998e;
 	--c-text: white;
 	--c-border: #777;
 	--c-border-dark: var(--c-border);

@@ -3,6 +3,20 @@ home: true
 tagline: A library for manipulating SVG/Path2D curves.
 ---
 
+<div align="center">
+	<p>
+		<a href="https://www.npmjs.org/package/pathed">
+			<img src="https://img.shields.io/npm/v/pathed.svg?style=flat-square" alt="npm version">
+		</a>
+		&nbsp;
+		<a href="http://spdx.org/licenses/MIT">
+			<img src="https://img.shields.io/npm/l/pathed.svg?style=flat-square" alt="npm license">
+		</a>
+		&nbsp;
+		<img src="https://github.com/baku89/pathed/actions/workflows/ci.yml/badge.svg" alt="CI test result" />
+	</p>
+</div>
+
 ```js:pathed
 const path = [
 	['M', [10, 50]],
@@ -29,7 +43,7 @@ Currently, the library heavily depends on [Bazier.js](https://pomax.github.io/be
 
 See the full documentation on [API](./api)
 
-- [Path](./api/modules/Path): The basic module for manipulating paths.
+- [Path](./api/modules/Path): The core module for manipulating paths.
 - [Bezier](./api/modules/Bezier): The cubic bezier functions which wraps Bezier.js.
 - [BBox](./api/modules/BBox): The functions for handling bounding boxes.
 - [Type Aliases](./api#type-aliases)
