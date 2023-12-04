@@ -100,25 +100,34 @@ export type CommandA = [
 ]
 
 /**
+ * SVG path commands that can be used in Pathed.js directly.
  * @category Type Aliases
  */
 export type Command =
 	| CommandM
 	| CommandL
-	| CommandH
-	| CommandV
 	| CommandC
-	| CommandS
 	| CommandQ
-	| CommandT
 	| CommandZ
 	| CommandA
+
+/**
+ * SVG path commands that use short-hand notation by depending on the previous command. In Pathed.js, these commands are converted to the corresponding full commands for simplicity.
+ * @category Type Aliases
+ */
+export type ShortCommand = CommandH | CommandV | CommandS | CommandT
 
 /**
  * A path represented as an array of commands. All of the points are represented as tuple of vector `[x: number, y: number]` and represented in absolute coordinates.
  * @category Type Aliases
  */
 export type Path = readonly Command[]
+
+/**
+ * A path commands which also include short-hands. This can be converted to {@link Path} by {@link Path.unshort}.
+ * @category Type Aliases
+ */
+export type PathWithShortCommand = readonly (Command | ShortCommand)[]
 
 /**
  * Functions for manipulating paths represented as {@link Path}.
@@ -137,7 +146,13 @@ export namespace Path {
 	 * ```
 	 */
 	export function rectangle(start: vec2, end: vec2): Path {
-		return [['M', start], ['H', end[0]], ['V', end[1]], ['H', start[0]], ['Z']]
+		return [
+			['M', start],
+			['L', [end[0], start[1]]],
+			['L', end],
+			['L', [start[0], end[1]]],
+			['Z'],
+		]
 	}
 
 	/**
@@ -598,19 +613,13 @@ export namespace Path {
 				case 'M':
 				case 'L':
 				case 'Q':
-				case 'T':
 				case 'C':
-				case 'S':
 					return [
 						seg[0],
 						...(seg.slice(1) as vec2[]).map(p =>
 							vec2.transformMat2d(p, matrix)
 						),
 					]
-				case 'H':
-					return ['L', vec2.transformMat2d([seg[1], 0], matrix)[0]]
-				case 'V':
-					return ['L', vec2.transformMat2d([0, seg[1]], matrix)[0]]
 				case 'A':
 					throw new Error('Not implemented')
 				case 'Z':
@@ -718,18 +727,8 @@ export namespace Path {
 				const lastSeg = acc.at(-1)!
 				const firstSeg = path[0]
 				if (lastSeg[0] !== 'Z' && firstSeg[0] === 'M') {
-					let lastPoint = lastSeg.at(-1) as number | vec2
-
-					if (typeof lastPoint === 'number') {
-						const secondLastPoint = acc.at(-2)!.at(-1) as vec2
-						if (lastSeg[0] === 'H') {
-							lastPoint = [lastPoint, secondLastPoint[1]]
-						} else if (lastSeg[0] === 'V') {
-							lastPoint = [secondLastPoint[0], lastPoint]
-						}
-					}
-
-					if (vec2.equals(lastPoint as vec2, firstSeg[1])) {
+					const lastPoint = lastSeg.at(-1) as vec2
+					if (vec2.equals(lastPoint, firstSeg[1])) {
 						return [...acc, ...path.slice(1)]
 					}
 				}
@@ -802,6 +801,75 @@ export namespace Path {
 	}
 
 	/**
+	 * Converts the shorthand commands ({@link ShortCommand}) to the corresponding full commands.
+	 * @param path The path to unshort
+	 * @returns The unshorted path
+	 * @category Converters
+	 */
+	export function unshort(path: PathWithShortCommand): Path {
+		let prev: vec2 | undefined
+		let prevControl: vec2 | undefined
+
+		const unshortPath: Command[] = []
+
+		for (const seg of path) {
+			switch (seg[0]) {
+				// Short commands
+				case 'H':
+					unshortPath.push(['L', [seg[1], prev![1]]])
+					prev = [seg[1], prev![1]]
+					break
+				case 'V':
+					unshortPath.push(['L', [prev![0], seg[1]]])
+					prev = [prev![0], seg[1]]
+					break
+				case 'S': {
+					const control1 = vec2.lerp(prev!, prevControl!, -1)
+					const [, control2, end] = seg
+					unshortPath.push(['C', control1, control2, end])
+					prev = end
+					prevControl = control2
+					break
+				}
+				case 'T': {
+					const control = vec2.lerp(prev!, prevControl!, -1)
+					const [, end] = seg
+					unshortPath.push(['Q', control, end])
+					prev = end
+					prevControl = control
+					break
+				}
+				// Non-short commands
+				case 'C': {
+					const [, , control2, end] = seg
+					unshortPath.push(seg)
+					prev = end
+					prevControl = control2
+					break
+				}
+				case 'Q': {
+					const [, control, end] = seg
+					unshortPath.push(seg)
+					prev = end
+					prevControl = control
+					break
+				}
+				case 'M':
+				case 'L':
+					unshortPath.push(seg)
+					prev = seg[1]
+					break
+				case 'Z':
+					unshortPath.push(seg)
+					prev = undefined
+					break
+			}
+		}
+
+		return unshortPath
+	}
+
+	/**
 	 * Converts the given path to a string that can be used as the d attribute of an SVG path element.
 	 * @param path The path to convert
 	 * @param fractionDigits The number of digits to appear after the decimal point
@@ -838,7 +906,6 @@ export namespace Path {
 		const path2d = new Path2D()
 
 		let prev: vec2 | undefined
-		let prevControl: vec2 | undefined
 
 		for (const seg of path) {
 			switch (seg[0]) {
@@ -850,38 +917,14 @@ export namespace Path {
 					path2d.lineTo(...seg[1])
 					prev = seg[1]
 					break
-				case 'H':
-					path2d.lineTo(seg[1], prev![1])
-					prev = [seg[1], prev![1]]
-					break
-				case 'V':
-					path2d.lineTo(prev![0], seg[1])
-					prev = [prev![0], seg[1]]
-					break
 				case 'C':
 					path2d.bezierCurveTo(...seg[1], ...seg[2], ...seg[3])
-					prevControl = seg[2]
 					prev = seg[3]
 					break
-				case 'S': {
-					const control1 = vec2.add(seg[1], vec2.sub(seg[1], prevControl!))
-					path2d.bezierCurveTo(...control1, ...seg[1], ...seg[2])
-					prevControl = seg[1]
-					prev = seg[2]
-					break
-				}
 				case 'Q':
 					path2d.quadraticCurveTo(...seg[1], ...seg[2])
-					prevControl = seg[1]
 					prev = seg[2]
 					break
-				case 'T': {
-					const control = vec2.add(seg[1], vec2.sub(seg[1], prevControl!))
-					path2d.quadraticCurveTo(...control, ...seg[1])
-					prevControl = seg[1]
-					prev = seg[1]
-					break
-				}
 				case 'A': {
 					const ret = Path.arcCommandToCenterParameterization(prev!, seg)
 
@@ -918,7 +961,6 @@ export namespace Path {
 			const paperPaths = [...iterateSubpath(path)].map(path => {
 				const paperPath = new paper.Path()
 				let prev: vec2 | undefined
-				let prevControl: vec2 | undefined
 
 				for (const seg of path) {
 					switch (seg[0]) {
@@ -930,46 +972,18 @@ export namespace Path {
 							paperPath.lineTo(toPoint(seg[1]))
 							prev = seg[1]
 							break
-						case 'H':
-							paperPath.lineTo({x: seg[1], y: prev![1]})
-							prev = [seg[1], prev![1]]
-							break
-						case 'V':
-							paperPath.lineTo({x: prev![0], y: seg[1]})
-							prev = [prev![0], seg[1]]
-							break
 						case 'C':
 							paperPath.cubicCurveTo(
 								toPoint(seg[1]),
 								toPoint(seg[2]),
 								toPoint(seg[3])
 							)
-							prevControl = seg[2]
 							prev = seg[3]
 							break
-						case 'S': {
-							const control1 = vec2.add(seg[1], vec2.sub(seg[1], prevControl!))
-							paperPath.cubicCurveTo(
-								toPoint(control1),
-								toPoint(seg[1]),
-								toPoint(seg[2])
-							)
-							prevControl = seg[1]
-							prev = seg[2]
-							break
-						}
 						case 'Q':
 							paperPath.quadraticCurveTo(toPoint(seg[1]), toPoint(seg[2]))
-							prevControl = seg[1]
 							prev = seg[2]
 							break
-						case 'T': {
-							const control = vec2.add(seg[1], vec2.sub(seg[1], prevControl!))
-							paperPath.quadraticCurveTo(toPoint(control), toPoint(seg[1]))
-							prevControl = seg[1]
-							prev = seg[1]
-							break
-						}
 						case 'A': {
 							const [, [rx, ry], xAxisRotation, , , end] = seg
 
@@ -1031,13 +1045,7 @@ export namespace Path {
 					started = true
 				}
 				if (curve.isStraight()) {
-					if (curve.isHorizontal()) {
-						path.push(['H', curve.point2.x])
-					} else if (curve.isVertical()) {
-						path.push(['V', curve.point2.y])
-					} else {
-						path.push(['L', toVec2(curve.point2)])
-					}
+					path.push(['L', toVec2(curve.point2)])
 				} else {
 					path.push([
 						'C',
@@ -1051,10 +1059,7 @@ export namespace Path {
 			if (subpath.closed) {
 				// Delete the  redundant segment if it is a line segment
 				const lastSeg = path.at(-1)
-				if (
-					lastSeg &&
-					(lastSeg[0] === 'L' || lastSeg[0] === 'H' || lastSeg[0] === 'V')
-				) {
+				if (lastSeg && lastSeg[0] === 'L') {
 					path.pop()
 				}
 				// Close the path
@@ -1088,28 +1093,6 @@ export namespace Path {
 	}
 
 	/**
-	 * Returns the new path with the new H (horizontal line-to) command at the end.
-	 * @param path The base path
-	 * @param x The x coordinate to draw a line to
-	 * @returns The newely created path
-	 * @category Draw Functions
-	 */
-	export function horizontalLineTo(path: Path, x: number): Path {
-		return [...path, ['H', x]]
-	}
-
-	/**
-	 * Returns the new path with the new V (vertical line-to) command at the end.
-	 * @param path The base path
-	 * @param y The y coordinate to draw a line to
-	 * @returns The newely created path
-	 * @category Draw Functions
-	 */
-	export function verticalLineTo(path: Path, y: number): Path {
-		return [...path, ['V', y]]
-	}
-
-	/**
 	 * Returns the new path with the new C (cubic Bézier curve) command at the end.
 	 * @param path The base path
 	 * @param control1 The first control point
@@ -1128,22 +1111,6 @@ export namespace Path {
 	}
 
 	/**
-	 * Returns the new path with the new S (cubic Bézier curve with implicit first control point) command at the end.
-	 * @param path The base path
-	 * @param control2 The second control point
-	 * @param end The end point
-	 * @returns The newely created path
-	 * @category Draw Functions
-	 */
-	export function smoothCubicBezierTo(
-		path: Path,
-		control2: vec2,
-		end: vec2
-	): Path {
-		return [...path, ['S', control2, end]]
-	}
-
-	/**
 	 * Returns the new path with the new Q (quadratic Bézier curve) command at the end.
 	 * @param path The base path
 	 * @param control The control point
@@ -1157,17 +1124,6 @@ export namespace Path {
 		end: vec2
 	): Path {
 		return [...path, ['Q', control, end]]
-	}
-
-	/**
-	 * Returns the new path with the new T (quadratic Bézier curve with implicit control point) command at the end.
-	 * @param path The base path
-	 * @param end The end point
-	 * @returns The newely created path
-	 * @category Draw Functions
-	 */
-	export function smoothQuadraticBezierTo(path: Path, end: vec2): Path {
-		return [...path, ['T', end]]
 	}
 
 	/**
