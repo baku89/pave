@@ -32,13 +32,13 @@ describe('Bezier', () => {
 		])
 	})
 
-	it('should compute the `atT` correctly', () => {
+	it('should compute the `pointAtTime` correctly', () => {
 		expect(Bezier.pointAtTime(a, 0)).toEqual([0, 0])
 		expect(Bezier.pointAtTime(a, 0.5)).toEqual([0.5, 0.75])
 		expect(Bezier.pointAtTime(a, 1)).toEqual([1, 0])
 	})
 
-	it('should compute the `normal` correctly', () => {
-		expect(Bezier.normal(a, 0.5)).toEqual([0, 1])
+	it('should compute the `normalAtTime` correctly', () => {
+		expect(Bezier.normalAtTime(a, 0.5)).toEqual([0, 1])
 	})
 })

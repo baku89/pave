@@ -106,7 +106,7 @@ export namespace Bezier {
 	/**
 	 * Calculates the curve normal at the specified `t` value. Note that this yields a normalized vector.
 	 */
-	export function normal(bezier: Bezier, t: number): vec2 {
+	export function normalAtTime(bezier: Bezier, t: number): vec2 {
 		const bezierJS = toBezierJS(bezier)
 		const {x, y} = bezierJS.normal(t)
 		return [x, y]
