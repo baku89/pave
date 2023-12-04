@@ -46,8 +46,7 @@ const theme = ref<'Tomorrow' | 'TomorrowNight'>(
 
 useMutationObserver(
 	document.documentElement,
-	m => {
-		console.log(m)
+	() => {
 		theme.value = document.documentElement.classList.contains('dark')
 			? 'TomorrowNight'
 			: 'Tomorrow'
@@ -55,9 +54,11 @@ useMutationObserver(
 	{attributeFilter: ['class']}
 )
 
-const options = {
+const options: editor.IStandaloneEditorConstructionOptions = {
 	language: 'javascript',
-	'bracketPairColorization.enabled': false,
+	bracketPairColorization: {
+		enabled: true,
+	},
 	fontLigatures: true,
 	fontFamily: 'Fira Code',
 	folding: false,
@@ -68,7 +69,6 @@ const options = {
 		enabled: false,
 	},
 	overviewRulerLanes: 0,
-	renderIndentGuides: false,
 	renderLineHighlight: 'none',
 	scrollBeyondLastLine: false,
 	automaticLayout: true,
@@ -82,7 +82,10 @@ const options = {
 }
 
 function onEditorWillMount(monaco: typeof import('monaco-editor')) {
-	monaco.editor.defineTheme('Tomorrow', Tomorrow as any)
-	monaco.editor.defineTheme('TomorrowNight', TomorrowNight as any)
+	monaco.editor.defineTheme('Tomorrow', Tomorrow as editor.IStandaloneThemeData)
+	monaco.editor.defineTheme(
+		'TomorrowNight',
+		TomorrowNight as editor.IStandaloneThemeData
+	)
 }
 </script>
