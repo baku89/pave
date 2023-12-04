@@ -824,8 +824,7 @@ export namespace Path {
 						...ret.center,
 						...ret.radii,
 						ret.xAxisRotation,
-						ret.startAngle,
-						ret.endAngle,
+						...ret.angles,
 						ret.counterclockwise
 					)
 
@@ -888,7 +887,7 @@ export namespace Path {
 								seg,
 							])
 
-							const midAngle = (ret.startAngle + ret.endAngle) / 2
+							const midAngle = (ret.angles[0] + ret.angles[1]) / 2
 
 							const through = vec2.add(ret.center, vec2.direction(midAngle, rx))
 

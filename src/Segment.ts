@@ -64,8 +64,7 @@ export namespace Segment {
 		return {
 			center,
 			radii: [rx, ry] as vec2,
-			startAngle,
-			endAngle,
+			angles: [startAngle, endAngle] as vec2,
 			xAxisRotation,
 			counterclockwise: deltaAngle < 0,
 		}
