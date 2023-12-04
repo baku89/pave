@@ -71,26 +71,36 @@ export namespace Bezier {
 	/**
 	 * Calculates the point on the curve at the specified `t` value.
 	 */
-	export function atT(bezier: Bezier, t: number): vec2 {
-		const bezierJS = toBezierJS(bezier)
-		const {x, y} = bezierJS.get(t)
+	export function pointAtTime(bezier: Bezier, t: number): vec2 {
+		const [start, control1, control2, end] = bezier
+		const x =
+			(1 - t) ** 3 * start[0] +
+			3 * (1 - t) ** 2 * t * control1[0] +
+			3 * (1 - t) * t ** 2 * control2[0] +
+			t ** 3 * end[0]
+		const y =
+			(1 - t) ** 3 * start[1] +
+			3 * (1 - t) ** 2 * t * control1[1] +
+			3 * (1 - t) * t ** 2 * control2[1] +
+			t ** 3 * end[1]
+
 		return [x, y]
 	}
 
 	/**
 	 * Calculates the curve tangent at the specified `t` value. Note that this yields a not-normalized vector.
 	 */
-	export function derivative(bezier: Bezier, t: number): vec2 {
+	export function derivativeAtTime(bezier: Bezier, t: number): vec2 {
 		const bezierJS = toBezierJS(bezier)
 		const {x, y} = bezierJS.derivative(t)
 		return [x, y]
 	}
 
 	/**
-	 * Calculates the curve tangent at the specified `t` value. Unlike {@link derivative}, this yields a normalized vector.
+	 * Calculates the curve tangent at the specified `t` value. Unlike {@link derivativeAtTime}, this yields a normalized vector.
 	 */
-	export function tangent(bezier: Bezier, t: number): vec2 {
-		return vec2.normalize(derivative(bezier, t))
+	export function tangentAtTime(bezier: Bezier, t: number): vec2 {
+		return vec2.normalize(derivativeAtTime(bezier, t))
 	}
 
 	/**
