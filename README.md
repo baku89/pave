@@ -1,7 +1,7 @@
 <div align="center">
 <h1>Pathed</h1>
 
-<a href="https://baku89.github.io/pathed/">Demo</a> ⌇ <a href="https://baku89.github.io/pathed/api">API</a> ⌇ <a href="https://github.com/sponsors/baku89">Become a Sponsor</a>
+<a href="https://baku89.github.io/pathed/">Demo</a> ⌇ <a href="https://baku89.com/pathed/">API</a> ⌇ <a href="https://github.com/sponsors/baku89">Become a Sponsor</a>
 
 <p>
   <a href="https://www.npmjs.org/package/pathed">
