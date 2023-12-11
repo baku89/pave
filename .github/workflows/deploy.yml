@@ -2,22 +2,11 @@
 name: Deploy static content to Pages
 
 on:
-  # Runs on pushes targeting the pwa branch, when a new tag is created
   push:
     branches: ['main']
 
-  # Allows you to run this workflow manually from the Actions tab
-  workflow_dispatch:
-
-# Sets the GITHUB_TOKEN permissions to allow deployment to GitHub Pages
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-# Allow one concurrent deployment
 concurrency:
-  group: 'pages'
+  group: 'deploy'
   cancel-in-progress: true
 
 jobs:
@@ -33,19 +22,23 @@ jobs:
       - name: Set up Node
         uses: actions/setup-node@v3
         with:
-          node-version: 18
-          cache: 'npm'
-      - name: Install dependencies
-        run: npm install
-      - name: Build
-        run: npm run build:doc
-      - name: Setup Pages
-        uses: actions/configure-pages@v3
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v1
+          node-version: 20
+      - name: Run install
+        uses: borales/actions-yarn@v4
         with:
-          # Upload dist repository
-          path: './docs/.vuepress/dist'
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v1
+          cmd: install # will run `yarn install` command
+      - name: Build
+        uses: borales/actions-yarn@v4
+        with:
+          cmd: build:doc
+      - name: SSH key generate
+        run: echo "$SSH_PRIVATE_KEY" > key && chmod 600 key
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+      - name: Rsync deploy
+        run: rsync -auzrv --delete ./docs/.vuepress/dist/* $SSH_USER@$SSH_HOST:$DEPLOY_PATH -e "ssh -i key -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -p ${SSH_PORT}"
+        env:
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          DEPLOY_PATH: ${{ secrets.SSH_PATH }}
+          SSH_PORT: ${{ secrets.SSH_PORT }}
