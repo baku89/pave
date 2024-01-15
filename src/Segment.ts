@@ -77,8 +77,15 @@ export namespace Segment {
 			const [ux, uy] = u
 			const [vx, vy] = v
 			const sign = ux * vy - uy * vx >= 0 ? 1 : -1
+			
+			const a = Math.acos(vec2.dot(u, v) / (vec2.sqrLen(u) * vec2.sqrLen(v)));
+			// Handle invalid angle by returning a default value
+			if (isNaN(a) || a < 0 || a > Math.PI) {
+				return Math.PI;
+			}
+			
 			return (
-				sign * Math.acos(vec2.dot(u, v) / (vec2.sqrLen(u) * vec2.sqrLen(v)))
+				sign * a
 			)
 		}
 
