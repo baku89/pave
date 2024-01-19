@@ -32,7 +32,7 @@ export namespace Path {
 	 * @returns The newly created path
 	 * @category Primitives
 	 * @example
-	 * ```js:pathed
+	 * ```js:pave
 	 * const p = Path.rectangle([10, 30], [90, 70])
 	 * stroke(p)
 	 * ```
@@ -60,7 +60,7 @@ export namespace Path {
 	 * @returns The newly created path
 	 * @category Primitives
 	 * @example
-	 * ```js:pathed
+	 * ```js:pave
 	 * const c = Path.circle([50, 50], 40)
 	 * stroke(c)
 	 * ```
@@ -76,7 +76,7 @@ export namespace Path {
 	 * @returns The newly created path
 	 * @category Primitives
 	 * @example
-	 * ```js:pathed
+	 * ```js:pave
 	 * const e = Path.ellipse([50, 50], [20, 40])
 	 * stroke(e)
 	 * ```
@@ -99,7 +99,7 @@ export namespace Path {
 	 * @returns The newly created path
 	 * @category Primitives
 	 * @example
-	 * ```js:pathed
+	 * ```js:pave
 	 * const a = Path.arc([50, 50], 40, 0, Math.PI / 2)
 	 * stroke(a)
 	 * ```
@@ -146,7 +146,7 @@ export namespace Path {
 	 * @returns The newly created path
 	 * @category Primitives
 	 * @example
-	 * ```js:pathed
+	 * ```js:pave
 	 * const f = Path.fan([50, 50], 20, 40, 0, Math.PI / 2)
 	 * stroke(f)
 	 * ```
@@ -176,7 +176,7 @@ export namespace Path {
 	 * @returns The newly created path
 	 * @category Primitives
 	 * @example
-	 * ```js:pathed
+	 * ```js:pave
 	 * const p = Path.line([10, 10], [90, 90])
 	 * stroke(p)
 	 * ```
@@ -194,7 +194,7 @@ export namespace Path {
 	 * @returns The newly created paths
 	 * @category Primitives
 	 * @example
-	 * ```js:pathed
+	 * ```js:pave
 	 * const a = Path.dot([50, 50])
 	 * stroke(a, 'skyblue', 10)
 	 * ```
@@ -209,7 +209,7 @@ export namespace Path {
 	 * @returns The newly created path
 	 * @category Primitives
 	 * @example
-	 * ```js:pathed
+	 * ```js:pave
 	 * const p = Path.polyline([10, 10], [30, 80], [80, 50])
 	 * stroke(p)
 	 * ```
@@ -228,7 +228,7 @@ export namespace Path {
 	 * @returns The newly created path
 	 * @category Primitives
 	 * @example
-	 * ```js:pathed
+	 * ```js:pave
 	 * const p = Path.polygon([10, 10], [30, 80], [80, 50])
 	 * stroke(p)
 	 * ```
@@ -247,7 +247,7 @@ export namespace Path {
 	 * @returns The newly created path
 	 * @category Primitives
 	 * @example
-	 * ```js:pathed
+	 * ```js:pave
 	 * const p = Path.regularPolygon([50, 50], 40, 5)
 	 * stroke(p)
 	 * ```
@@ -542,7 +542,7 @@ export namespace Path {
 	 * @returns The newly created path
 	 * @category Modifiers
 	 * @example
-	 * ```js:pathed
+	 * ```js:pave
 	 * const p = Path.ngon([50, 50], 20, 5)
 	 * stroke(p, 'skyblue')
 	 * const po = Path.offset(p, 10, {lineJoin: 'round'})
@@ -580,7 +580,7 @@ export namespace Path {
 	 * @returns The newly created path
 	 * @category Modifiers
 	 * @example
-	 * ```js:pathed
+	 * ```js:pave
 	 * const p = Path.ngon([50, 50], 20, 5)
 	 * stroke(p, 'skyblue')
 	 * const po = Path.offsetStroke(p, 20, {lineJoin: 'round'})
@@ -638,7 +638,7 @@ export namespace Path {
 	 * @returns The flattened path consists of only M, L, and Z commands
 	 * @category Modifiers
 	 * @example
-	 * ```js:pathed
+	 * ```js:pave
 	 * const c = Path.circle([50, 50], 40)
 	 * stroke(c, 'skyblue')
 	 *
