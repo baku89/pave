@@ -23,6 +23,30 @@ export namespace BBox {
 	}
 
 	/**
+	 * Creates a bounding box that contains all the given points.
+	 * @param points The points to create a bounding box from
+	 * @returns The created bounding box
+	 */
+	export function fromPoints(...points: vec2[]): BBox {
+		let minX = Infinity,
+			minY = Infinity,
+			maxX = -Infinity,
+			maxY = -Infinity
+
+		for (const [x, y] of points) {
+			minX = Math.min(minX, x)
+			minY = Math.min(minY, y)
+			maxX = Math.max(maxX, x)
+			maxY = Math.max(maxY, y)
+		}
+
+		return [
+			[minX, minY],
+			[maxX, maxY],
+		]
+	}
+
+	/**
 	 * Calculates the size of the given bounding box.
 	 * @param bbox The bounding box to calculate the size of
 	 * @returns The size of the bounding box
