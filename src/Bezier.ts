@@ -123,6 +123,28 @@ export namespace Bezier {
 		const {x, y, t, d} = bezierJS.project(toPoint(origin))
 		return {position: [x, y], t, distance: d}
 	}
+
+	/**
+	 * Approximates the given circular arc with a single cubic Bezier curve.
+	 * @param center The center of the arc
+	 * @param radius The radius of the arc
+	 * @param angles The start and end angles of the arc, in radians
+	 * @returns A cubic Bezier curve approximating the arc
+	 */
+	export function unarc(center: vec2, radius: number, angles: vec2): Bezier {
+		const [startAngle, endAngle] = angles
+
+		const theta = endAngle - startAngle
+		const k = (4 / 3) * Math.tan(theta / 4)
+
+		const start = vec2.add(center, vec2.direction(startAngle, radius))
+		const end = vec2.add(center, vec2.direction(endAngle, radius))
+
+		const control1 = vec2.add(center, vec2.direction(startAngle + Math.PI, k))
+		const control2 = vec2.add(center, vec2.direction(endAngle + Math.PI, k))
+
+		return [start, control1, control2, end]
+	}
 }
 
 function toPoint([x, y]: vec2): Point {
