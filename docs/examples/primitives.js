@@ -2,7 +2,7 @@
  * The range of canvas is fixed to the size [100, 100].
  *
  * The variables shown below are also available:
- * import {Path} from 'pathed'
+ * import {Path} from 'pave'
  * import {scalar, vec2, mat2d} from 'linearly'
  *
  * // The 2D context of the canvas

@@ -3,10 +3,10 @@ import {defineUserConfig, defaultTheme} from 'vuepress'
 import {path} from '@vuepress/utils'
 
 module.exports = defineUserConfig({
-	title: 'Pathed',
-	base: '/pathed/',
+	title: 'Pave',
+	base: '/pave/',
 	alias: {
-		pathed: path.resolve(__dirname, '../../src'),
+		pave: path.resolve(__dirname, '../../src'),
 	},
 	head: [
 		['link', {rel: 'preconnect', href: 'https://fonts.googleapis.com'}],
@@ -34,7 +34,7 @@ module.exports = defineUserConfig({
 			},
 			{
 				text: 'Github',
-				link: 'https://github.com/baku89/pathed',
+				link: 'https://github.com/baku89/pave',
 			},
 		],
 	}),
@@ -48,7 +48,7 @@ module.exports = defineUserConfig({
 
 		md.renderer.rules.fence = (tokens, idx, options, env, self) => {
 			const token = tokens[idx]
-			if (token.tag === 'code' && token.info === 'js:pathed') {
+			if (token.tag === 'code' && token.info === 'js:pave') {
 				const code = md.utils.escapeHtml(token.content)
 				return `<Example code="${code}"></Example>`
 			}

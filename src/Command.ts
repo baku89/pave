@@ -93,7 +93,7 @@ export type CommandA = [
 ]
 
 /**
- * SVG path commands that can be used in Pathed.js directly.
+ * SVG path commands that can be used in Pave.js directly.
  * @category Type Aliases
  */
 export type Command =
@@ -105,7 +105,7 @@ export type Command =
 	| CommandA
 
 /**
- * SVG path commands that use short-hand notation by depending on the previous command. In Pathed.js, these commands are converted to the corresponding full commands for simplicity.
+ * SVG path commands that use short-hand notation by depending on the previous command. In Pave.js, these commands are converted to the corresponding full commands for simplicity.
  * @category Type Aliases
  */
 export type ShortCommand = CommandH | CommandV | CommandS | CommandT

@@ -12,7 +12,7 @@
 <script lang="ts" setup>
 import {useCssVar} from '@vueuse/core'
 import {mat2d, scalar, vec2} from 'linearly'
-import {type Path} from 'pathed'
+import {type Path} from 'pave'
 import saferEval from 'safer-eval'
 import {onMounted, ref, watch, watchEffect} from 'vue'
 
@@ -35,7 +35,7 @@ const brandColor = useCssVar('--c-brand')
 onMounted(async () => {
 	context.value = canvas.value?.getContext('2d') ?? null
 
-	const {Path} = await import('pathed')
+	const {Path} = await import('pave')
 
 	watch(
 		() => [editingCode.value, canvas.value, context.value] as const,

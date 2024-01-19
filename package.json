@@ -1,5 +1,5 @@
 {
-	"name": "pathed",
+	"name": "@baku89/pave",
 	"version": "0.0.0",
 	"description": "A low level toolkit for manipulating SVG/Path2D paths.",
 	"main": "./lib/cjs/index.js",
@@ -19,7 +19,7 @@
 	},
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/baku89/pathed.git"
+		"url": "git+https://github.com/baku89/pave.git"
 	},
 	"keywords": [
 		"svg",
@@ -35,9 +35,9 @@
 	],
 	"license": "MIT",
 	"bugs": {
-		"url": "https://github.com/baku89/pathed/issues"
+		"url": "https://github.com/baku89/pave/issues"
 	},
-	"homepage": "https://baku89.github.io/pathed",
+	"homepage": "https://baku89.github.io/pave",
 	"devDependencies": {
 		"@types/jest": "^29.5.4",
 		"@typescript-eslint/eslint-plugin": "^6.7.0",
