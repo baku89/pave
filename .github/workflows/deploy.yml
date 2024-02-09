@@ -5,6 +5,12 @@ on:
   push:
     branches: ['main']
 
+# Sets the GITHUB_TOKEN permissions to allow deployment to GitHub Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
 concurrency:
   group: 'deploy'
   cancel-in-progress: true
@@ -18,7 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Set up Node
         uses: actions/setup-node@v3
         with:
@@ -31,14 +37,12 @@ jobs:
         uses: borales/actions-yarn@v4
         with:
           cmd: build:doc
-      - name: SSH key generate
-        run: echo "$SSH_PRIVATE_KEY" > key && chmod 600 key
-        env:
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-      - name: Rsync deploy
-        run: rsync -auzrv --delete ./docs/.vuepress/dist/* $SSH_USER@$SSH_HOST:$DEPLOY_PATH -e "ssh -i key -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -p ${SSH_PORT}"
-        env:
-          SSH_USER: ${{ secrets.SSH_USER }}
-          SSH_HOST: ${{ secrets.SSH_HOST }}
-          DEPLOY_PATH: ${{ secrets.SSH_PATH }}
-          SSH_PORT: ${{ secrets.SSH_PORT }}
+      - name: Setup Pages
+        uses: actions/configure-pages@v3
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v1
+        with:
+          path: './docs/.vuepress/dist'
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v1
