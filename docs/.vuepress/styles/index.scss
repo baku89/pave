@@ -41,12 +41,7 @@ html.dark {
 	background-size: 100% 4px;
 	background-repeat: repeat-x;
 	background-image: var(--gradient-bg);
-
-	border-radius: 0 0 1rem 1rem;
-	border: 1px solid var(--c-border);
-	border-top: none;
-	margin-left: -1px;
-	margin-right: -1px;
+	border-bottom: 1px solid var(--c-border);
 
 	.site-name {
 		font-size: 1.8rem;
