@@ -119,6 +119,17 @@ export namespace BBox {
 	}
 
 	/**
+	 * Translates the given bounding box by the given offset.
+	 * @param bbox The bounding box to translate
+	 * @param offset The offset to translate the bounding box by
+	 * @returns The translated bounding box
+	 */
+	export function translate(bbox: BBox, offset: vec2): BBox {
+		const [min, max] = bbox
+		return [vec2.add(min, offset), vec2.add(max, offset)]
+	}
+
+	/**
 	 * Unites the given bounding boxes into a single bounding box.
 	 * @param bboxes The bounding boxes to unite
 	 * @returns The united bounding box
