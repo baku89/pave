@@ -130,6 +130,56 @@ export namespace BBox {
 	}
 
 	/**
+	 * Checks if the given bounding box contains the other bounding box.
+	 * @param source The source bounding box
+	 * @param target The target bounding box to check if it's contained in the source bounding box
+	 * @returns True if the source bounding box contains the target bounding box, false otherwise
+	 */
+	export function contains(source: BBox, target: BBox): boolean {
+		const [min, max] = source
+		const [targetMin, targetMax] = target
+		return (
+			targetMin[0] >= min[0] &&
+			targetMin[1] >= min[1] &&
+			targetMax[0] <= max[0] &&
+			targetMax[1] <= max[1]
+		)
+	}
+
+	/**
+	 * Checks if the given bounding box contains the given point.
+	 * @param bbox The source bounding box
+	 * @param point The point to check if it's contained in the source bounding box
+	 * @returns True if the bounding box contains the point, false otherwise
+	 */
+	export function containsPoint(bbox: BBox, point: vec2): boolean {
+		const [min, max] = bbox
+		return (
+			point[0] >= min[0] &&
+			point[0] <= max[0] &&
+			point[1] >= min[1] &&
+			point[1] <= max[1]
+		)
+	}
+
+	/**
+	 * Checks if the given bounding boxes intersect.
+	 * @param a The first bounding box
+	 * @param b The second bounding box
+	 * @returns True if the bounding boxes intersect, false otherwise
+	 */
+	export function intersects(a: BBox, b: BBox): boolean {
+		const [amin, amax] = a
+		const [bmin, bmax] = b
+		return (
+			amin[0] <= bmax[0] &&
+			amax[0] >= bmin[0] &&
+			amin[1] <= bmax[1] &&
+			amax[1] >= bmin[1]
+		)
+	}
+
+	/**
 	 * Unites the given bounding boxes into a single bounding box.
 	 * @param bboxes The bounding boxes to unite
 	 * @returns The united bounding box
