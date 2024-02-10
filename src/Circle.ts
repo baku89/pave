@@ -1,5 +1,9 @@
 import {vec2} from 'linearly'
 
+/**
+ * A circle represented as a tuple of a center and a radius.
+ * @category Type Aliases
+ */
 export type Circle = readonly [center: vec2, radius: number]
 
 /**
