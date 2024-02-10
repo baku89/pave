@@ -7,7 +7,7 @@ import {vec2} from 'linearly'
 export type Rect = readonly [min: vec2, max: vec2]
 
 /**
- * Functions for manipulating rectes represented as {@link Rect}.
+ * Functions for manipulating rects represented as {@link Rect}.
  */
 export namespace Rect {
 	/**
@@ -163,10 +163,10 @@ export namespace Rect {
 	}
 
 	/**
-	 * Checks if the given rectes intersect.
+	 * Checks if the given rects intersect.
 	 * @param a The first rect
 	 * @param b The second rect
-	 * @returns True if the rectes intersect, false otherwise
+	 * @returns True if the rects intersect, false otherwise
 	 */
 	export function intersects(a: Rect, b: Rect): boolean {
 		const [amin, amax] = a
@@ -180,17 +180,17 @@ export namespace Rect {
 	}
 
 	/**
-	 * Unites the given rectes into a single rect.
-	 * @param bboxes The rectes to unite
+	 * Unites the given rects into a single rect.
+	 * @param rects The rects to unite
 	 * @returns The united rect
 	 */
-	export function unite(...bboxes: Rect[]): Rect {
+	export function unite(...rects: Rect[]): Rect {
 		let minX = Infinity,
 			minY = Infinity,
 			maxX = -Infinity,
 			maxY = -Infinity
 
-		for (const [min, max] of bboxes) {
+		for (const [min, max] of rects) {
 			minX = Math.min(minX, min[0])
 			minY = Math.min(minY, min[1])
 			maxX = Math.max(maxX, max[0])
@@ -204,17 +204,17 @@ export namespace Rect {
 	}
 
 	/**
-	 * Calculates the intersection of the given rectes.
-	 * @param bboxes The rectes to intersect
+	 * Calculates the intersection of the given rects.
+	 * @param rects The rects to intersect
 	 * @returns The intersected rect
 	 */
-	export function intersect(...bboxes: Rect[]): Rect {
+	export function intersect(...rects: Rect[]): Rect {
 		let minX = -Infinity,
 			minY = -Infinity,
 			maxX = Infinity,
 			maxY = Infinity
 
-		for (const [min, max] of bboxes) {
+		for (const [min, max] of rects) {
 			minX = Math.max(minX, min[0])
 			minY = Math.max(minY, min[1])
 			maxX = Math.min(maxX, max[0])

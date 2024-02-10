@@ -45,7 +45,7 @@ See the full documentation on [API](./api)
 
 - [Path](./api/modules/Path): The core module for manipulating paths.
 - [Bezier](./api/modules/Bezier): The cubic bezier functions which wraps Bezier.js.
-- [Rect](./api/modules/Rect): The functions for handling rectes.
+- [Rect](./api/modules/Rect): The functions for handling rects.
 - [Circle](./api/modules/Circle): The functions for handling circles.
 - [Type Aliases](./api#type-aliases)
 

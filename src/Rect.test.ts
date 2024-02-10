@@ -3,7 +3,7 @@ import '../jest.setup'
 import {Rect} from './Rect'
 
 describe('unite', () => {
-	it('should unite multiple rectes correctly', () => {
+	it('should unite multiple rects correctly', () => {
 		const bbox1: Rect = [
 			[0, 0],
 			[2, 2],
