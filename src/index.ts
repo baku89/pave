@@ -1,4 +1,5 @@
 export {Bezier} from './Bezier'
+export * from './Circle'
 export * from './Command'
 export * from './Path'
 export * from './Rect'
