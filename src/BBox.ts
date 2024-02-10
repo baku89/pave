@@ -67,6 +67,42 @@ export namespace BBox {
 	}
 
 	/**
+	 * Returns the left coordinate of the given bounding box.
+	 * @param bbox The bounding box to get the left of
+	 * @returns The left coordinate of the bounding box
+	 */
+	export function left(bbox: BBox): number {
+		return bbox[0][0]
+	}
+
+	/**
+	 * Returns the top coordinate of the given bounding box.
+	 * @param bbox The bounding box to get the top of
+	 * @returns The top coordinate of the bounding box
+	 */
+	export function top(bbox: BBox): number {
+		return bbox[0][1]
+	}
+
+	/**
+	 * Returns the right coordinate of the given bounding box.
+	 * @param bbox The bounding box to get the right of
+	 * @returns The right coordinate of the bounding box
+	 */
+	export function right(bbox: BBox): number {
+		return bbox[1][0]
+	}
+
+	/**
+	 * Returns the bottom coordinate of the given bounding box.
+	 * @param bbox The bounding box to get the bottom of
+	 * @returns The bottom coordinate of the bounding box
+	 */
+	export function bottom(bbox: BBox): number {
+		return bbox[1][1]
+	}
+
+	/**
 	 * Scales the given bounding box by the given ratio.
 	 * @param bbox The bounding box to scale
 	 * @param scale The ratio to scale the bounding box by
