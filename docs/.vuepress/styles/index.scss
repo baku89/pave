@@ -9,8 +9,8 @@
 	--c-border-dark: var(--c-border);
 	--code-bg-color: black;
 	--code-ln-color: white;
-	--font-family: 'Inter', sans-serif;
-	--font-family-code: 'Fira Code', monospace;
+	--font-family: 'Work Sans', sans-serif; //'Inter', sans-serif;
+	--font-family-code: 'IBM Plex Mono', monospace;
 
 	--gradient-data: rgba(245, 214, 142, 1) 0%, rgba(240, 165, 155, 1) 14%,
 		rgba(250, 100, 100, 1) 31%, rgba(190, 80, 172, 1) 45%,
@@ -34,81 +34,50 @@ html.dark {
 	--c-text-lightest: var(--c-brand);
 }
 
+a {
+	font-weight: inherit;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+	font-weight: 500;
+}
+
 // Navbar
 .navbar {
-	background: color-mix(in srgb, var(--c-bg) 30%, transparent);
-	backdrop-filter: blur(10px);
-	background-size: 100% 4px;
+	background-color: transparent;
 	background-repeat: repeat-x;
-	background-image: var(--gradient-bg);
-	border-bottom: 1px solid var(--c-border);
+	border-bottom: none;
 
 	.site-name {
-		font-size: 1.8rem;
+		font-size: 1.4rem;
+		font-weight: 400;
+		background: var(--c-bg);
+		width: min-content !important;
 	}
 
 	padding-top: calc(var(--navbar-padding-v) + 2px);
 }
 
-.navbar-item a {
-	font-size: 1.2rem;
-	font-family: Gestures, sans-serif;
+.navbar-item {
+	a {
+		background: var(--c-bg);
+		font-size: 1rem;
+	}
 }
 
 .toggle-color-mode-button {
 	opacity: 1;
 }
 
-// Uses weird font
-h1,
-h2,
-h3,
-h4,
-h5,
-h6,
-.site-name {
-	font-family: Gestures, sans-serif;
-}
-
-.site-name,
-h1::first-letter,
-thead th::first-letter,
-.navbar-item a::first-letter {
-	font-family: Gestures, sans-serif;
-	font-feature-settings: 'salt';
-}
-
-.home .hero {
-	#main-title {
-		font-family: Gestures, sans-serif;
-		font-feature-settings: 'salt';
-		font-size: 5rem;
-		// Draws a outline of the text
-		-webkit-text-stroke: 1px var(--c-text);
-		-webkit-text-fill-color: transparent;
-	}
-
-	.description {
-		font-family: Gestures, sans-serif;
-
-		&::first-letter {
-			font-feature-settings: 'salt';
-		}
-	}
-}
-
 .custom-container {
 	border: none !important;
 	padding-left: 2rem !important;
 	border-radius: var(--border-radius);
-
-	.custom-container-title {
-		font-family: Gestures, sans-serif;
-
-		&::first-letter {
-			font-feature-settings: 'salt';
-		}
-	}
 
 	// Make the border gradient
 	background-image: linear-gradient(
@@ -131,7 +100,6 @@ thead th::first-letter,
 
 // Code Blocks
 div[class*='language-']::before {
-	font-family: 'Gestures', sans-serif;
 	font-size: 1rem;
 	font-feature-settings: 'salt';
 }
@@ -155,15 +123,19 @@ main {
 
 // Sidebar
 .sidebar {
-	// Change the color of scrollbar
-	&::-webkit-scrollbar-track {
-		background: transparent;
+	border-right: none;
+
+	.navbar-items {
+		border: none;
 	}
 
-	&::-webkit-scrollbar-thumb {
-		background: var(--c-border);
-		border-radius: 99px 0 0 99px;
+	.navbar-items a {
+		font-weight: 500;
 	}
+}
+
+.sidebar-item.sidebar-heading {
+	font-weight: 500;
 }
 
 // Code
@@ -172,11 +144,31 @@ code {
 }
 
 p strong code {
-	font-family: 'Gestures', sans-serif;
 	font-size: 1.15rem;
 	background: none;
 	color: var(--c-text);
 	padding: 0;
+}
+
+// Home
+.home {
+	.hero {
+		text-align: left;
+
+		h1 {
+			font-weight: 400;
+			font-size: 4rem;
+		}
+
+		.description {
+			max-width: unset;
+			margin-bottom: 2.5rem;
+		}
+	}
+
+	.badges {
+		margin-bottom: 2rem;
+	}
 }
 
 // Table

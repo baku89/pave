@@ -18,7 +18,7 @@ module.exports = defineUserConfig({
 			'link',
 			{
 				rel: 'stylesheet',
-				href: 'https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Inter:wght@400;600&display=swap',
+				href: 'https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500&family=Work+Sans:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500;1,600&display=swap',
 			},
 		],
 	],

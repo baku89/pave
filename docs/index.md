@@ -3,7 +3,7 @@ home: true
 tagline: A library for manipulating SVG/Path2D curves.
 ---
 
-<div align="center">
+<div class="badges">
 	<p>
 		<a href="https://www.npmjs.org/package/pave">
 			<img src="https://img.shields.io/npm/v/pave.svg?style=flat-square" alt="npm version">

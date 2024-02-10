@@ -58,7 +58,7 @@ const options = {
 	language: 'javascript',
 	'bracketPairColorization.enabled': false,
 	fontLigatures: true,
-	fontFamily: 'Fira Code',
+	fontFamily: 'IBM Plex Mono',
 	folding: false,
 	lineNumbers: 'off',
 	lineDecorationsWidth: 0,
