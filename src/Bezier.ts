@@ -54,7 +54,7 @@ export namespace Bezier {
 	})
 
 	/**
-	 * Calculates the bounding box of this Bezier curve.
+	 * Calculates the rect of this Bezier curve.
 	 */
 	export const bounds = memoizeBezierFunction(
 		(bezier: Bezier): [vec2, vec2] => {

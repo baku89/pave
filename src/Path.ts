@@ -2,8 +2,8 @@ import {mat2d, scalar, vec2} from 'linearly'
 import paper from 'paper'
 import {OffsetOptions as PaperOffsetOptions, PaperOffset} from 'paperjs-offset'
 
-import {BBox} from './BBox'
 import {Command, CommandA, ShortCommand} from './Command'
+import {Rect} from './Rect'
 import {Segment} from './Segment'
 import {memoize, toFixedSimple} from './utils'
 
@@ -285,12 +285,12 @@ export namespace Path {
 	})
 
 	/**
-	 * Calculates the bounding box of the given path.
+	 * Calculates the rect of the given path.
 	 * @param path The path to calculate
-	 * @returns The bounding box of the path
+	 * @returns The rect of the path
 	 * @category Properties
 	 */
-	export const bounds = memoize((path: Path): BBox => {
+	export const bounds = memoize((path: Path): Rect => {
 		const bounds = toPaperPath(path).bounds
 		return [toVec2(bounds.topLeft), toVec2(bounds.bottomRight)]
 	})
