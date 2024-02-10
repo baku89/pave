@@ -1,7 +1,7 @@
 import {vec2} from 'linearly'
 
 /**
- * A bounding box represented as a tuple of two diagonal points.
+ * A bounding box represented as a tuple of two diagonal points. The first point always must be always the minimum coordinates and the second point must be the maximum coordinates.
  * @category Type Aliases
  */
 export type BBox = readonly [min: vec2, max: vec2]
