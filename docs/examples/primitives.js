@@ -14,10 +14,17 @@
  */
 
 // The path data is an array of commands and arguments.
-const path = [
-	['M', [10, 50]],
-	['C', [34, 100], [75, 0], [90, 50]],
-]
+const path = {
+	curves: [
+		{
+			vertices: [
+				{point: [10, 50], command: ['L']},
+				{point: [90, 50], command: ['C', [34, 100], [75, 0]]},
+			],
+			closed: false,
+		},
+	],
+}
 stroke(path, 'plum')
 
 // You can create a path by primitive functions.
@@ -30,5 +37,5 @@ stroke(r, 'PowderBlue')
 const t = Path.regularPolygon([50, 50], 30, 5)
 stroke(t, 'MediumSlateBlue')
 
-const o = Path.offset(t, 10, {join: 'round'})
+const o = Path.offset(t, 10, {lineJoin: 'round'})
 stroke(o, 'gold')

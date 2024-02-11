@@ -2,7 +2,6 @@ import {mat2d, scalar, vec2} from 'linearly'
 import paper from 'paper'
 import {OffsetOptions as PaperOffsetOptions, PaperOffset} from 'paperjs-offset'
 
-import {Command, CommandA, ShortCommand} from './Command'
 import {Rect} from './Rect'
 import {Segment} from './Segment'
 import {memoize, toFixedSimple} from './utils'
@@ -10,16 +9,94 @@ import {memoize, toFixedSimple} from './utils'
 paper.setup(document.createElement('canvas'))
 
 /**
- * A path represented as an array of commands. All of the points are represented as tuple of vector `[x: number, y: number]` and represented in absolute coordinates.
+ * Line-to command.
  * @category Type Aliases
+ * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Paths#line_commands
  */
-export type Path = readonly Command[]
+export type CommandL = readonly [code: 'L']
 
 /**
- * A path commands which also include short-hands. This can be converted to {@link Path} by {@link Path.unshort}.
+ * Cubic Bézier curve command.
+ * @category Type Aliases
+ * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Paths#curve_commands
+ */
+export type CommandC = readonly [code: 'C', control1: vec2, control2: vec2]
+
+/**
+ * Arc command
+ * @category Type Aliases
+ * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Paths#arcs
+ */
+export type CommandA = readonly [
+	code: 'A',
+	/**
+	 * The radii of the ellipse used to draw the arc.
+	 */
+	radii: vec2,
+	/**
+	 * The rotation angle of the ellipse's x-axis relative to the x-axis of the current coordinate system, expressed in degrees.
+	 */
+	xAxisRotation: number,
+	/**
+	 * If true, then draw the arc spanning greather than 180 degrees. Otherwise, draw the arc spanning less than 180 degrees.
+	 */
+	largeArcFlag: boolean,
+	/**
+	 * If true, then draw the arc in a "positive-angle" direction in the current coordinate system. Otherwise, draw it in a "negative-angle" direction.
+	 */
+	sweepFlag: boolean,
+]
+
+/**
+ * A command of a path, which only supports line-to, cubic Bézier curve, and arc commands.
+ *  */
+export type Command = CommandL | CommandC | CommandA
+
+/**
+ * A vertex of a path. It consists of a end point and a command.
+ */
+export type Vertex = {point: vec2; command: Command}
+
+/**
+ * A single opened or closed path represented as an array of . All of the points are represented as tuple of vector `[x: number, y: number]` and the commands are represented in absolute form.
  * @category Type Aliases
  */
-export type PathWithShortCommand = readonly (Command | ShortCommand)[]
+export interface Curve {
+	vertices: Vertex[]
+	closed: boolean
+}
+
+/**
+ * A path that consists of multiple curves.
+ */
+export interface Path {
+	curves: Curve[]
+}
+
+type SVGCommand =
+	| 'M'
+	| 'L'
+	| 'H'
+	| 'V'
+	| 'Q'
+	| 'T'
+	| 'C'
+	| 'S'
+	| 'A'
+	| 'Z'
+	| 'm'
+	| 'l'
+	| 'h'
+	| 'v'
+	| 'q'
+	| 't'
+	| 'c'
+	| 's'
+	| 'a'
+	| 'z'
+	| vec2
+	| boolean
+	| number
 
 /**
  * Functions for manipulating paths represented as {@link Path}.
@@ -38,13 +115,19 @@ export namespace Path {
 	 * ```
 	 */
 	export function rectangle(start: vec2, end: vec2): Path {
-		return [
-			['M', start],
-			['L', [end[0], start[1]]],
-			['L', end],
-			['L', [start[0], end[1]]],
-			['Z'],
-		]
+		return {
+			curves: [
+				{
+					vertices: [
+						{point: start, command: ['L']},
+						{point: [end[0], start[1]], command: ['L']},
+						{point: end, command: ['L']},
+						{point: [start[0], end[1]], command: ['L']},
+					],
+					closed: true,
+				},
+			],
+		}
 	}
 
 	/**
@@ -82,12 +165,20 @@ export namespace Path {
 	 * ```
 	 */
 	export function ellipse(center: vec2, radius: vec2): Path {
-		return [
-			['M', [center[0] + radius[0], center[1]]],
-			['A', radius, 0, false, true, [center[0] - radius[0], center[1]]],
-			['A', radius, 0, false, true, [center[0] + radius[0], center[1]]],
-			['Z'],
-		]
+		const [cx, cy] = center
+		const [rx] = radius
+
+		return {
+			curves: [
+				{
+					vertices: [
+						{point: [cx + rx, cy], command: ['A', radius, 0, false, true]},
+						{point: [cx - rx, cy], command: ['A', radius, 0, false, true]},
+					],
+					closed: true,
+				},
+			],
+		}
 	}
 
 	/**
@@ -110,30 +201,32 @@ export namespace Path {
 		startAngle: number,
 		endAngle: number
 	): Path {
-		if (radius === 0) {
-			return [['M', center]]
-		}
-
 		const start = vec2.add(center, vec2.direction(startAngle, radius))
-
-		if (scalar.equals(startAngle, endAngle)) {
-			return [['M', start]]
-		}
 
 		const radii: vec2 = [radius, radius]
 		const sweepFlag = endAngle > startAngle
 
-		const commands: CommandA[] = []
+		const points: Vertex[] = [{point: start, command: ['L']}]
 
 		while (Math.abs(endAngle - startAngle) > Math.PI) {
 			startAngle += Math.PI * (sweepFlag ? 1 : -1)
 			const through = vec2.add(center, vec2.direction(startAngle, radius))
-			commands.push(['A', radii, 0, false, sweepFlag, through])
+
+			points.push({point: through, command: ['A', radii, 0, false, sweepFlag]})
 		}
 
 		const end = vec2.add(center, vec2.direction(endAngle, radius))
 
-		return [['M', start], ...commands, ['A', radii, 0, false, sweepFlag, end]]
+		points.push({point: end, command: ['A', radii, 0, false, sweepFlag]})
+
+		return {
+			curves: [
+				{
+					vertices: points,
+					closed: false,
+				},
+			],
+		}
 	}
 
 	/**
@@ -161,12 +254,7 @@ export namespace Path {
 		const outerRim = arc(center, outerRadius, startAngle, endAngle)
 		const innerRim = arc(center, innerRadius, endAngle, startAngle)
 
-		const innerRimL = [
-			['L', ...innerRim[0].slice(1)],
-			...innerRim.slice(1),
-		] as Path
-
-		return [...outerRim, ...innerRimL, ['Z']]
+		return closePath(join([outerRim, innerRim]))
 	}
 
 	/**
@@ -182,10 +270,17 @@ export namespace Path {
 	 * ```
 	 */
 	export function line(start: vec2, end: vec2): Path {
-		return [
-			['M', start],
-			['L', end],
-		]
+		return {
+			curves: [
+				{
+					vertices: [
+						{point: start, command: ['L']},
+						{point: end, command: ['L']},
+					],
+					closed: false,
+				},
+			],
+		}
 	}
 
 	/**
@@ -200,7 +295,14 @@ export namespace Path {
 	 * ```
 	 */
 	export function dot(point: vec2): Path {
-		return [['M', point], ['Z']]
+		return {
+			curves: [
+				{
+					vertices: [{point, command: ['L']}],
+					closed: true,
+				},
+			],
+		}
 	}
 
 	/**
@@ -215,11 +317,14 @@ export namespace Path {
 	 * ```
 	 */
 	export function polyline(...points: vec2[]): Path {
-		if (points.length === 0) return []
-
-		const [first, ...rest] = points
-
-		return [['M', first], ...rest.map(p => ['L', p] as const)]
+		return {
+			curves: [
+				{
+					vertices: points.map(point => ({point, command: ['L']})),
+					closed: false,
+				},
+			],
+		}
 	}
 
 	/**
@@ -234,9 +339,14 @@ export namespace Path {
 	 * ```
 	 */
 	export function polygon(...points: vec2[]): Path {
-		if (points.length === 0) return []
-
-		return closePath(polyline(...points))
+		return {
+			curves: [
+				{
+					vertices: points.map(point => ({point, command: ['L']})),
+					closed: true,
+				},
+			],
+		}
 	}
 
 	/**
@@ -292,7 +402,10 @@ export namespace Path {
 	 */
 	export const bounds = memoize((path: Path): Rect => {
 		const bounds = toPaperPath(path).bounds
-		return [toVec2(bounds.topLeft), toVec2(bounds.bottomRight)]
+		return [
+			paperPointToVec2(bounds.topLeft),
+			paperPointToVec2(bounds.bottomRight),
+		]
 	})
 
 	/**
@@ -306,41 +419,16 @@ export namespace Path {
 	})
 
 	/**
-	 * Returns if the given path is closed.
-	 * @param path The path to check
-	 * @returns True if the path is closed
-	 * @category Properties
-	 */
-	export const closed = (path: Path) => {
-		return path.at(-1)?.[0] === 'Z'
-	}
-
-	/**
-	 * Calculates the point on the path at the offset. If the path consists of multiple subpaths and the offset concides exactly with the endpoints of two subpaths, the start point of the later subpath will be returned.
+	 * Calculates the point on the path at the offset. If the path consists of multiple curves and the offset concides exactly with the endpoints of two curves, the start point of the later curve will be returned.
 	 * @param path The path to calculate
 	 * @param offset The offset on the path, where `0` is at the beginning of the path and `Path.length(path)` at the end. It will be clamped when it's out of range.
 	 * @returns The point at the given offset
 	 * @category Properties
 	 */
 	export function pointAtOffset(path: Path, offset: number): vec2 {
-		const paperPath = toPaperPath(path)
-
-		offset = scalar.clamp(offset, 0, paperPath.length)
-
-		const subpaths =
-			paperPath instanceof paper.Path
-				? [paperPath]
-				: (paperPath.children as paper.Path[])
-
-		for (let i = 0; i < subpaths.length; i++) {
-			const subpath = subpaths[i]
-			if (offset < subpath.length || i === subpaths.length - 1) {
-				return toVec2(subpath.getPointAt(offset))
-			}
-			offset -= subpath.length
-		}
-
-		throw new Error('Cannot find a point at the given offset')
+		return paperAttributeAtOffset(path, offset, (pp, o) =>
+			paperPointToVec2(pp.getPointAt(o))
+		)
 	}
 
 	/**
@@ -357,31 +445,16 @@ export namespace Path {
 	}
 
 	/**
-	 * Calculates the normalized tangent vector of the path at the given offset.
+	 * Calculates the normalized tangent vector of the path at the given offset. If the path consists of multiple curves and the offset concides exactly with the endpoints of two curves, the tangent at start point of the later curve will be returned.
 	 * @param path The path to calcuate
 	 * @param offset The offset on the path, where `0` is at the beginning of the path and `Path.length(path)` at the end. It will be clamped when it's out of range.
 	 * @returns The normalized tangent vector at the given offset
 	 * @category Properties
 	 */
 	export function tangentAtOffset(path: Path, offset: number): vec2 {
-		const paperPath = toPaperPath(path)
-
-		offset = scalar.clamp(offset, 0, paperPath.length)
-
-		const subpaths =
-			paperPath instanceof paper.Path
-				? [paperPath]
-				: (paperPath.children as paper.Path[])
-
-		for (let i = 0; i < subpaths.length; i++) {
-			const subpath = subpaths[i]
-			if (offset < subpath.length || i === subpaths.length - 1) {
-				return toVec2(subpath.getTangentAt(offset))
-			}
-			offset -= subpath.length
-		}
-
-		throw new Error('Cannot find a point at the given offset')
+		return paperAttributeAtOffset(path, offset, (pp, o) =>
+			paperPointToVec2(pp.getTangentAt(o))
+		)
 	}
 
 	/**
@@ -398,7 +471,7 @@ export namespace Path {
 	}
 
 	/**
-	 * Calculates the normal vector (the perpendicular vector) of the path at the given offset.
+	 * Calculates the normal vector (the perpendicular vector) of the path at the given offset. If the path consists of multiple curves and the offset concides exactly with the endpoints of two curves, the normal at start point of the later curve will be returned.
 	 * @param path The path to calcuate
 	 * @param offset The offset on the path, where `0` is at the beginning of the path and `Path.length(path)` at the end. It will be clamped when it's out of range.
 	 * @returns The normal vector at the given offset
@@ -423,7 +496,7 @@ export namespace Path {
 	}
 
 	/**
-	 * Calculates the curvature of the path at the given offset. Curvatures indicate how sharply a path changes direction. A straight line has zero curvature, where as a circle has a constant curvature. The path’s radius at the given offset is the reciprocal value of its curvature.
+	 * Calculates the curvature of the path at the given offset. Curvatures indicate how sharply a path changes direction. A straight line has zero curvature, where as a circle has a constant curvature. The path’s radius at the given offset is the reciprocal value of its curvature.  f the path consists of multiple curves and the offset concides exactly with the endpoints of two curves, the curvature at start point of the later curve will be returned.
 	 * @see http://paperjs.org/reference/path/#getcurvatureat-offset
 	 * @param path The path to calcuate
 	 * @param offset The offset on the path, where `0` is at the beginning of the path and `Path.length(path)` at the end. It will be clamped when it's out of range.
@@ -431,24 +504,7 @@ export namespace Path {
 	 * @category Properties
 	 */
 	export function curvatureAtOffset(path: Path, offset: number): number {
-		const paperPath = toPaperPath(path)
-
-		offset = scalar.clamp(offset, 0, paperPath.length)
-
-		const subpaths =
-			paperPath instanceof paper.Path
-				? [paperPath]
-				: (paperPath.children as paper.Path[])
-
-		for (let i = 0; i < subpaths.length; i++) {
-			const subpath = subpaths[i]
-			if (offset < subpath.length || i === subpaths.length - 1) {
-				return subpath.getCurvatureAt(offset)
-			}
-			offset -= subpath.length
-		}
-
-		throw new Error('Cannot find a point at the given offset')
+		return paperAttributeAtOffset(path, offset, (pp, o) => pp.getCurvatureAt(o))
 	}
 
 	/**
@@ -500,24 +556,39 @@ export namespace Path {
 	 * @category Modifiers
 	 */
 	export function transform(path: Path, matrix: mat2d): Path {
-		return path.map(seg => {
-			switch (seg[0]) {
-				case 'M':
-				case 'L':
-				case 'Q':
-				case 'C':
-					return [
-						seg[0],
-						...(seg.slice(1) as vec2[]).map(p =>
-							vec2.transformMat2d(p, matrix)
-						),
-					]
-				case 'A':
-					throw new Error('Not implemented')
-				case 'Z':
-					return ['Z']
+		return {
+			curves: path.curves.map(p => transformCurve(p, matrix)),
+		}
+
+		function transformCurve(curve: Curve, matrix: mat2d): Curve {
+			const vertices = curve.vertices.map(({point, command}) => {
+				const p = vec2.transformMat2d(point, matrix)
+
+				let c: Command
+
+				switch (command[0]) {
+					case 'L':
+						c = command
+						break
+					case 'C':
+						c = [
+							'C',
+							vec2.transformMat2d(command[1], matrix),
+							vec2.transformMat2d(command[2], matrix),
+						]
+						break
+					case 'A':
+						throw new Error('Not implemented')
+				}
+
+				return {point: p, command: c}
+			})
+
+			return {
+				vertices,
+				closed: curve.closed,
 			}
-		}) as Path
+		}
 	}
 
 	export interface OffsetOptions {
@@ -606,28 +677,20 @@ export namespace Path {
 	}
 
 	/**
-	 * Joins the given paths into a single paths. If the last point of the previous path is approximately equal to point of the M command at the beginning of the next path, then the M command is omitted.
+	 * Joins the given paths into a single paths. The paths will be forcebly joined into a single opened path.
 	 * @param paths The paths to join
 	 * @returns The joined path
 	 * @category Modifiers
 	 */
-	export function join(...paths: Path[]): Path {
-		return paths.reduce((acc, path) => {
-			// Check if the last point of the previous path is approximately equal to
-			// the first point of the next path.
-			if (acc.length > 0 && path.length > 0) {
-				const lastSeg = acc.at(-1)!
-				const firstSeg = path[0]
-				if (lastSeg[0] !== 'Z' && firstSeg[0] === 'M') {
-					const lastPoint = lastSeg.at(-1) as vec2
-					if (vec2.equals(lastPoint, firstSeg[1])) {
-						return [...acc, ...path.slice(1)]
-					}
-				}
-			}
-
-			return [...acc, ...path]
-		}, [])
+	export function join(paths: Path[]): Path {
+		return {
+			curves: [
+				{
+					vertices: paths.flatMap(path => path.curves.flatMap(p => p.vertices)),
+					closed: false,
+				},
+			],
+		}
 	}
 
 	/**
@@ -653,12 +716,12 @@ export namespace Path {
 	}
 
 	/**
-	 * Unites the given paths
+	 * Unites the given paths.
 	 * @param paths The paths to unite
 	 * @returns The resulting path
 	 * @category Boolean Operations
 	 */
-	export function unite(...paths: Path[]): Path {
+	export function unite(paths: Path[]): Path {
 		const paperPath = paths
 			.map(toPaperPath)
 			.reduce(
@@ -670,122 +733,337 @@ export namespace Path {
 	}
 
 	/**
-	 * Subtracts the given paths
-	 * @param paths The paths to subtract. The first path is substracted by the following paths.
+	 * Subtracts the tools from the subject.
+	 * @param subject The target path to be subtracted
+	 * @param tools The paths to subtract
 	 * @returns The resulting path
 	 * @category Boolean Operations
 	 */
-	export function subtract(...paths: Path[]): Path {
-		if (paths.length === 0) {
-			return []
-		} else if (paths.length === 1) {
-			return paths[0]
-		}
+	export function subtract(subject: Path, tools: Path[]): Path {
+		// const [subject, ...tools] = paths.map(toPaperPath)
 
-		const [subject, ...tools] = paths.map(toPaperPath)
+		const paperSubject = toPaperPath(subject)
+		const paperTools = tools.map(toPaperPath)
 
-		const paperPath = tools.reduce(
+		const paperPath = paperTools.reduce(
 			(merged, p) => merged.subtract(p, {insert: false}) as paper.CompoundPath,
-			subject
+			paperSubject
 		)
 
 		return fromPaperPath(paperPath)
 	}
 
 	/**
-	 * Converts the shorthand commands ({@link ShortCommand}) to the corresponding full commands.
-	 * @param path The path to unshort
-	 * @returns The unshorted path
-	 * @category Converters
-	 */
-	export function unshort(path: PathWithShortCommand): Path {
-		let prev: vec2 | undefined
-		let prevControl: vec2 | undefined
-
-		const unshortPath: Command[] = []
-
-		for (const seg of path) {
-			switch (seg[0]) {
-				// Short commands
-				case 'H':
-					unshortPath.push(['L', [seg[1], prev![1]]])
-					prev = [seg[1], prev![1]]
-					break
-				case 'V':
-					unshortPath.push(['L', [prev![0], seg[1]]])
-					prev = [prev![0], seg[1]]
-					break
-				case 'S': {
-					const control1 = vec2.lerp(prev!, prevControl!, -1)
-					const [, control2, end] = seg
-					unshortPath.push(['C', control1, control2, end])
-					prev = end
-					prevControl = control2
-					break
-				}
-				case 'T': {
-					const control = vec2.lerp(prev!, prevControl!, -1)
-					const [, end] = seg
-					unshortPath.push(['Q', control, end])
-					prev = end
-					prevControl = control
-					break
-				}
-				// Non-short commands
-				case 'C': {
-					const [, , control2, end] = seg
-					unshortPath.push(seg)
-					prev = end
-					prevControl = control2
-					break
-				}
-				case 'Q': {
-					const [, control, end] = seg
-					unshortPath.push(seg)
-					prev = end
-					prevControl = control
-					break
-				}
-				case 'M':
-				case 'L':
-					unshortPath.push(seg)
-					prev = seg[1]
-					break
-				case 'Z':
-					unshortPath.push(seg)
-					prev = undefined
-					break
-			}
-		}
-
-		return unshortPath
-	}
-
-	/**
 	 * Converts the given path to a string that can be used as the d attribute of an SVG path element.
 	 * @param path The path to convert
-	 * @param fractionDigits The number of digits to appear after the decimal point
 	 * @returns The string for the d attribute of the SVG path element
 	 * @category Converters
 	 */
-	export function toSVG(path: Path, fractionDigits = 2): string {
-		return path
-			.map(([command, ...ps]) => {
-				const strs = ps.map(p => {
-					if (typeof p === 'number') {
-						return toFixedSimple(p, fractionDigits)
-					} else if (typeof p === 'boolean') {
-						return p ? '1' : '0'
-					} else {
-						const x = toFixedSimple(p[0], fractionDigits)
-						const y = toFixedSimple(p[1], fractionDigits)
-						return `${x},${y}`
+	export function toSVGString(path: Path): string {
+		return path.curves
+			.flatMap(curve => {
+				const strs = curve.vertices.map(({point, command}, i) => {
+					if (i === 0) {
+						return `M ${vec2ToString(point)}`
+					} else if (command[0] === 'L') {
+						return `L ${vec2ToString(point)}`
+					} else if (command[0] === 'C') {
+						return commandCToString(point, command)
+					} else if (command[0] === 'A') {
+						return commandAToString(point, command)
 					}
 				})
 
-				return [command, ...strs].join(' ')
+				if (curve.closed) {
+					const firstVertex = curve.vertices.at(0)
+
+					if (firstVertex && firstVertex.command[0] !== 'L') {
+						if (firstVertex.command[0] === 'C') {
+							strs.push(
+								commandCToString(firstVertex.point, firstVertex.command)
+							)
+						} else if (firstVertex.command[0] === 'A') {
+							strs.push(
+								commandAToString(firstVertex.point, firstVertex.command)
+							)
+						}
+					}
+
+					strs.push('Z')
+				}
+
+				return strs
 			})
 			.join(' ')
+
+		function vec2ToString(v: vec2): string {
+			return `${v[0]},${v[1]}`
+		}
+
+		function commandCToString(point: vec2, command: CommandC) {
+			const c1 = vec2ToString(command[1])
+			const c2 = vec2ToString(command[2])
+			const p = vec2ToString(point)
+			return `C ${c1} ${c2} ${p}`
+		}
+
+		function commandAToString(point: vec2, command: CommandA) {
+			const radii = vec2ToString(command[1])
+			const xAxisRotation = toFixedSimple(command[2])
+			const largeArc = command[3] ? '1' : '0'
+			const sweep = command[4] ? '1' : '0'
+			const p = vec2ToString(point)
+			return `A ${radii} ${xAxisRotation} ${largeArc} ${sweep} ${p}`
+		}
+	}
+
+	/**
+	 * Converts an array of SVG commands to a {@link Path}.
+	 * @param commands The array of SVG commands
+	 * @returns The newly created path
+	 */
+	export function fromSVG(commands: SVGCommand[]): Path {
+		const paths: Curve[] = []
+
+		let firstPoint: vec2 | undefined
+		let prevPoint: vec2 | undefined
+		let prevControl: vec2 | undefined
+
+		let currentPath: Curve | undefined
+
+		for (let i = 0; i < commands.length; i++) {
+			let code = commands[i]
+
+			if (typeof code !== 'string') {
+				throw new Error('Invalid command')
+			}
+
+			const isRelative = code.toLowerCase() === code
+			code = code.toUpperCase() as SVGCommand
+
+			if (code === 'M') {
+				if (currentPath) {
+					paths.push(currentPath)
+				}
+
+				let point = commands[++i]
+
+				if (!isVec2(point)) {
+					throw new Error('Invalid command M')
+				}
+
+				if (isRelative) {
+					if (!prevPoint) {
+						throw new Error('Relative command is used without a previous point')
+					}
+					point = vec2.add(prevPoint, point)
+				}
+
+				currentPath = {vertices: [{point, command: ['L']}], closed: false}
+				firstPoint = prevPoint = point
+				continue
+			}
+
+			if (!currentPath) {
+				throw new Error('The path is not started')
+			}
+
+			if (code === 'L') {
+				let point = commands[++i]
+
+				if (!isVec2(point)) {
+					throw new Error('Invalid command L')
+				}
+
+				if (isRelative) {
+					if (!prevPoint) {
+						throw new Error('Relative command is used without a previous point')
+					}
+					point = vec2.add(prevPoint, point)
+				}
+
+				currentPath.vertices.push({point, command: ['L']})
+
+				prevPoint = point
+				prevControl = undefined
+			} else if (code === 'H') {
+				const x = commands[++i]
+
+				if (typeof x !== 'number' || !prevPoint) {
+					throw new Error('Invalid command H')
+				}
+
+				let point: vec2 = [x, prevPoint[1]]
+
+				if (isRelative) {
+					if (!prevPoint) {
+						throw new Error('Relative command is used without a previous point')
+					}
+					point = [point[0] + prevPoint[0], point[1]]
+				}
+
+				currentPath.vertices.push({point, command: ['L']})
+
+				prevPoint = point
+				prevControl = undefined
+			} else if (code === 'V') {
+				const y = commands[++i]
+
+				if (typeof y !== 'number' || !prevPoint) {
+					throw new Error('Invalid command V')
+				}
+
+				let point: vec2 = [prevPoint[0], y]
+
+				if (isRelative) {
+					if (!prevPoint) {
+						throw new Error('Relative command is used without a previous point')
+					}
+					point = [point[0], point[1] + prevPoint[1]]
+				}
+
+				currentPath.vertices.push({point, command: ['L']})
+
+				prevPoint = point
+				prevControl = undefined
+			} else if (code === 'Q') {
+				let control = commands[++i]
+				let point = commands[++i]
+
+				if (!isVec2(control) || !isVec2(point) || !prevPoint) {
+					throw new Error('Invalid command Q')
+				}
+
+				if (isRelative) {
+					if (!prevPoint) {
+						throw new Error('Relative command is used without a previous point')
+					}
+					control = vec2.add(prevPoint, control)
+					point = vec2.add(prevPoint, point)
+				}
+
+				const c1 = vec2.lerp(prevPoint, control, 2 / 3)
+				const c2 = vec2.lerp(point, control, 2 / 3)
+
+				currentPath.vertices.push({point, command: ['C', c1, c2]})
+
+				prevPoint = point
+				prevControl = undefined
+			} else if (code === 'T') {
+				let point = commands[++i]
+
+				if (!isVec2(point) || !prevPoint || !prevControl) {
+					throw new Error('Invalid command T')
+				}
+
+				if (isRelative) {
+					if (!prevPoint) {
+						throw new Error('Relative command is used without a previous point')
+					}
+					point = vec2.add(prevPoint, point)
+				}
+
+				const control = vec2.sub(prevPoint, prevControl)
+				const c1 = vec2.lerp(prevPoint, control, 2 / 3)
+				const c2 = vec2.lerp(point, control, 2 / 3)
+
+				currentPath.vertices.push({point, command: ['C', c1, c2]})
+
+				prevPoint = point
+				prevControl = control
+			} else if (code === 'C') {
+				let control1 = commands[++i]
+				let control2 = commands[++i]
+				let point = commands[++i]
+
+				if (!isVec2(control1) || !isVec2(control2) || !isVec2(point)) {
+					throw new Error('Invalid command C')
+				}
+
+				if (isRelative) {
+					if (!prevPoint) {
+						throw new Error('Relative command is used without a previous point')
+					}
+					control1 = vec2.add(prevPoint, control1)
+					control2 = vec2.add(prevPoint, control2)
+					point = vec2.add(prevPoint, point)
+				}
+
+				currentPath.vertices.push({point, command: ['C', control1, control2]})
+
+				prevPoint = point
+				prevControl = control2
+			} else if (code === 'S') {
+				let control2 = commands[++i]
+				let point = commands[++i]
+
+				if (!isVec2(control2) || !isVec2(point) || !prevPoint || !prevControl) {
+					throw new Error('Invalid command S')
+				}
+
+				if (isRelative) {
+					if (!prevPoint) {
+						throw new Error('Relative command is used without a previous point')
+					}
+					control2 = vec2.add(prevPoint, control2)
+					point = vec2.add(prevPoint, point)
+				}
+
+				const control1 = vec2.sub(prevPoint, prevControl)
+				currentPath.vertices.push({point, command: ['C', control1, control2]})
+
+				prevPoint = point
+				prevControl = control2
+			} else if (code === 'A') {
+				const radii = commands[++i]
+				const xAxisRotation = commands[++i]
+				const largeArc = commands[++i]
+				const sweep = commands[++i]
+				let point = commands[++i]
+
+				if (
+					!isVec2(radii) ||
+					typeof xAxisRotation !== 'number' ||
+					!isVec2(point)
+				) {
+					throw new Error('Invalid command A')
+				}
+
+				if (isRelative) {
+					if (!prevPoint) {
+						throw new Error('Relative command is used without a previous point')
+					}
+					point = vec2.add(prevPoint, point)
+				}
+
+				currentPath.vertices.push({
+					point,
+					command: ['A', radii, xAxisRotation, !!largeArc, !!sweep],
+				})
+
+				prevPoint = point
+				prevControl = undefined
+			} else if (code === 'Z') {
+				if (firstPoint && prevPoint && vec2.equals(firstPoint, prevPoint)) {
+					currentPath.vertices[0] = currentPath.vertices.at(-1)!
+					currentPath.vertices.pop()
+				}
+
+				currentPath.closed = true
+				paths.push(currentPath)
+				currentPath = undefined
+			}
+		}
+
+		if (currentPath) {
+			paths.push(currentPath)
+		}
+
+		return {curves: paths}
+
+		function isVec2(v: SVGCommand): v is vec2 {
+			return Array.isArray(v)
+		}
 	}
 
 	/**
@@ -797,47 +1075,63 @@ export namespace Path {
 	export const toPath2D = memoize((path: Path): Path2D => {
 		const path2d = new Path2D()
 
-		let prev: vec2 | undefined
-
-		for (const seg of path) {
-			switch (seg[0]) {
-				case 'M':
-					path2d.moveTo(...seg[1])
-					prev = seg[1]
-					break
-				case 'L':
-					path2d.lineTo(...seg[1])
-					prev = seg[1]
-					break
-				case 'C':
-					path2d.bezierCurveTo(...seg[1], ...seg[2], ...seg[3])
-					prev = seg[3]
-					break
-				case 'Q':
-					path2d.quadraticCurveTo(...seg[1], ...seg[2])
-					prev = seg[2]
-					break
-				case 'A': {
-					const ret = Segment.arcCommandToCenterParameterization([prev!, seg])
-
-					path2d.ellipse(
-						...ret.center,
-						...ret.radii,
-						ret.xAxisRotation,
-						...ret.angles,
-						ret.counterclockwise
-					)
-
-					prev = seg[5]
-					break
+		for (const {vertices, closed} of path.curves) {
+			vertices.forEach(({point, command}, i) => {
+				if (i === 0) {
+					path2d.moveTo(...point)
+					return
 				}
-				case 'Z':
-					path2d.closePath()
-					break
+
+				if (command[0] === 'L') {
+					path2d.lineTo(...point)
+				} else if (command[0] === 'C') {
+					path2d.bezierCurveTo(...command[1], ...command[2], ...point)
+				} else if (command[0] === 'A') {
+					const prev = vertices.at(i - 1)?.point
+
+					if (!prev) throw new Error('The previous point is not found')
+
+					arcTo(path2d, prev, point, command)
+				}
+			})
+
+			if (closed) {
+				const first = vertices.at(0)
+
+				if (first && first.command[0] !== 'L') {
+					const {point, command} = first
+					if (command[0] === 'C') {
+						path2d.bezierCurveTo(...command[1], ...command[2], ...point)
+					} else if (first.command[0] === 'A') {
+						const prev = vertices.at(-1)?.point
+
+						if (!prev) throw new Error('The previous point is not found')
+
+						arcTo(path2d, prev, point, command)
+					}
+				}
+
+				path2d.closePath()
 			}
 		}
 
 		return path2d
+
+		function arcTo(path2d: Path2D, start: vec2, end: vec2, command: CommandA) {
+			const ret = Segment.arcCommandToCenterParameterization({
+				start,
+				end,
+				command,
+			})
+
+			path2d.ellipse(
+				...ret.center,
+				...ret.radii,
+				ret.xAxisRotation,
+				...ret.angles,
+				ret.counterclockwise
+			)
+		}
 	})
 
 	/**
@@ -849,58 +1143,48 @@ export namespace Path {
 	 */
 	export const toPaperPath = memoize(
 		(path: Path): paper.Path | paper.CompoundPath => {
-			const paperPaths = [...iterateSubpath(path)].map(path => {
+			const paperPaths = path.curves.map(curve => {
 				const paperPath = new paper.Path()
 				let prev: vec2 | undefined
 
-				for (const seg of path) {
-					switch (seg[0]) {
-						case 'M':
-							paperPath.moveTo(toPoint(seg[1]))
-							prev = seg[1]
-							break
+				for (const {point, command} of curve.vertices) {
+					switch (command[0]) {
 						case 'L':
-							paperPath.lineTo(toPoint(seg[1]))
-							prev = seg[1]
+							paperPath.lineTo(toPoint(point))
 							break
 						case 'C':
 							paperPath.cubicCurveTo(
-								toPoint(seg[1]),
-								toPoint(seg[2]),
-								toPoint(seg[3])
+								toPoint(command[1]),
+								toPoint(command[2]),
+								toPoint(point)
 							)
-							prev = seg[3]
-							break
-						case 'Q':
-							paperPath.quadraticCurveTo(toPoint(seg[1]), toPoint(seg[2]))
-							prev = seg[2]
 							break
 						case 'A': {
-							const [, [rx, ry], xAxisRotation, , , end] = seg
+							const [, [rx, ry], xAxisRotation] = command
 
 							if (rx !== ry || xAxisRotation !== 0) {
 								throw new Error('Ellipse or tilted arc is not yet supported')
 							}
 
-							const ret = Segment.arcCommandToCenterParameterization([
-								prev!,
-								seg,
-							])
+							const ret = Segment.arcCommandToCenterParameterization({
+								start: prev!,
+								end: point,
+								command,
+							})
 
 							const midAngle = (ret.angles[0] + ret.angles[1]) / 2
-
 							const through = vec2.add(ret.center, vec2.direction(midAngle, rx))
 
-							paperPath.arcTo(toPoint(through), toPoint(end))
-
-							prev = end
-
+							paperPath.arcTo(toPoint(through), toPoint(point))
 							break
 						}
-						case 'Z':
-							paperPath.closePath()
-							break
 					}
+
+					prev = point
+				}
+
+				if (curve.closed) {
+					paperPath.closePath()
 				}
 
 				return paperPath
@@ -923,45 +1207,43 @@ export namespace Path {
 	 * @category Converters
 	 */
 	export const fromPaperPath = memoize((paperPath: paper.PathItem): Path => {
-		const subpaths =
+		const paperPaths =
 			paperPath instanceof paper.CompoundPath
 				? (paperPath.children as paper.Path[])
 				: ([paperPath] as paper.Path[])
 
-		const path: Command[] = []
-
-		for (const subpath of subpaths) {
-			let started = false
-
-			for (const curve of subpath.curves) {
-				if (!started) {
-					path.push(['M', toVec2(curve.point1)])
-					started = true
-				}
+		const paths = paperPaths.map(({curves, closed}) => {
+			const vertices: Vertex[] = curves.map(curve => {
+				const {point1, point2, handle1, handle2} = curve
 				if (curve.isStraight()) {
-					path.push(['L', toVec2(curve.point2)])
+					return {point: paperPointToVec2(point2), command: ['L']}
 				} else {
-					path.push([
-						'C',
-						toVec2(curve.point1.add(curve.handle1)),
-						toVec2(curve.point2.add(curve.handle2)),
-						toVec2(curve.point2),
-					])
+					return {
+						point: paperPointToVec2(point2),
+						command: [
+							'C',
+							paperPointToVec2(point1.add(handle1)),
+							paperPointToVec2(point2.add(handle2)),
+						],
+					}
 				}
+			})
+
+			if (closed) {
+				const lastVertex = vertices.at(-1)!
+				vertices.pop()
+				vertices.unshift(lastVertex)
+			} else {
+				vertices.unshift({
+					point: paperPointToVec2(curves[0].point1),
+					command: ['L'],
+				})
 			}
 
-			if (subpath.closed) {
-				// Delete the  redundant segment if it is a line segment
-				const lastSeg = path.at(-1)
-				if (lastSeg && lastSeg[0] === 'L') {
-					path.pop()
-				}
-				// Close the path
-				path.push(['Z'])
-			}
-		}
+			return {vertices, closed}
+		})
 
-		return path
+		return {curves: paths}
 	})
 
 	/**
@@ -972,7 +1254,52 @@ export namespace Path {
 	 * @category Draw Functions
 	 */
 	export function moveTo(path: Path, point: vec2): Path {
-		return [...path, ['M', point]]
+		return {
+			curves: [
+				...path.curves,
+				{
+					vertices: [{point, command: ['L']}],
+					closed: false,
+				},
+			],
+		}
+	}
+
+	/**
+	 * Appends the given command to the end of the path.
+	 * @param path The base path
+	 * @param point The newly added point
+	 * @param command The command to append
+	 * @returns The newely created path
+	 * @category Draw Functions
+	 */
+	export function appendCommand(
+		path: Path,
+		point: vec2,
+		command: Command
+	): Path {
+		const lastCurve = path.curves.at(-1)
+
+		if (lastCurve) {
+			return {
+				curves: [
+					...path.curves.slice(0, -1),
+					{
+						vertices: [...lastCurve.vertices, {point, command}],
+						closed: lastCurve.closed,
+					},
+				],
+			}
+		} else {
+			return {
+				curves: [
+					{
+						vertices: [{point, command}],
+						closed: false,
+					},
+				],
+			}
+		}
 	}
 
 	/**
@@ -983,7 +1310,7 @@ export namespace Path {
 	 * @category Draw Functions
 	 */
 	export function lineTo(path: Path, point: vec2): Path {
-		return [...path, ['L', point]]
+		return appendCommand(path, point, ['L'])
 	}
 
 	/**
@@ -1001,7 +1328,7 @@ export namespace Path {
 		control2: vec2,
 		end: vec2
 	): Path {
-		return [...path, ['C', control1, control2, end]]
+		return appendCommand(path, end, ['C', control1, control2])
 	}
 
 	/**
@@ -1017,7 +1344,16 @@ export namespace Path {
 		control: vec2,
 		end: vec2
 	): Path {
-		return [...path, ['Q', control, end]]
+		const lastPoint = path.curves.at(-1)?.vertices.at(-1)?.point
+
+		if (!lastPoint) {
+			throw new Error('The path is empty')
+		}
+
+		const control1 = vec2.lerp(lastPoint, control, 2 / 3)
+		const control2 = vec2.lerp(end, control, 2 / 3)
+
+		return appendCommand(path, end, ['C', control1, control2])
 	}
 
 	/**
@@ -1039,7 +1375,13 @@ export namespace Path {
 		sweepFlag: boolean,
 		end: vec2
 	): Path {
-		return [...path, ['A', radii, xAxisRotation, largeArcFlag, sweepFlag, end]]
+		return appendCommand(path, end, [
+			'A',
+			radii,
+			xAxisRotation,
+			largeArcFlag,
+			sweepFlag,
+		])
 	}
 
 	/**
@@ -1049,28 +1391,49 @@ export namespace Path {
 	 * @category Draw Functions
 	 */
 	export function closePath(path: Path): Path {
-		return [...path, ['Z']]
-	}
+		const lastCurve = path.curves.at(-1)
 
-	/**
-	 * Iterate over the split sections of path, each of which begins with a M command
-	 * @param path The path to subdivide
-	 * @returns The iterator for subpaths
-	 * @category Utilities
-	 */
-	export const iterateSubpath = memoize(function* (
-		path: Path
-	): Generator<Path> {
-		let start = 0
-		for (let end = start + 1; end <= path.length; end++) {
-			if (end === path.length || path[end][0] === 'M') {
-				yield path.slice(start, end)
-				start = end
+		if (lastCurve) {
+			return {
+				curves: [
+					...path.curves.slice(0, -1),
+					{
+						vertices: lastCurve.vertices,
+						closed: true,
+					},
+				],
 			}
+		} else {
+			return path
 		}
-	})
+	}
 }
 
-function toVec2(point: paper.Point): vec2 {
+function paperPointToVec2(point: paper.Point): vec2 {
 	return [point.x, point.y]
+}
+
+function paperAttributeAtOffset<T>(
+	path: Path,
+	offset: number,
+	f: (pp: paper.Path, offset: number) => T
+): T {
+	const paperPath = Path.toPaperPath(path)
+
+	const paperPaths =
+		paperPath instanceof paper.Path
+			? [paperPath]
+			: (paperPath.children as paper.Path[])
+
+	offset = scalar.clamp(offset, 0, paperPath.length)
+
+	for (let i = 0; i < paperPaths.length; i++) {
+		const pp = paperPaths[i]
+		if (offset < pp.length || i === paperPaths.length - 1) {
+			return f(pp, offset)
+		}
+		offset -= pp.length
+	}
+
+	throw new Error('Cannot find a point at the given offset')
 }

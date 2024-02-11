@@ -1,12 +1,16 @@
 import {scalar, vec2} from 'linearly'
 
-import {Command, CommandA} from './Command'
+import {Command, CommandA} from './Path'
 
 /**
- * A segment of a path, which consists of a pair of starting point and a command.
+ * A segment of a path, which consists of a starting point, end point, and an interpolation command.
  * @category Type Aliases
  */
-export type Segment = readonly [start: vec2, command: Command]
+export interface Segment<C extends Command = Command> {
+	start: vec2
+	end: vec2
+	command: C
+}
 
 /**
  * A collection of functions to handle {@link Segment}.
@@ -17,11 +21,11 @@ export namespace Segment {
 	 * https://observablehq.com/@awhitty/svg-2-elliptical-arc-to-canvas-path2d
 	 * @category Utilities
 	 * */
-	export function arcCommandToCenterParameterization([start, command]: [
-		vec2,
-		CommandA,
-	]) {
-		const [, radii, xAxisRotationDeg, largeArcFlag, sweepFlag, end] = command
+	export function arcCommandToCenterParameterization(
+		arcSegment: Segment<CommandA>
+	) {
+		const {start, end, command} = arcSegment
+		const [, radii, xAxisRotationDeg, largeArcFlag, sweepFlag] = command
 		const xAxisRotation = scalar.rad(xAxisRotationDeg)
 
 		const [x1p, y1p] = vec2.rotate(

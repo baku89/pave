@@ -18,10 +18,10 @@ tagline: A library for manipulating SVG/Path2D curves.
 </div>
 
 ```js:pave
-const path = [
-	['M', [10, 50]],
-	['C', [34, 100], [75, 0], [90, 50]],
-]
+const path = Path.fromSVG([
+	'M', [10, 50],
+	'C', [34, 100], [75, 0], [90, 50],
+])
 stroke(path, 'plum')
 
 const c = Path.circle([50, 50], 40)
