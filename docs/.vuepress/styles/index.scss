@@ -26,9 +26,9 @@
 html.dark {
 	--c-brand: #ee998e;
 	--c-text: white;
-	--c-border: #777;
-	--c-border-dark: var(--c-border);
-	--c-bg: #1d1f21;
+	--c-border: white;
+	--c-border-dark: #777;
+	--c-bg: #18191a;
 	--c-tip: var(--c-brand);
 	--c-tip-bg: var(--code-bg-color);
 	--c-text-lightest: var(--c-brand);
@@ -45,6 +45,13 @@ h4,
 h5,
 h6 {
 	font-weight: 500;
+}
+
+.theme-default-content h2 {
+	border-top: 2px solid var(--c-border);
+	margin-top: calc(var(--navbar-height) / 2);
+	padding: 0.2em 0 0;
+	border-bottom: none;
 }
 
 // Navbar

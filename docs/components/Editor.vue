@@ -15,8 +15,8 @@
 import {whenever} from '@vueuse/core'
 import {useMutationObserver} from '@vueuse/core'
 import {type editor} from 'monaco-editor'
-import Tomorrow from 'monaco-themes/themes/Tomorrow.json'
-import TomorrowNight from 'monaco-themes/themes/Tomorrow-Night.json'
+import DarkTheme from 'monaco-themes/themes/Clouds Midnight.json'
+import LightTheme from 'monaco-themes/themes/Clouds.json'
 import {defineAsyncComponent, ref} from 'vue'
 
 defineProps<{
@@ -38,18 +38,18 @@ whenever(monaco, monaco => {
 	})
 })
 
-const theme = ref<'Tomorrow' | 'TomorrowNight'>(
+const theme = ref<'LightTheme' | 'DarkTheme'>(
 	document.documentElement.classList.contains('dark')
-		? 'TomorrowNight'
-		: 'Tomorrow'
+		? 'DarkTheme'
+		: 'LightTheme'
 )
 
 useMutationObserver(
 	document.documentElement,
 	() => {
 		theme.value = document.documentElement.classList.contains('dark')
-			? 'TomorrowNight'
-			: 'Tomorrow'
+			? 'DarkTheme'
+			: 'LightTheme'
 	},
 	{attributeFilter: ['class']}
 )
@@ -80,7 +80,13 @@ const options = {
 }
 
 function onEditorWillMount(monaco: typeof import('monaco-editor')) {
-	monaco.editor.defineTheme('Tomorrow', Tomorrow as any)
-	monaco.editor.defineTheme('TomorrowNight', TomorrowNight as any)
+	monaco.editor.defineTheme('LightTheme', LightTheme as any)
+	monaco.editor.defineTheme('DarkTheme', DarkTheme as any)
 }
 </script>
+
+<style lang="stylus">
+.monaco-editor, .monaco-editor-background,
+.monaco-editor .inputarea.ime-input
+	background transparent !important
+</style>
