@@ -4,11 +4,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Run install
-        uses: borales/actions-yarn@v4
-        with:
-          cmd: install
+      - uses: actions/checkout@v3
+      - name: Install modules
+        run: yarn
       - name: Run tests
-        uses: borales/actions-yarn@v4
-        with:
-          cmd: test
+        run: yarn test
