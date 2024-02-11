@@ -55,23 +55,25 @@ export type Command = CommandL | CommandC | CommandA
 /**
  * A vertex of a path. It consists of a end point and a command.
  */
-export type Vertex = {point: vec2; command: Command}
+export type Vertex<C extends Command = Command> = {point: vec2; command: C}
 
 /**
  * A single opened or closed path represented as an array of . All of the points are represented as tuple of vector `[x: number, y: number]` and the commands are represented in absolute form.
  * @category Type Aliases
  */
-export interface Curve {
-	vertices: Vertex[]
+export interface Curve<C extends Command = Command> {
+	vertices: Vertex<C>[]
 	closed: boolean
 }
 
 /**
  * A path that consists of multiple curves.
  */
-export interface Path {
-	curves: Curve[]
+export interface Path<C extends Command = Command> {
+	curves: Curve<C>[]
 }
+
+type UnarcPath = Path<CommandL | CommandC>
 
 type SVGCommand =
 	| 'M'
@@ -100,6 +102,7 @@ type SVGCommand =
 
 /**
  * Functions for manipulating paths represented as {@link Path}.
+ * @category Path
  */
 export namespace Path {
 	/**
@@ -548,6 +551,28 @@ export namespace Path {
 		return transformAtOffset(path, normalizedOffset * length(path))
 	}
 
+	export function flatMapVertex<C extends Command = Command>(
+		path: Path,
+		fn: (
+			vertex: Vertex,
+			prevPoint: vec2,
+			index: number,
+			curve: Curve
+		) => Vertex<C>[]
+	): Path<C> {
+		return {
+			curves: path.curves.map(curve => {
+				return {
+					vertices: curve.vertices.flatMap((vertex, i, vertices) => {
+						const prevPoint = vertices.at(i - 1)!.point
+						return fn(vertex, prevPoint, i, curve)
+					}),
+					closed: curve.closed,
+				}
+			}),
+		}
+	}
+
 	/**
 	 * Transforms the given path by the given matrix.
 	 * @param path The path to transform
@@ -589,6 +614,38 @@ export namespace Path {
 				closed: curve.closed,
 			}
 		}
+	}
+
+	/**
+	 *
+	 * @param path
+	 * @param angle
+	 * @returns
+	 * @category Modifiers
+	 *
+	 * @example
+	 * ```js:pave
+	 * const p = Path.arc([50, 50], 40, 0, Math.PI)
+	 * stroke(p, 'skyblue', 5)
+	 * const pa = Path.unarc(p)
+	 * stroke(pa, 'tomato')
+	 * ```
+	 */
+	export function unarc(path: Path, angle = scalar.rad(90)): UnarcPath {
+		return flatMapVertex(path, (vertex, prevPoint) => {
+			if (vertex.command[0] === 'A') {
+				return Segment.approximateArcWithCubicBeziers(
+					{
+						start: prevPoint,
+						end: vertex.point,
+						command: vertex.command,
+					},
+					angle
+				)
+			} else {
+				return [vertex as Vertex<Exclude<Command, CommandA>>]
+			}
+		})
 	}
 
 	export interface OffsetOptions {

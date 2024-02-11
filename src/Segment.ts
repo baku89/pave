@@ -1,6 +1,6 @@
-import {scalar, vec2} from 'linearly'
+import {mat2d, scalar, vec2} from 'linearly'
 
-import {Command, CommandA} from './Path'
+import {Command, CommandA, CommandC, Vertex} from './Path'
 
 /**
  * A segment of a path, which consists of a starting point, end point, and an interpolation command.
@@ -104,5 +104,64 @@ export namespace Segment {
 
 			return [rx, ry]
 		}
+	}
+
+	export function approximateArcWithCubicBeziers(
+		arc: Segment<CommandA>,
+		angle: number
+	): Vertex<CommandC>[] {
+		const {center, radii, angles, xAxisRotation} =
+			arcCommandToCenterParameterization(arc)
+
+		const [startAngle, endAngle] = angles
+
+		const n = Math.ceil(Math.abs(endAngle - startAngle) / angle)
+		const dir = Math.sign(endAngle - startAngle)
+		const delta = (endAngle - startAngle) / n
+
+		const xform = mat2d.scale(
+			mat2d.rotate(mat2d.fromTranslation(center), xAxisRotation),
+			radii
+		)
+
+		const beziers: Vertex<CommandC>[] = []
+
+		for (let i = 0; i < n; i++) {
+			const a0 = startAngle + i * delta
+			const a1 = startAngle + (i + 1) * delta
+
+			// Calculate the arc for unit circle
+			// without considering the radii and rotation
+			const start = vec2.direction(a0)
+			const end = vec2.direction(a1)
+
+			const handleLength = (4 / 3) * Math.tan((a1 - a0) / 4)
+
+			const control1 = vec2.scaleAndAdd(
+				start,
+				vec2.direction(a0 + (Math.PI / 2) * dir),
+				handleLength
+			)
+
+			const control2 = vec2.scaleAndAdd(
+				end,
+				vec2.direction(a1 - (Math.PI / 2) * dir),
+				handleLength
+			)
+
+			// Apply the transformation to the unit circle
+			const vertex: Vertex<CommandC> = {
+				point: vec2.transformMat2d(end, xform),
+				command: [
+					'C',
+					vec2.transformMat2d(control1, xform),
+					vec2.transformMat2d(control2, xform),
+				],
+			}
+
+			beziers.push(vertex)
+		}
+
+		return beziers
 	}
 }
