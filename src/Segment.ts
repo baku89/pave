@@ -36,8 +36,8 @@ export namespace Segment {
 		const [rx, ry] = correctRadii(radii, [x1p, y1p])
 
 		const sign = largeArcFlag !== sweepFlag ? 1 : -1
-		const n = pow(rx) * pow(ry) - pow(rx) * pow(y1p) - pow(ry) * pow(x1p)
-		const d = pow(rx) * pow(y1p) + pow(ry) * pow(x1p)
+		const n = rx ** 2 * ry ** 2 - rx ** 2 * y1p ** 2 - ry ** 2 * x1p ** 2
+		const d = rx ** 2 * y1p ** 2 + ry ** 2 * x1p ** 2
 
 		const [cxp, cyp] = vec2.scale(
 			[(rx * y1p) / ry, (-ry * x1p) / rx],
@@ -51,8 +51,8 @@ export namespace Segment {
 
 		const a = vec2.div(vec2.sub([x1p, y1p], [cxp, cyp]), [rx, ry])
 		const b = vec2.div(vec2.sub(vec2.zero, [x1p, y1p], [cxp, cyp]), [rx, ry])
-		const startAngle = vec2Angle(vec2.unitX, a)
-		const deltaAngle0 = vec2Angle(a, b) % (2 * Math.PI)
+		const startAngle = vec2.angle(a)
+		const deltaAngle0 = vec2.angle(a, b) % (2 * Math.PI)
 
 		let deltaAngle: number
 		if (!sweepFlag && deltaAngle0 > 0) {
@@ -73,31 +73,13 @@ export namespace Segment {
 			counterclockwise: deltaAngle < 0,
 		}
 
-		function pow(n: number) {
-			return n * n
-		}
-
-		function vec2Angle(u: vec2, v: vec2) {
-			const [ux, uy] = u
-			const [vx, vy] = v
-			const sign = ux * vy - uy * vx >= 0 ? 1 : -1
-
-			const a = Math.acos(vec2.dot(u, v) / (vec2.sqrLen(u) * vec2.sqrLen(v)))
-			// Handle invalid angle by returning a default value
-			if (isNaN(a) || a < 0 || a > Math.PI) {
-				return Math.PI
-			}
-
-			return sign * a
-		}
-
 		function correctRadii(signedRadii: vec2, p: vec2): vec2 {
 			const [signedRx, signedRy] = signedRadii
 			const [x1p, y1p] = p
 			const prx = Math.abs(signedRx)
 			const pry = Math.abs(signedRy)
 
-			const A = pow(x1p) / pow(prx) + pow(y1p) / pow(pry)
+			const A = x1p ** 2 / prx ** 2 + y1p ** 2 / pry ** 2
 
 			const rx = A > 1 ? Math.sqrt(A) * prx : prx
 			const ry = A > 1 ? Math.sqrt(A) * pry : pry
