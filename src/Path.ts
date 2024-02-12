@@ -1135,64 +1135,23 @@ export namespace Path {
 	export const toPath2D = memoize((path: Path): Path2D => {
 		const path2d = new Path2D()
 
-		for (const {vertices, closed} of path.curves) {
-			vertices.forEach(({point, command}, i) => {
-				if (i === 0) {
-					path2d.moveTo(...point)
-					return
-				}
-
-				if (command[0] === 'L') {
-					path2d.lineTo(...point)
-				} else if (command[0] === 'C') {
-					path2d.bezierCurveTo(...command[1], ...command[2], ...point)
-				} else if (command[0] === 'A') {
-					const prev = vertices.at(i - 1)?.point
-
-					if (!prev) throw new Error('The previous point is not found')
-
-					arcTo(path2d, prev, point, command)
-				}
-			})
-
-			if (closed) {
-				const first = vertices.at(0)
-
-				if (first && first.command[0] !== 'L') {
-					const {point, command} = first
-					if (command[0] === 'C') {
-						path2d.bezierCurveTo(...command[1], ...command[2], ...point)
-					} else if (first.command[0] === 'A') {
-						const prev = vertices.at(-1)?.point
-
-						if (!prev) throw new Error('The previous point is not found')
-
-						arcTo(path2d, prev, point, command)
-					}
-				}
-
-				path2d.closePath()
-			}
-		}
+		drawToRenderingContext(path, path2d)
 
 		return path2d
-
-		function arcTo(path2d: Path2D, start: vec2, end: vec2, command: CommandA) {
-			const ret = Arc.toCenterParameterization({
-				start,
-				end,
-				command,
-			})
-
-			path2d.ellipse(
-				...ret.center,
-				...ret.radii,
-				ret.xAxisRotation,
-				...ret.angles,
-				ret.counterclockwise
-			)
-		}
 	})
+
+	/**
+	 * Draws the given path to the context. It calls `context.beginPath` at the beginning, so please note that the sub-paths already stacked on the context are also cleared.
+	 * @param path The path to draw
+	 * @param context The Canvas context
+	 */
+	export function drawToCanvas(
+		path: Path,
+		context: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D
+	) {
+		context.beginPath()
+		drawToRenderingContext(path, context)
+	}
 
 	/**
 	 * Converts the given path to paper.Path
@@ -1496,4 +1455,73 @@ function paperAttributeAtOffset<T>(
 	}
 
 	throw new Error('Cannot find a point at the given offset')
+}
+
+function drawToRenderingContext(
+	path: Path,
+	context: Path2D | CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D
+) {
+	for (const {vertices, closed} of path.curves) {
+		vertices.forEach(({point, command}, i) => {
+			if (i === 0) {
+				context.moveTo(...point)
+				return
+			}
+
+			if (command[0] === 'L') {
+				context.lineTo(...point)
+			} else if (command[0] === 'C') {
+				context.bezierCurveTo(...command[1], ...command[2], ...point)
+			} else if (command[0] === 'A') {
+				const prev = vertices.at(i - 1)?.point
+
+				if (!prev) throw new Error('The previous point is not found')
+
+				arcTo(context, prev, point, command)
+			}
+		})
+
+		if (closed) {
+			const first = vertices.at(0)
+
+			if (first && first.command[0] !== 'L') {
+				const {point, command} = first
+				if (command[0] === 'C') {
+					context.bezierCurveTo(...command[1], ...command[2], ...point)
+				} else if (first.command[0] === 'A') {
+					const prev = vertices.at(-1)?.point
+
+					if (!prev) throw new Error('The previous point is not found')
+
+					arcTo(context, prev, point, command)
+				}
+			}
+
+			context.closePath()
+		}
+	}
+
+	function arcTo(
+		contxt:
+			| Path2D
+			| CanvasRenderingContext2D
+			| OffscreenCanvasRenderingContext2D,
+		start: vec2,
+		end: vec2,
+		command: CommandA
+	) {
+		const ret = Arc.toCenterParameterization({
+			start,
+			end,
+			command,
+		})
+
+		contxt.ellipse(
+			...ret.center,
+			...ret.radii,
+			ret.xAxisRotation,
+			...ret.angles,
+			ret.counterclockwise
+		)
+	}
 }

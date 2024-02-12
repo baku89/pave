@@ -42,15 +42,19 @@ onMounted(async () => {
 			if (!canvas || !context) return
 
 			const stroke = (path: Path, color = '', lineWidth = 1) => {
+				context.fillStyle = 'none'
 				context.strokeStyle = color || brandColor.value
 				context.lineCap = 'round'
 				context.lineWidth = lineWidth
-				context.stroke(Path.toPath2D(path))
+				Path.drawToCanvas(path, context)
+				context.stroke()
 			}
 
 			const fill = (path: Path, color = '') => {
+				context.strokeStyle = 'none'
 				context.fillStyle = color || brandColor.value
-				context.stroke(Path.toPath2D(path))
+				Path.drawToCanvas(path, context)
+				context.fill()
 			}
 
 			const {width, height} = canvas.getBoundingClientRect()
