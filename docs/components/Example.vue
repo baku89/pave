@@ -10,11 +10,11 @@
 </template>
 
 <script lang="ts" setup>
-import {useCssVar} from '@vueuse/core'
+import {throttledWatch, useCssVar} from '@vueuse/core'
 import {mat2d, scalar, vec2} from 'linearly'
 import {type Path} from 'pave'
 import saferEval from 'safer-eval'
-import {onMounted, ref, watch, watchEffect} from 'vue'
+import {onMounted, ref, watchEffect} from 'vue'
 
 import Editor from './Editor.vue'
 
@@ -36,7 +36,7 @@ onMounted(async () => {
 	context.value = canvas.value?.getContext('2d') ?? null
 
 	const {Path, Arc, CubicBezier} = await import('pave')
-	watch(
+	throttledWatch(
 		() => [editingCode.value, canvas.value, context.value] as const,
 		([code, canvas, context]) => {
 			if (!canvas || !context) return
@@ -55,6 +55,61 @@ onMounted(async () => {
 				context.fillStyle = color || brandColor.value
 				Path.drawToCanvas(path, context)
 				context.fill()
+			}
+
+			const debug = (path: Path, color = '') => {
+				const lineWidth = 0.5
+				const vertexSize = 3
+
+				context.fillStyle = color || brandColor.value
+
+				context.strokeStyle = color || brandColor.value
+				context.lineCap = 'round'
+				context.lineWidth = lineWidth
+
+				const segmentIter = Path.iterateSegments(path)
+
+				for (const {start, end, command, segmentIndex} of segmentIter) {
+					context.lineWidth = lineWidth
+
+					// Draw the first vertex
+					if (segmentIndex === 0) {
+						Path.drawToCanvas(Path.circle(start, vertexSize), context)
+						context.stroke()
+					}
+
+					if (command[0] === 'L') {
+						Path.drawToCanvas(Path.line(start, end), context)
+					} else if (command[0] === 'C') {
+						const [, control1, control2] = command
+
+						// Draw handles
+						context.setLineDash([2, 1])
+						Path.drawToCanvas(Path.line(start, control1), context)
+						context.stroke()
+						Path.drawToCanvas(Path.line(end, control2), context)
+						context.stroke()
+						context.setLineDash([])
+
+						let bezier = Path.moveTo(Path.empty, start)
+						bezier = Path.cubicBezierTo(bezier, control1, control2, end)
+						Path.drawToCanvas(bezier, context)
+					} else if (command[0] === 'A') {
+						const [, ...args] = command
+						let arc = Path.moveTo(Path.empty, start)
+						arc = Path.arcTo(arc, ...args, end)
+						Path.drawToCanvas(arc, context)
+					}
+					context.lineWidth = lineWidth
+					context.stroke()
+
+					context.lineWidth = vertexSize
+					Path.drawToCanvas(Path.dot(end), context)
+					context.stroke()
+
+					context.font = '7px "IBM Plex Mono"'
+					context.fillText(command[0], ...vec2.add(end, [2, -2]))
+				}
 			}
 
 			const {width, height} = canvas.getBoundingClientRect()
@@ -78,13 +133,14 @@ onMounted(async () => {
 					mat2d,
 					stroke,
 					fill,
+					debug,
 				})
 			} catch (e) {
 				// eslint-disable-next-line no-console
 				console.error(e)
 			}
 		},
-		{immediate: true}
+		{immediate: true, throttle: 100}
 	)
 })
 </script>
