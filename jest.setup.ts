@@ -1,6 +1,6 @@
 import {expect} from '@jest/globals'
 
-const EPSILON = 1e-2
+const EPSILON = 1e-4
 
 function nearlyEqual(a: number, b: number) {
 	return (
