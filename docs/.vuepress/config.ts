@@ -30,6 +30,10 @@ module.exports = defineUserConfig({
 				link: '/',
 			},
 			{
+				text: 'Guide',
+				link: '/guide',
+			},
+			{
 				text: 'API',
 				link: '/api',
 			},
@@ -40,6 +44,18 @@ module.exports = defineUserConfig({
 		],
 		logo: '/logo.svg',
 	}),
+	locales: {
+		'/': {
+			lang: 'English',
+			title: 'Pave',
+			description: 'A library for manipulating SVG/Path2D curves',
+		},
+		'/ja/': {
+			lang: '日本語',
+			title: 'Pave',
+			description: 'SVG/Path2Dのパス操作に特化したライブラリ',
+		},
+	},
 	plugins: [palettePlugin({preset: 'sass'})],
 	markdown: {
 		//@ts-ignore

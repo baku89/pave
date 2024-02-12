@@ -110,6 +110,10 @@ type SVGCommand =
  * @category Path
  */
 export namespace Path {
+	/**
+	 * Empty path.
+	 * @category Primitives
+	 */
 	export const empty: Path = Object.freeze({
 		curves: [],
 	})
@@ -560,21 +564,27 @@ export namespace Path {
 		return transformAtOffset(path, normalizedOffset * length(path))
 	}
 
+	/**
+	 *
+	 * @param path
+	 * @param fn
+	 * @returns
+	 * @category Modifiers
+	 */
 	export function flatMapVertex<C extends Command = Command>(
 		path: Path,
-		fn: (
-			vertex: Vertex,
-			prevPoint: vec2,
-			index: number,
-			curve: Curve
-		) => Vertex<C>[]
+		fn: (segment: Segment, index: number, curve: Curve) => Vertex<C>[]
 	): Path<C> {
 		return {
 			curves: path.curves.map(curve => {
 				return {
 					vertices: curve.vertices.flatMap((vertex, i, vertices) => {
-						const prevPoint = vertices.at(i - 1)!.point
-						return fn(vertex, prevPoint, i, curve)
+						const segment: Segment = {
+							start: vertices.at(i - 1)!.point,
+							end: vertex.point,
+							command: vertex.command,
+						}
+						return fn(segment, i, curve)
 					}),
 					closed: curve.closed,
 				}
@@ -641,18 +651,18 @@ export namespace Path {
 	 * ```
 	 */
 	export function unarc(path: Path, angle = scalar.rad(90)): UnarcPath {
-		return flatMapVertex(path, (vertex, prevPoint) => {
-			if (vertex.command[0] === 'A') {
+		return flatMapVertex(path, segment => {
+			if (segment.command[0] === 'A') {
 				return Arc.approximateByCubicBeziers(
-					{
-						start: prevPoint,
-						end: vertex.point,
-						command: vertex.command,
-					},
+					segment as Segment<CommandA>,
 					angle
 				)
 			} else {
-				return [vertex as Vertex<Exclude<Command, CommandA>>]
+				return [
+					{point: segment.start, command: segment.command} as Vertex<
+						Exclude<Command, CommandA>
+					>,
+				]
 			}
 		})
 	}
@@ -886,6 +896,7 @@ export namespace Path {
 	/**
 	 * Iterates over the segments of the given path.
 	 * @param path The path to iterate
+	 * @category Utilities
 	 */
 	export function* iterateSegments(
 		path: Path
@@ -924,6 +935,7 @@ export namespace Path {
 	 * Converts an array of SVG commands to a {@link Path}.
 	 * @param commands The array of SVG commands
 	 * @returns The newly created path
+	 * @category Converters
 	 */
 	export function fromSVG(commands: SVGCommand[]): Path {
 		const paths: Curve[] = []
@@ -1191,9 +1203,10 @@ export namespace Path {
 	})
 
 	/**
-	 * Draws the given path to the context. It calls `context.beginPath` at the beginning, so please note that the sub-paths already stacked on the context are also cleared.
+	 * Draws the given path to the context. It calls `context.beginPath` at the beginning, so please note that the sub-paths already stacked on the context are also cleared. Note that you also need to call `context.stroke` or `context.fill` to actually draw the path.
 	 * @param path The path to draw
 	 * @param context The Canvas context
+	 * @category Converters
 	 */
 	export function drawToCanvas(
 		path: Path,
