@@ -2,7 +2,7 @@
 
 ## インストール
 
-```
+```sh:no-line-numbers
 npm i @baku89/pave
 ```
 
@@ -12,7 +12,7 @@ npm i @baku89/pave
 
 ESモジュールをサポートしているため、import文を使って読み込むことが出来ます。`Path`や`CubicBeizer`などのシンボルは、型としても、あるいはその型に関連した関数から成るモジュール（名前空間）としても利用できます。
 
-```ts
+```ts:no-line-numbers
 import {Path} from '@baku89/pave'
 
 const rect: Path = Path.rect([0, 0], [10, 10])
@@ -24,7 +24,7 @@ Path.toSVGString(rect) // => 'M0,0 L10,0 L10,10 L0,10 Z'
 
 気をつけてほしいのは、Paveは関数型プログラミング志向であり、全てのデータはプレーンかつイミュータブルであるということです。パスの長さやバウンディングボックスといったパスに付随する情報は、パスデータ自体のプロパティとしてアクセスする代わりに関数を用いて取得します。
 
-```ts
+```ts:no-line-numbers
 const length = Path.length(rect)
 const bounds = Path.bounds(rect)
 const normal = Path.normalAtTime(rect, 0.5)
@@ -34,7 +34,7 @@ const normal = Path.normalAtTime(rect, 0.5)
 
 このため、パスデータを変更する際には、常に新しいパスデータを生成するユーティリティ関数（Canvas APIと同様の`moveTo`や`lineTo`など）を使うか:
 
-```ts
+```ts:no-line-numbers
 let p = Path.moveTo(Path.empty, [10, 10])
 p = Path.lineTo(p, [20, 20])
 p = Path.cubicBezierTo(p, [80, 30], [0, 40], [50, 50])
@@ -43,7 +43,7 @@ p = Path.closePath(p)
 
 あるいは、[immer](https://immerjs.github.io/immer/)のようなイミュータブルなデータ構造を操作するためのライブラリを使うことをお勧めします:
 
-```ts
+```ts:no-line-numbers
 import {produce} from 'immer'
 
 const pathA = Path.arc([50, 50], 40, 0, Math.PI)
@@ -56,7 +56,7 @@ const pathB = produce(pathA, draft => {
 
 PaveはSVGのd属性やCanvas APIのPath2Dといった他のパスデータとの相互変換をサポートしています。
 
-```ts
+```ts:no-line-numbers
 // 他のパス表現からPathへ
 Path.fromSVGString('M10,50 C34,100 75,0 90,50')
 Path.fromSVG(['M', [10, 50], 'L', [90, 50], 'Z'])
@@ -86,7 +86,7 @@ Paveにおけるパスの表現は、SVGのd属性やCanvas APIのような、�
 
 TypeScriptに慣れている方は、型定義を見てもらう方が分かりやすいでしょう。
 
-```ts
+```ts:no-line-numbers
 type Path = {paths: Curves[]; fillRule: 'nonzero' | 'evenodd'}
 type Curve = {vertices: Vertex[]; closed: boolean}
 type Vertex = {point: vec2; command: Command}
@@ -98,6 +98,6 @@ type Command =
 
 また、上記の階層とは別に、Curveのうち単一のコマンドに対応する部分を切り取った[Segment](./api/interfaces/Segment)という型も存在します。Vertexと異なり、開始点と終了点の両方の情報も含みます。
 
-```ts
+```ts:no-line-numbers
 type Segment = {start: vec2; end: vec2; command: Command}
 ```

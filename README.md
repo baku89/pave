@@ -22,7 +22,7 @@ Currently, the library heavily depends on [Bazier.js](https://pomax.github.io/be
 
 ## Development
 
-```
+```sh
 git clone https://github.com/baku89/pave
 cd pave
 yarn install

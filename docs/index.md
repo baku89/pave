@@ -51,25 +51,7 @@ See the full documentation on [API](./api)
 
 ## Getting Started
 
-### Installation
-
-```sh:no-line-numbers
-yarn add pave
-```
-
-```js:no-line-numbers
-import {Path} from 'pave'
-
-const circle = Path.circle([0, 0], 100)
-
-// For SVG's path element
-const d = Path.toSVG(circle)
-svgPathElement.setAttribute('d', d)
-
-// For Canvas API
-const path2d = Path.toPath2D(circle)
-context.stroke(path2d)
-```
+See the [Guide](./guide) for more detailed information.
 
 ### Example
 
