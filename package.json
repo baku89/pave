@@ -7,7 +7,9 @@
 	"types": "./lib/esm/index.d.ts",
 	"sideEffects": false,
 	"scripts": {
-		"dev": "npm run build:api; vuepress dev docs",
+		"dev": "concurrently \"npm:dev:api\" \"npm:dev:docs\"",
+		"dev:api": "npm run build:api -- --watch",
+		"dev:docs": "vuepress dev docs",
 		"build": "tsc -p tsconfig.esm.json && tsc -p tsconfig.cjs.json",
 		"build:api": "typedoc src/index.ts",
 		"build:doc": "npm run build:api; vuepress build docs",
@@ -44,6 +46,7 @@
 		"@typescript-eslint/parser": "^6.21.0",
 		"@vuepress/plugin-palette": "^2.0.0-rc.0",
 		"@vueuse/core": "^10.6.1",
+		"concurrently": "^8.2.2",
 		"eslint": "^8.49.0",
 		"eslint-config-prettier": "^9.0.0",
 		"eslint-plugin-jest": "^27.2.3",
