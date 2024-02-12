@@ -49,16 +49,18 @@ export type CommandA = readonly [
 
 /**
  * A command of a path, which only supports line-to, cubic Bézier curve, and arc commands.
+ * @category Type Aliases
  *  */
 export type Command = CommandL | CommandC | CommandA
 
 /**
  * A vertex of a path. It consists of a end point and a command.
+ * @category Type Aliases
  */
 export type Vertex<C extends Command = Command> = {point: vec2; command: C}
 
 /**
- * A single opened or closed path represented as an array of . All of the points are represented as tuple of vector `[x: number, y: number]` and the commands are represented in absolute form.
+ * A single open or closed path represented as an array of . All of the points are represented as tuple of vector `[x: number, y: number]` and the commands are represented in absolute form.
  * @category Type Aliases
  */
 export interface Curve<C extends Command = Command> {
@@ -68,6 +70,7 @@ export interface Curve<C extends Command = Command> {
 
 /**
  * A path that consists of multiple curves.
+ * @category Type Aliases
  */
 export interface Path<C extends Command = Command> {
 	curves: Curve<C>[]
@@ -734,7 +737,7 @@ export namespace Path {
 	}
 
 	/**
-	 * Joins the given paths into a single paths. The paths will be forcebly joined into a single opened path.
+	 * Joins the given paths into a single open paths.
 	 * @param paths The paths to join
 	 * @returns The joined path
 	 * @category Modifiers
