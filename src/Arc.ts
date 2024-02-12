@@ -141,7 +141,32 @@ export namespace Arc {
 		return beziers
 	}
 
-	export function bound(arc: Segment<CommandA>): Rect {
+	/**
+	 * Calculates the bound of given arc.
+	 * @param arc The arc segment to calculate
+	 * @returns The bound of the arc
+	 * @example
+	 * ```js:pave
+	 * const center = [50, 50]
+	 * const startAngle = scalar.rad(-120)
+	 * const endAngle = scalar.rad(30)
+	 * const radius = 40
+	 * const start = vec2.add(center, vec2.direction(startAngle, 40))
+	 * const end = vec2.add(center, vec2.direction(endAngle, 40))
+	 *
+	 * const arc = Path.arc([50, 50], 40, startAngle, endAngle)
+	 * stroke(arc, 'skyblue')
+	 *
+	 * const bound = Arc.bounds({
+	 * 	start,
+	 * 	end,
+	 * 	command: ['A', [radius, radius], 0, false, true]
+	 * })
+	 *
+	 * stroke(Path.rect(...bound), 'tomato')
+	 * ```
+	 */
+	export function bounds(arc: Segment<CommandA>): Rect {
 		const {start, end} = arc
 		const {center, radii, angles, xAxisRotation} = toCenterParameterization(arc)
 

@@ -83,9 +83,9 @@ describe('toCenterParameterization', () => {
 	})
 })
 
-describe('bound', () => {
+describe('bounds', () => {
 	test('should work in the angle case [0°, 90°]', () => {
-		const ret = Arc.bound({
+		const ret = Arc.bounds({
 			start: [90, 50],
 			end: [50, 90],
 			command: ['A', [40, 40], 0, false, true],
@@ -104,7 +104,7 @@ describe('bound', () => {
 		const start = vec2.direction(startAngle, r)
 		const end = vec2.direction(endAngle, r)
 
-		const ret = Arc.bound({
+		const ret = Arc.bounds({
 			start,
 			end,
 			command: ['A', [r, r], 0, false, true],
@@ -123,7 +123,7 @@ describe('bound', () => {
 		const start = vec2.direction(startAngle, r)
 		const end = vec2.direction(endAngle, r)
 
-		const ret = Arc.bound({
+		const ret = Arc.bounds({
 			start,
 			end,
 			command: ['A', [r, r], 0, false, true],
@@ -139,7 +139,7 @@ describe('bound', () => {
 		const start = vec2.direction(startAngle, r)
 		const end = vec2.direction(endAngle, r)
 
-		const ret = Arc.bound({
+		const ret = Arc.bounds({
 			start,
 			end,
 			command: ['A', [r, r], 0, true, true],
