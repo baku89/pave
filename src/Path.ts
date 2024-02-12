@@ -3,7 +3,9 @@ import paper from 'paper'
 import {OffsetOptions as PaperOffsetOptions, PaperOffset} from 'paperjs-offset'
 
 import {Arc} from './Arc'
+import {CubicBezier} from './CubicBezier'
 import {Rect} from './Rect'
+import {Segment} from './Segment'
 import {memoize, toFixedSimple} from './utils'
 
 paper.setup(document.createElement('canvas'))
@@ -108,6 +110,10 @@ type SVGCommand =
  * @category Path
  */
 export namespace Path {
+	export const empty: Path = Object.freeze({
+		curves: [],
+	})
+
 	/**
 	 * Creates a rectangle path from the given two points.
 	 * @param start The first point defining the rectangle
@@ -874,6 +880,43 @@ export namespace Path {
 			const sweep = command[4] ? '1' : '0'
 			const p = vec2ToString(point)
 			return `A ${radii} ${xAxisRotation} ${largeArc} ${sweep} ${p}`
+		}
+	}
+
+	/**
+	 * Iterates over the segments of the given path.
+	 * @param path The path to iterate
+	 */
+	export function* iterateSegments(
+		path: Path
+	): Generator<Segment & {curveIndex: number; segmentIndex: number}> {
+		for (const [curveIndex, curve] of path.curves.entries()) {
+			let prevPoint: vec2 | undefined
+			for (const [segmentIndex, {point, command}] of curve.vertices.entries()) {
+				if (prevPoint) {
+					yield {
+						start: prevPoint,
+						end: point,
+						command,
+						curveIndex,
+						segmentIndex: segmentIndex - 1,
+					}
+				}
+				prevPoint = point
+			}
+
+			if (curve.closed) {
+				const firstVertex = curve.vertices.at(0)
+				if (prevPoint && firstVertex) {
+					yield {
+						start: prevPoint,
+						end: firstVertex.point,
+						command: firstVertex.command,
+						curveIndex,
+						segmentIndex: curve.vertices.length - 1,
+					}
+				}
+			}
 		}
 	}
 
