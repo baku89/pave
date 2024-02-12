@@ -93,6 +93,11 @@ onMounted(async () => {
 	font-family var(--font-family-code)
 	min-height 200px
 
+	@media (max-width: 419px)
+		margin 0.85rem -1.5rem
+		border-radius 0
+		border-width 1px 0
+
 .canvas-wrapper
 	width 200px
 	position absolute

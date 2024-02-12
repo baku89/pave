@@ -68,6 +68,10 @@ h6 {
 	}
 
 	padding-top: calc(var(--navbar-padding-v) + 2px);
+
+	html.dark & .logo {
+		filter: invert(1);
+	}
 }
 
 .navbar-item {
@@ -181,6 +185,10 @@ p strong code {
 // Table
 tr:nth-child(2n) {
 	background-color: transparent;
+}
+
+th:nth-child(3) {
+	min-width: 15em;
 }
 
 table {

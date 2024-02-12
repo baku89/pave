@@ -27,6 +27,8 @@ const emit = defineEmits<{
 	'update:code': [code: string]
 }>()
 
+DarkTheme.rules[1].foreground = '777777'
+
 const MonacoEditor = defineAsyncComponent(() => import('monaco-editor-vue3'))
 
 const monaco = ref<null | {editor: editor.IStandaloneCodeEditor}>(null)
