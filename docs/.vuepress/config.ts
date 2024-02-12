@@ -21,6 +21,7 @@ module.exports = defineUserConfig({
 				href: 'https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500&family=Work+Sans:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500;1,600&display=swap',
 			},
 		],
+		['link', {rel: 'icon', href: '/logo.svg'}],
 	],
 	theme: defaultTheme({
 		navbar: [
@@ -37,6 +38,7 @@ module.exports = defineUserConfig({
 				link: 'https://github.com/baku89/pave',
 			},
 		],
+		logo: '/logo.svg',
 	}),
 	plugins: [palettePlugin({preset: 'sass'})],
 	markdown: {
