@@ -1,7 +1,13 @@
 import {mat2d, scalar, vec2} from 'linearly'
 
 import {CommandA, CommandC, Vertex} from './Path'
+import {Rect} from './Rect'
 import {Segment} from './Segment'
+
+/**
+ * The angle range to check. `startAngle` is always in the range of [-π, π], and the `endAngle` is relative angle considering the rotation direction, with start angle as a reference.
+ */
+type AngleRange = readonly [startAngle: number, endAngle: number]
 
 /**
  * A collection of functions to handle arcs represented with {@link CommandA}.
@@ -57,7 +63,7 @@ export namespace Arc {
 		return {
 			center,
 			radii: [rx, ry] as vec2,
-			angles: [startAngle, endAngle] as vec2,
+			angles: [startAngle, endAngle] as AngleRange,
 			xAxisRotation,
 			counterclockwise: deltaAngle < 0,
 		}
@@ -133,5 +139,93 @@ export namespace Arc {
 		}
 
 		return beziers
+	}
+
+	export function bound(arc: Segment<CommandA>): Rect {
+		const {start, end} = arc
+		const {center, radii, angles, xAxisRotation} = toCenterParameterization(arc)
+
+		const sy = radii[1] / radii[0]
+
+		const angleAtXmax = -Math.atan2(
+			sy * Math.sin(xAxisRotation),
+			Math.cos(xAxisRotation)
+		)
+		const angleAtXmin = normalizeAngle(angleAtXmax + Math.PI)
+
+		const angleAtYmax = -Math.atan2(
+			-sy * Math.cos(xAxisRotation),
+			Math.sin(xAxisRotation)
+		)
+
+		const angleAtYmin = normalizeAngle(angleAtYmax + Math.PI)
+
+		const xform = mat2d.scale(
+			mat2d.rotate(mat2d.fromTranslation(center), xAxisRotation),
+			radii
+		)
+
+		let xMax = Math.max(start[0], end[0])
+		let xMin = Math.min(start[0], end[0])
+		let yMax = Math.max(start[1], end[1])
+		let yMin = Math.min(start[1], end[1])
+
+		if (crossAtAngle(angleAtXmax, angles)) {
+			const p = vec2.transformMat2d(vec2.direction(angleAtXmax), xform)
+			xMax = p[0]
+		}
+		if (crossAtAngle(angleAtXmin, angles)) {
+			const p = vec2.transformMat2d(vec2.direction(angleAtXmin), xform)
+			xMin = p[0]
+		}
+		if (crossAtAngle(angleAtYmax, angles)) {
+			const p = vec2.transformMat2d(vec2.direction(angleAtYmax), xform)
+			yMax = p[1]
+		}
+		if (crossAtAngle(angleAtYmin, angles)) {
+			const p = vec2.transformMat2d(vec2.direction(angleAtYmin), xform)
+			yMin = p[1]
+		}
+
+		return [
+			[xMin, yMin],
+			[xMax, yMax],
+		]
+	}
+}
+
+/**
+ * Normalizes the angle to the range of [-π, π].
+ * @param angle The angle to normalize.
+ * @returns The normalized angle.
+ */
+function normalizeAngle(angle: number) {
+	return ((angle + Math.PI) % (2 * Math.PI)) - Math.PI
+}
+
+/**
+ * Checks if the angle range crosses the given angle.
+ * @param angle The angle to check. Always in the range of [-π, π].
+ * @param angleRange The angle range to check.
+ */
+function crossAtAngle(angle: number, [startAngle, endAngle]: AngleRange) {
+	if (startAngle === endAngle) {
+		return false
+	} else if (startAngle < endAngle) {
+		// Clockwise
+		if (startAngle < angle) {
+			return angle < endAngle
+		} else {
+			// Consider the case when the angle range crosses [-1, 0]
+			return angle < endAngle - 2 * Math.PI
+		}
+	} else {
+		// Counterclockwise
+		if (angle < startAngle) {
+			return endAngle < angle
+		} else {
+			// Consider the case when the angle range crosses [0, 1]
+			return angle < endAngle + 2 * Math.PI
+		}
 	}
 }
