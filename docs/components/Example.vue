@@ -35,7 +35,7 @@ const brandColor = useCssVar('--c-brand')
 onMounted(async () => {
 	context.value = canvas.value?.getContext('2d') ?? null
 
-	const {Path, Arc, Bezier} = await import('pave')
+	const {Path, Arc, CubicBezier} = await import('pave')
 	watch(
 		() => [editingCode.value, canvas.value, context.value] as const,
 		([code, canvas, context]) => {
@@ -68,7 +68,7 @@ onMounted(async () => {
 					context,
 					Path,
 					Arc,
-					Bezier,
+					CubicBezier,
 					scalar,
 					vec2,
 					mat2d,

@@ -1,6 +1,6 @@
 export * from './Arc'
-export {Bezier} from './Bezier'
 export * from './Circle'
+export * from './CubicBezier'
 export * from './Path'
 export * from './Rect'
 export * from './Segment'

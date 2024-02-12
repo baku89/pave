@@ -401,7 +401,7 @@ export namespace Path {
 	})
 
 	/**
-	 * Calculates the rect of the given path.
+	 * Calculates the bound of the given path.
 	 * @param path The path to calculate
 	 * @returns The rect of the path
 	 * @category Properties

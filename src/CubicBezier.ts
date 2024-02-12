@@ -1,26 +1,20 @@
 import {Bezier as BezierJS, Point} from 'bezier-js'
 import {vec2} from 'linearly'
 
-/**
- * A cubic Bezier curve, whose control points are specified in absolute coordinates.
- * @category Type Aliases
- */
-export type Bezier = readonly [
-	start: vec2,
-	control1: vec2,
-	control2: vec2,
-	end: vec2,
-]
-
-export type QuadraticBezier = readonly [start: vec2, control: vec2, end: vec2]
+import {CommandC} from './Path'
+import {Segment} from './Segment'
 
 /**
- * A collection of functions to handle {@link Bezier}.
+ * A collection of functions to handle a cubic bezier represented with {@link CommandC}.
  */
-export namespace Bezier {
+export namespace CubicBezier {
 	export const toBezierJS = memoizeBezierFunction(
-		(bezier: Bezier): BezierJS => {
-			const [start, control1, control2, end] = bezier
+		(bezier: Segment<CommandC>): BezierJS => {
+			const {
+				start,
+				command: [, control1, control2],
+				end,
+			} = bezier
 			return new BezierJS(
 				start[0],
 				start[1],
@@ -35,29 +29,31 @@ export namespace Bezier {
 	)
 
 	export function fromQuadraticBezier(
-		quadraticBezier: QuadraticBezier
-	): Bezier {
-		const [start, control, end] = quadraticBezier
-
+		start: vec2,
+		control: vec2,
+		end: vec2
+	): Segment<CommandC> {
 		const control1 = vec2.lerp(start, control, 2 / 3)
 		const control2 = vec2.lerp(end, control, 2 / 3)
 
-		return [start, control1, control2, end]
+		return {start, command: ['C', control1, control2], end}
 	}
 
 	/**
 	 * Calculates the length of the Bezier curve. Length is calculated using numerical approximation, specifically the Legendre-Gauss quadrature algorithm.
 	 */
-	export const length = memoizeBezierFunction((bezier: Bezier): number => {
-		const bezierJS = toBezierJS(bezier)
-		return bezierJS.length()
-	})
+	export const length = memoizeBezierFunction(
+		(bezier: Segment<CommandC>): number => {
+			const bezierJS = toBezierJS(bezier)
+			return bezierJS.length()
+		}
+	)
 
 	/**
 	 * Calculates the rect of this Bezier curve.
 	 */
 	export const bounds = memoizeBezierFunction(
-		(bezier: Bezier): [vec2, vec2] => {
+		(bezier: Segment<CommandC>): [vec2, vec2] => {
 			const bezierJS = toBezierJS(bezier)
 			const {x, y} = bezierJS.bbox()
 
@@ -71,8 +67,12 @@ export namespace Bezier {
 	/**
 	 * Calculates the point on the curve at the specified `t` value.
 	 */
-	export function pointAtTime(bezier: Bezier, t: number): vec2 {
-		const [start, control1, control2, end] = bezier
+	export function pointAtTime(bezier: Segment<CommandC>, t: number): vec2 {
+		const {
+			start,
+			command: [, control1, control2],
+			end,
+		} = bezier
 		const x =
 			(1 - t) ** 3 * start[0] +
 			3 * (1 - t) ** 2 * t * control1[0] +
@@ -90,7 +90,7 @@ export namespace Bezier {
 	/**
 	 * Calculates the curve tangent at the specified `t` value. Note that this yields a not-normalized vector.
 	 */
-	export function derivativeAtTime(bezier: Bezier, t: number): vec2 {
+	export function derivativeAtTime(bezier: Segment<CommandC>, t: number): vec2 {
 		const bezierJS = toBezierJS(bezier)
 		const {x, y} = bezierJS.derivative(t)
 		return [x, y]
@@ -99,14 +99,14 @@ export namespace Bezier {
 	/**
 	 * Calculates the curve tangent at the specified `t` value. Unlike {@link derivativeAtTime}, this yields a normalized vector.
 	 */
-	export function tangentAtTime(bezier: Bezier, t: number): vec2 {
+	export function tangentAtTime(bezier: Segment<CommandC>, t: number): vec2 {
 		return vec2.normalize(derivativeAtTime(bezier, t))
 	}
 
 	/**
 	 * Calculates the curve normal at the specified `t` value. Note that this yields a normalized vector.
 	 */
-	export function normalAtTime(bezier: Bezier, t: number): vec2 {
+	export function normalAtTime(bezier: Segment<CommandC>, t: number): vec2 {
 		const bezierJS = toBezierJS(bezier)
 		const {x, y} = bezierJS.normal(t)
 		return [x, y]
@@ -116,7 +116,7 @@ export namespace Bezier {
 	 * Finds the on-curve point closest to the specific off-curve point
 	 */
 	export function project(
-		bezier: Bezier,
+		bezier: Segment<CommandC>,
 		origin: vec2
 	): {position: vec2; t?: number; distance?: number} {
 		const bezierJS = toBezierJS(bezier)
@@ -131,7 +131,11 @@ export namespace Bezier {
 	 * @param angles The start and end angles of the arc, in radians
 	 * @returns A cubic Bezier curve approximating the arc
 	 */
-	export function unarc(center: vec2, radius: number, angles: vec2): Bezier {
+	export function unarc(
+		center: vec2,
+		radius: number,
+		angles: vec2
+	): Segment<CommandC> {
 		const [startAngle, endAngle] = angles
 
 		const theta = endAngle - startAngle
@@ -143,7 +147,7 @@ export namespace Bezier {
 		const control1 = vec2.add(center, vec2.direction(startAngle + Math.PI, k))
 		const control2 = vec2.add(center, vec2.direction(endAngle + Math.PI, k))
 
-		return [start, control1, control2, end]
+		return {start, command: ['C', control1, control2], end}
 	}
 }
 
@@ -151,14 +155,18 @@ function toPoint([x, y]: vec2): Point {
 	return {x, y}
 }
 
-function memoizeBezierFunction<T>(f: (bezier: Bezier) => T) {
+function memoizeBezierFunction<T>(f: (bezier: Segment<CommandC>) => T) {
 	const cache = new WeakMap<
 		vec2,
 		WeakMap<vec2, WeakMap<vec2, WeakMap<vec2, T>>>
 	>()
 
-	return (bezier: Bezier): T => {
-		const [start, control1, control2, end] = bezier
+	return (bezier: Segment<CommandC>): T => {
+		const {
+			start,
+			command: [, control1, control2],
+			end,
+		} = bezier
 
 		if (!cache.has(start)) {
 			cache.set(start, new WeakMap())
