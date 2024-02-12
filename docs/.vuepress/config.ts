@@ -40,6 +40,7 @@ module.exports = defineUserConfig({
 	}),
 	plugins: [palettePlugin({preset: 'sass'})],
 	markdown: {
+		//@ts-ignore
 		linkify: true,
 		typographer: true,
 	},
