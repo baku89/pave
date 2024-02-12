@@ -35,8 +35,7 @@ const brandColor = useCssVar('--c-brand')
 onMounted(async () => {
 	context.value = canvas.value?.getContext('2d') ?? null
 
-	const {Path} = await import('pave')
-
+	const {Path, Arc, Bezier} = await import('pave')
 	watch(
 		() => [editingCode.value, canvas.value, context.value] as const,
 		([code, canvas, context]) => {
@@ -68,6 +67,8 @@ onMounted(async () => {
 				saferEval(`(() => {\n${code}\n})()`, {
 					context,
 					Path,
+					Arc,
+					Bezier,
 					scalar,
 					vec2,
 					mat2d,
