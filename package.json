@@ -7,7 +7,7 @@
 	"types": "./lib/esm/index.d.ts",
 	"sideEffects": false,
 	"scripts": {
-		"dev": "concurrently \"npm:dev:api\" \"npm:dev:docs\"",
+		"dev": "concurrently npm:dev:api npm:dev:docs",
 		"dev:api": "npm run build:api -- --watch",
 		"dev:docs": "vuepress dev docs",
 		"build": "tsc -p tsconfig.esm.json && tsc -p tsconfig.cjs.json",
