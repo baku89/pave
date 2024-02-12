@@ -3,12 +3,13 @@ import {vec2} from 'linearly'
 
 import {CommandC} from './Path'
 import {Segment} from './Segment'
+import {memoizeSegmentFunction} from './utils'
 
 /**
  * A collection of functions to handle a cubic bezier represented with {@link CommandC}.
  */
 export namespace CubicBezier {
-	export const toBezierJS = memoizeBezierFunction(
+	export const toBezierJS = memoizeSegmentFunction(
 		(bezier: Segment<CommandC>): BezierJS => {
 			const {
 				start,
@@ -42,7 +43,7 @@ export namespace CubicBezier {
 	/**
 	 * Calculates the length of the Bezier curve. Length is calculated using numerical approximation, specifically the Legendre-Gauss quadrature algorithm.
 	 */
-	export const length = memoizeBezierFunction(
+	export const length = memoizeSegmentFunction(
 		(bezier: Segment<CommandC>): number => {
 			const bezierJS = toBezierJS(bezier)
 			return bezierJS.length()
@@ -52,7 +53,7 @@ export namespace CubicBezier {
 	/**
 	 * Calculates the rect of this Bezier curve.
 	 */
-	export const bounds = memoizeBezierFunction(
+	export const bounds = memoizeSegmentFunction(
 		(bezier: Segment<CommandC>): [vec2, vec2] => {
 			const bezierJS = toBezierJS(bezier)
 			const {x, y} = bezierJS.bbox()
@@ -153,43 +154,4 @@ export namespace CubicBezier {
 
 function toPoint([x, y]: vec2): Point {
 	return {x, y}
-}
-
-function memoizeBezierFunction<T>(f: (bezier: Segment<CommandC>) => T) {
-	const cache = new WeakMap<
-		vec2,
-		WeakMap<vec2, WeakMap<vec2, WeakMap<vec2, T>>>
-	>()
-
-	return (bezier: Segment<CommandC>): T => {
-		const {
-			start,
-			command: [, control1, control2],
-			end,
-		} = bezier
-
-		if (!cache.has(start)) {
-			cache.set(start, new WeakMap())
-		}
-
-		const cache1 = cache.get(start)!
-
-		if (!cache1.has(control1)) {
-			cache1.set(control1, new WeakMap())
-		}
-
-		const cache2 = cache1.get(control1)!
-
-		if (!cache2.has(control2)) {
-			cache2.set(control2, new WeakMap())
-		}
-
-		const cache3 = cache2.get(control2)!
-
-		if (!cache3.has(end)) {
-			cache3.set(end, f(bezier))
-		}
-
-		return cache3.get(end)!
-	}
 }
