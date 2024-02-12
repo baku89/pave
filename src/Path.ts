@@ -2,8 +2,8 @@ import {mat2d, scalar, vec2} from 'linearly'
 import paper from 'paper'
 import {OffsetOptions as PaperOffsetOptions, PaperOffset} from 'paperjs-offset'
 
+import {Arc} from './Arc'
 import {Rect} from './Rect'
-import {Segment} from './Segment'
 import {memoize, toFixedSimple} from './utils'
 
 paper.setup(document.createElement('canvas'))
@@ -637,7 +637,7 @@ export namespace Path {
 	export function unarc(path: Path, angle = scalar.rad(90)): UnarcPath {
 		return flatMapVertex(path, (vertex, prevPoint) => {
 			if (vertex.command[0] === 'A') {
-				return Segment.approximateArcWithCubicBeziers(
+				return Arc.approximateByCubicBeziers(
 					{
 						start: prevPoint,
 						end: vertex.point,
@@ -1178,7 +1178,7 @@ export namespace Path {
 		return path2d
 
 		function arcTo(path2d: Path2D, start: vec2, end: vec2, command: CommandA) {
-			const ret = Segment.arcCommandToCenterParameterization({
+			const ret = Arc.toCenterParameterization({
 				start,
 				end,
 				command,
@@ -1226,7 +1226,7 @@ export namespace Path {
 								throw new Error('Ellipse or tilted arc is not yet supported')
 							}
 
-							const ret = Segment.arcCommandToCenterParameterization({
+							const ret = Arc.toCenterParameterization({
 								start: prev!,
 								end: point,
 								command,

@@ -1,3 +1,4 @@
+export * from './Arc'
 export {Bezier} from './Bezier'
 export * from './Circle'
 export * from './Path'

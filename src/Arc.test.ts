@@ -6,11 +6,11 @@ import '../jest.setup'
 
 import {scalar, vec2} from 'linearly'
 
-import {Segment} from './Segment'
+import {Arc} from './Arc'
 
 describe('arcCommandToCenterParameterization', () => {
 	it('should work in right angle case', () => {
-		const ret = Segment.arcCommandToCenterParameterization({
+		const ret = Arc.toCenterParameterization({
 			start: [90, 50],
 			end: [50, 90],
 			command: ['A', [40, 40], 0, false, true],
@@ -26,7 +26,7 @@ describe('arcCommandToCenterParameterization', () => {
 	})
 
 	it('should work in two right angle case (CCW)', () => {
-		const ret = Segment.arcCommandToCenterParameterization({
+		const ret = Arc.toCenterParameterization({
 			start: [90, 50],
 			end: [10, 50],
 			command: ['A', [40, 40], 0, false, false],
@@ -46,7 +46,7 @@ describe('arcCommandToCenterParameterization', () => {
 		const angle = scalar.rad(18)
 		const end = vec2.scaleAndAdd(center, vec2.direction(angle), 40)
 
-		const ret = Segment.arcCommandToCenterParameterization({
+		const ret = Arc.toCenterParameterization({
 			start: [90, 50],
 			end,
 			command: ['A', [40, 40], 0, false, true],
