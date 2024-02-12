@@ -1002,10 +1002,13 @@ export namespace Path {
 					point = vec2.add(prevPoint, point)
 				}
 
-				const c1 = vec2.lerp(prevPoint, control, 2 / 3)
-				const c2 = vec2.lerp(point, control, 2 / 3)
+				const {command} = CubicBezier.fromQuadraticBezier(
+					prevPoint,
+					control,
+					point
+				)
 
-				currentPath.vertices.push({point, command: ['C', c1, c2]})
+				currentPath.vertices.push({point, command})
 
 				prevPoint = point
 				prevControl = undefined
@@ -1024,10 +1027,14 @@ export namespace Path {
 				}
 
 				const control = vec2.sub(prevPoint, prevControl)
-				const c1 = vec2.lerp(prevPoint, control, 2 / 3)
-				const c2 = vec2.lerp(point, control, 2 / 3)
 
-				currentPath.vertices.push({point, command: ['C', c1, c2]})
+				const {command} = CubicBezier.fromQuadraticBezier(
+					prevPoint,
+					control,
+					point
+				)
+
+				currentPath.vertices.push({point, command})
 
 				prevPoint = point
 				prevControl = control
