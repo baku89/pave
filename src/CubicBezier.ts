@@ -1,7 +1,7 @@
 import {Bezier as BezierJS, Point} from 'bezier-js'
 import {vec2} from 'linearly'
 
-import {CommandC} from './Path'
+import {CommandC, Vertex} from './Path'
 import {Segment} from './Segment'
 import {memoizeSegmentFunction} from './utils'
 
@@ -149,6 +149,30 @@ export namespace CubicBezier {
 		const control2 = vec2.add(center, vec2.direction(endAngle + Math.PI, k))
 
 		return {start, command: ['C', control1, control2], end}
+	}
+
+	export function divideAtTimes(
+		segment: Segment<CommandC>,
+		times: number[]
+	): Vertex<CommandC>[] {
+		const bezier = toBezierJS(segment)
+
+		const vertices: Vertex<CommandC>[] = []
+
+		times = [0, ...times, 1]
+
+		for (let i = 1; i < times.length; i++) {
+			const from = times[i - 1]
+			const to = times[i]
+
+			const points = bezier.split(from, to).points
+
+			const [c1, c2, point] = points.slice(1).map(({x, y}) => [x, y] as vec2)
+
+			vertices.push({command: ['C', c1, c2], point})
+		}
+
+		return vertices
 	}
 }
 
