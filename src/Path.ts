@@ -1225,11 +1225,24 @@ export namespace Path {
 	 */
 	export const toPaperPath = memoize(
 		(path: Path): paper.Path | paper.CompoundPath => {
-			const paperPaths = path.curves.map(curve => {
+			const paperPaths = path.curves.map(({vertices, closed}) => {
 				const paperPath = new paper.Path()
 				let prev: vec2 | undefined
 
-				for (const {point, command} of curve.vertices) {
+				const firstVertex = vertices.at(0)
+
+				if (firstVertex) {
+					paperPath.moveTo(toPoint(firstVertex.point))
+					prev = firstVertex.point
+
+					vertices = vertices.slice(1)
+
+					if (closed) {
+						vertices.push(firstVertex)
+					}
+				}
+
+				for (const {point, command} of vertices) {
 					switch (command[0]) {
 						case 'L':
 							paperPath.lineTo(toPoint(point))
@@ -1242,22 +1255,18 @@ export namespace Path {
 							)
 							break
 						case 'A': {
-							const [, [rx, ry], xAxisRotation] = command
+							const beziers = Arc.approximateByCubicBeziers(
+								{start: prev!, end: point, command},
+								scalar.rad(90)
+							)
 
-							if (rx !== ry || xAxisRotation !== 0) {
-								throw new Error('Ellipse or tilted arc is not yet supported')
+							for (const {point, command} of beziers) {
+								paperPath.cubicCurveTo(
+									toPoint(command[1]),
+									toPoint(command[2]),
+									toPoint(point)
+								)
 							}
-
-							const ret = Arc.toCenterParameterization({
-								start: prev!,
-								end: point,
-								command,
-							})
-
-							const midAngle = (ret.angles[0] + ret.angles[1]) / 2
-							const through = vec2.add(ret.center, vec2.direction(midAngle, rx))
-
-							paperPath.arcTo(toPoint(through), toPoint(point))
 							break
 						}
 					}
@@ -1265,7 +1274,7 @@ export namespace Path {
 					prev = point
 				}
 
-				if (curve.closed) {
+				if (closed) {
 					paperPath.closePath()
 				}
 
