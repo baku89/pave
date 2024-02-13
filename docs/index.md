@@ -44,9 +44,11 @@ Currently, the library heavily depends on [Bazier.js](https://pomax.github.io/be
 See the full documentation on [API](./api)
 
 - [Path](./api/modules/Path-1): The core module for manipulating paths.
+- [Arc](./api/modules/Arc): The arc commands functions.
 - [Bezier](./api/modules/Bezier): The cubic bezier functions which wraps Bezier.js.
-- [Rect](./api/modules/Rect): The functions for handling rects.
 - [Circle](./api/modules/Circle): The functions for handling circles.
+- [Line](./api/modules/Line): The functions for handling lines.
+- [Rect](./api/modules/Rect): The functions for handling rects.
 - [Type Aliases](./api#type-aliases)
 
 ## Getting Started
