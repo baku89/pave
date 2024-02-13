@@ -217,6 +217,102 @@ export namespace Arc {
 			[xMax, yMax],
 		]
 	}
+
+	/**
+	 * https://gist.github.com/timo22345/9413158#file-flatten-js-L443
+	 */
+	export function transform(
+		arc: Segment<CommandA>,
+		matrix: mat2d
+	): Segment<CommandA> {
+		const epsilon = 0.0000000001
+
+		let {
+			start,
+			end,
+			// eslint-disable-next-line prefer-const
+			command: [, [rx, ry], ax, largeArc, sweep],
+		} = arc
+
+		// We consider the current ellipse as image of the unit circle
+		// by first scale(rx,ry) and then rotate(ax) ...
+		// So we apply ma =  m x rotate(ax) x scale(rx,ry) to the unit circle.
+
+		const c = Math.cos(scalar.rad(ax)),
+			s = Math.sin(scalar.rad(ax))
+		const ma = [
+			rx * (matrix[0] * c + matrix[2] * s),
+			rx * (matrix[1] * c + matrix[3] * s),
+			ry * (-matrix[0] * s + matrix[2] * c),
+			ry * (-matrix[1] * s + matrix[3] * c),
+		]
+
+		// ma * transpose(ma) = [ J L ]
+		//                      [ L K ]
+		// L is calculated later (if the image is not a circle)
+		const J = ma[0] * ma[0] + ma[2] * ma[2],
+			K = ma[1] * ma[1] + ma[3] * ma[3]
+
+		// the discriminant of the characteristic polynomial of ma * transpose(ma)
+		let D =
+			((ma[0] - ma[3]) * (ma[0] - ma[3]) + (ma[2] + ma[1]) * (ma[2] + ma[1])) *
+			((ma[0] + ma[3]) * (ma[0] + ma[3]) + (ma[2] - ma[1]) * (ma[2] - ma[1]))
+
+		// the "mean eigenvalue"
+		const JK = (J + K) / 2
+
+		// check if the image is (almost) a circle
+		if (D < epsilon * JK) {
+			// if it is
+			rx = ry = Math.sqrt(JK)
+			ax = 0
+		} else {
+			// if it is not a circle
+			const L = ma[0] * ma[1] + ma[2] * ma[3]
+
+			D = Math.sqrt(D)
+
+			// {l1,l2} = the two eigen values of ma * transpose(ma)
+			const l1 = JK + D / 2,
+				l2 = JK - D / 2
+			// the x - axis - rotation angle is the argument of the l1 - eigenvector
+			ax =
+				Math.abs(L) < epsilon && Math.abs(l1 - K) < epsilon
+					? 90
+					: (Math.atan(
+							Math.abs(L) > Math.abs(l1 - K) ? (l1 - J) / L : L / (l1 - K)
+					  ) *
+							180) /
+					  Math.PI
+
+			// if ax > 0 => rx = sqrt(l1), ry = sqrt(l2), else exchange axes and ax += 90
+			if (ax >= 0) {
+				// if ax in [0,90]
+				rx = Math.sqrt(l1)
+				ry = Math.sqrt(l2)
+			} else {
+				// if ax in ]-90,0[ => exchange axes
+				ax += 90
+				rx = Math.sqrt(l2)
+				ry = Math.sqrt(l1)
+			}
+		}
+
+		// flip sweep-flag if matrix is not orientation-preserving
+		if (mat2d.det(matrix) < 0) {
+			sweep = !sweep
+		}
+
+		// Transform end point as usual (without translation for relative notation)
+		start = vec2.transformMat2d(start, matrix)
+		end = vec2.transformMat2d(end, matrix)
+
+		return {
+			start,
+			end,
+			command: ['A', [rx, ry], ax, largeArc, sweep],
+		}
+	}
 }
 
 /**

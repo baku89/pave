@@ -603,16 +603,18 @@ export namespace Path {
 	 * @category Modifiers
 	 */
 	export function transform(path: Path, matrix: mat2d): Path {
-		return flatMapVertex(unarc(path), segment => {
+		return flatMapVertex(path, segment => {
 			const point = vec2.transformMat2d(segment.end, matrix)
-			let command: CommandL | CommandC
+			let command: Command
 
 			if (segment.command[0] === 'L') {
 				command = segment.command
-			} else {
+			} else if (segment.command[0] === 'C') {
 				const c1 = vec2.transformMat2d(segment.command[1], matrix)
 				const c2 = vec2.transformMat2d(segment.command[2], matrix)
 				command = ['C', c1, c2]
+			} else {
+				command = Arc.transform(segment as Segment<CommandA>, matrix).command
 			}
 
 			return [{point, command}]
