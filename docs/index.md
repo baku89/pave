@@ -39,6 +39,12 @@ Pave is a low-level toolkit for manipulating SVG/Path2D paths, which includes cr
 Currently, the library heavily depends on [Bazier.js](https://pomax.github.io/bezierjs) by [Pomax](https://github.com/Pomax) and [Paper.js](http://paperjs.org) by [Jürg Lehni
 ](https://github.com/lehni) -- or it might be said that this library is a thin wrapper for them to provide FP-oriented interfaces. Although I'm going to rewrite the whole library with zero dependencies for performance and file size, please consider sponsoring them if you think it'd be useful.
 
+To try out the library, visit the **[Sandbox](./sandbox)**.
+
+::: tip
+All code blocks in this documentation are editable and you can try out with Pave.
+:::
+
 ## API
 
 See the full documentation on [API](./api)
@@ -55,10 +61,6 @@ See the full documentation on [API](./api)
 
 See the [Guide](./guide) for more detailed information.
 
-### Example
+```
 
-::: tip
-All code blocks in this documentation are editable and you can try out with Pave.
-:::
-
-@[code js:pave](./examples/primitives.js)
+```

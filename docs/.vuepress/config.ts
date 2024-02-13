@@ -38,6 +38,10 @@ module.exports = defineUserConfig({
 				link: '/api',
 			},
 			{
+				text: 'Sandbox',
+				link: '/sandbox',
+			},
+			{
 				text: 'Github',
 				link: 'https://github.com/baku89/pave',
 			},

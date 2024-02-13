@@ -10,11 +10,11 @@
 </template>
 
 <script lang="ts" setup>
-import {throttledWatch, useCssVar} from '@vueuse/core'
+import {pausableWatch, throttledWatch, useCssVar} from '@vueuse/core'
 import {mat2d, scalar, vec2} from 'linearly'
 import {type Path} from 'pave'
 import saferEval from 'safer-eval'
-import {onMounted, ref, watchEffect} from 'vue'
+import {onMounted, ref, watch} from 'vue'
 
 import Editor from './Editor.vue'
 
@@ -22,10 +22,26 @@ const props = defineProps<{
 	code: string
 }>()
 
+const emit = defineEmits<{
+	'update:code': [code: string]
+}>()
+
 const editingCode = ref(props.code)
-watchEffect(() => {
-	editingCode.value = props.code
+
+const watcher = pausableWatch(editingCode, code => {
+	emit('update:code', code)
 })
+
+watch(
+	() => props.code,
+	code => {
+		if (code === editingCode.value) return
+
+		watcher.pause()
+		editingCode.value = code
+		watcher.resume()
+	}
+)
 
 const canvas = ref<null | HTMLCanvasElement>(null)
 const context = ref<null | CanvasRenderingContext2D>(null)
