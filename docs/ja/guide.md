@@ -77,7 +77,7 @@ Paveにおけるパスの表現は、SVGのd属性やCanvas APIのような、�
 
 また、パスのデータ構造は以下のような階層を成しています。ちょうど3DCGデータにおいて、頂点の集まりからポリゴンが、ポリゴンの集まりからメッシュが形作られるのとも似ています。
 
-![パス構造の図解](../path_structure.svg)
+<img class='diagram' src='../path_structure.svg' alt='パス構造の図解' />
 
 - [**Path**](./api/interfaces/Path): 単一のCurve、もしくは複数のCurveから成る複合パスを表します。Paveにおける最も一般的な型です。
 - [**Curve**](./api/interfaces/Curve): 単一のストロークを表現します。`closed`プロパティで、カーブが開いているか閉じているかを指定することができます。

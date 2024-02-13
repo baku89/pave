@@ -64,7 +64,7 @@ In Pave, the representation of paths is not a sequence of drawing commands again
 
 Also, the path data structure has the following hierarchy, similar to how in 3D data, meshes consist of collections of polygons, and polygons are formed from collections of vertices.
 
-![Path Data Structure](./path_structure.svg)
+<img class='diagram' src='./path_structure.svg' alt='Path Structure' />
 
 - [**Path**](./api/interfaces/Path): A single Curve or a compound path composed of multiple Curves. It is the most common type to represent shapes in Pave.
 - [**Curve**](./api/interfaces/Curve): Represents a single stroke. It also contains a `closed` property to specify whether the curve is open or closed.

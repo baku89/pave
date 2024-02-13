@@ -47,11 +47,19 @@ h6 {
 	font-weight: 500;
 }
 
-.theme-default-content h2 {
-	border-top: 2px solid var(--c-border);
-	margin-top: var(--navbar-height);
-	padding: 0.2em 0 0;
-	border-bottom: none;
+.theme-default-content {
+	h2 {
+		border-top: 2px solid var(--c-border);
+		margin-top: var(--navbar-height);
+		padding: 0.2em 0 0;
+		border-bottom: none;
+	}
+
+	img.diagram {
+		html.dark & {
+			filter: invert(1) hue-rotate(180deg);
+		}
+	}
 }
 
 // Navbar
