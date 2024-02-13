@@ -571,15 +571,18 @@ export namespace Path {
 	 * @returns
 	 * @category Modifiers
 	 */
-	export function flatMapVertex<C extends Command = Command>(
-		path: Path,
-		fn: (segment: Segment, index: number, curve: Curve) => Vertex<C>[]
-	): Path<C> {
+	export function flatMapVertex<
+		C1 extends Command = Command,
+		C2 extends Command = Command,
+	>(
+		path: Path<C1>,
+		fn: (segment: Segment<C1>, index: number, curve: Curve) => Vertex<C2>[]
+	): Path<C2> {
 		return {
 			curves: path.curves.map(curve => {
 				return {
 					vertices: curve.vertices.flatMap((vertex, i, vertices) => {
-						const segment: Segment = {
+						const segment: Segment<C1> = {
 							start: vertices.at(i - 1)!.point,
 							end: vertex.point,
 							command: vertex.command,
@@ -600,39 +603,20 @@ export namespace Path {
 	 * @category Modifiers
 	 */
 	export function transform(path: Path, matrix: mat2d): Path {
-		return {
-			curves: path.curves.map(p => transformCurve(p, matrix)),
-		}
+		return flatMapVertex(unarc(path), segment => {
+			const point = vec2.transformMat2d(segment.end, matrix)
+			let command: CommandL | CommandC
 
-		function transformCurve(curve: Curve, matrix: mat2d): Curve {
-			const vertices = curve.vertices.map(({point, command}) => {
-				const p = vec2.transformMat2d(point, matrix)
-
-				let c: Command
-
-				switch (command[0]) {
-					case 'L':
-						c = command
-						break
-					case 'C':
-						c = [
-							'C',
-							vec2.transformMat2d(command[1], matrix),
-							vec2.transformMat2d(command[2], matrix),
-						]
-						break
-					case 'A':
-						throw new Error('Not implemented')
-				}
-
-				return {point: p, command: c}
-			})
-
-			return {
-				vertices,
-				closed: curve.closed,
+			if (segment.command[0] === 'L') {
+				command = segment.command
+			} else {
+				const c1 = vec2.transformMat2d(segment.command[1], matrix)
+				const c2 = vec2.transformMat2d(segment.command[2], matrix)
+				command = ['C', c1, c2]
 			}
-		}
+
+			return [{point, command}]
+		})
 	}
 
 	/**
