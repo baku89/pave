@@ -635,18 +635,11 @@ export namespace Path {
 	 * ```
 	 */
 	export function unarc(path: Path, angle = scalar.rad(90)): UnarcPath {
-		return flatMapVertex(path, segment => {
-			if (segment.command[0] === 'A') {
-				return Arc.approximateByCubicBeziers(
-					segment as Segment<CommandA>,
-					angle
-				)
+		return flatMapVertex(path, ({start, end, command}) => {
+			if (command[0] === 'A') {
+				return Arc.approximateByCubicBeziers({start, end, command}, angle)
 			} else {
-				return [
-					{point: segment.start, command: segment.command} as Vertex<
-						Exclude<Command, CommandA>
-					>,
-				]
+				return [{point: start, command}]
 			}
 		})
 	}
