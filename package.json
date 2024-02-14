@@ -71,6 +71,7 @@
 		"typedoc": "^0.25.8",
 		"typedoc-plugin-markdown": "^3.17.1",
 		"typescript": "^5.3.3",
+		"vite-plugin-monaco-editor": "^1.1.0",
 		"vue": "^3.4.19",
 		"vue-eslint-parser": "^9.3.2",
 		"vuepress": "2.0.0-rc.1"

@@ -2,6 +2,13 @@ import {defineUserConfig} from 'vuepress'
 import {path} from '@vuepress/utils'
 import {defaultTheme} from '@vuepress/theme-default'
 import {viteBundler} from '@vuepress/bundler-vite'
+import monacoEditorPlugin, {
+	type IMonacoEditorOpts,
+} from 'vite-plugin-monaco-editor'
+
+const monacoEditorPluginDefault = (monacoEditorPlugin as any).default as (
+	options: IMonacoEditorOpts
+) => any
 
 export default defineUserConfig({
 	title: 'Pave',
@@ -69,7 +76,15 @@ export default defineUserConfig({
 			description: 'SVG/Path2Dのパス操作に特化したライブラリ',
 		},
 	},
-	bundler: viteBundler({}),
+	bundler: viteBundler({
+		viteOptions: {
+			plugins: [
+				monacoEditorPluginDefault({
+					languageWorkers: ['editorWorkerService', 'typescript'],
+				}),
+			],
+		},
+	}),
 	markdown: {
 		//@ts-ignore
 		linkify: true,
