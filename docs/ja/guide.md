@@ -52,6 +52,17 @@ const pathB = produce(pathA, draft => {
 })
 ```
 
+### ベクトル、トランスフォーム
+
+Paveにおけるベクトルや行列は、プレーンな1次元の数値配列として表現されています。例えば、位置は`[x, y]`、2次元のアフィン変換は`[a, b, c, d, tx, ty]`といったようにです。これらのデータの操作は、[Linearly](https://baku89.github.io/linearly)や[gl-matrix](https://glmatrix.net/) などのライブラリを用いて操作することが出来ますが、後者はミュータブルな値の変更を許容するため、Paveと同様にイミュータブルなデータを前提として設計されたLinearlyとの併用をおすすめします。
+
+```ts:no-line-numbers
+import {vec2, mat2d} from 'linearly'
+
+const c = Path.ellipse(vec2.zero, vec2.of(20, 30))
+const t = Path.transform(c, mat2d.fromTranslation([50, 50]))
+```
+
 ### 各種データとの相互変換
 
 PaveはSVGのd属性やCanvas APIのPath2Dといった他のパスデータとの相互変換をサポートしています。

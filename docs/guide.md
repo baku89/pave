@@ -58,6 +58,17 @@ const pathB = produce(pathA, draft => {
 })
 ```
 
+### Vector and Transform
+
+In Pave, vectors and matrices are represented as plain 1D arrays of numbers. For example, a position is `[x, y]`, and a 2D affine transformation is `[a, b, c, d, tx, ty]`. These data can be manipulated using libraries such as [Linearly](https://baku89.github.io/linearly) or [gl-matrix](https://glmatrix.net/), but the latter allows mutable value changes, so it is recommended to use Linearly, which is designed to work with immutable data like Pave.
+
+```ts:no-line-numbers
+import {vec2, mat2d} from 'linearly'
+
+const c = Path.ellipse(vec2.zero, vec2.of(20, 30))
+const t = Path.transform(c, mat2d.fromTranslation([50, 50]))
+```
+
 ## Path Data Structure
 
 In Pave, the representation of paths is not a sequence of drawing commands against a stateful context like the SVG 'd' attribute or Canvas API, but always based on vertices. This means there are no operations like `moveTo` (the `M` command in SVG) or closePath (the `Z` in SVG); paths are always composed of a list of **tuples of vertex positions and interpolation commands from the last vertex**.
