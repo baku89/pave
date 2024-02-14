@@ -25,7 +25,7 @@ export namespace Arc {
 
 		const [x1p, y1p] = vec2.rotate(
 			vec2.scale(vec2.sub(start, end), 0.5),
-			xAxisRotation
+			-xAxisRotation
 		)
 
 		const [rx, ry] = correctRadii(radii, [x1p, y1p])
