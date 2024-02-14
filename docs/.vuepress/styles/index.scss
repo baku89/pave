@@ -76,10 +76,6 @@ h6 {
 	}
 
 	padding-top: calc(var(--navbar-padding-v) + 2px);
-
-	html.dark & .logo {
-		filter: invert(1);
-	}
 }
 
 .navbar-item a,

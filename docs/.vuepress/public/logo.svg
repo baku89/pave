@@ -2,6 +2,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 260">
 	<defs>
 		<style>
+			@media (prefers-color-scheme: light) { :root { filter: none; } }
+			@media (prefers-color-scheme: dark) { :root { filter: invert(100%); } }
+			
 			.c {
 			stroke: #000;
 			fill: none;

@@ -9,6 +9,7 @@ module.exports = defineUserConfig({
 		pave: path.resolve(__dirname, '../../src'),
 	},
 	head: [
+		['link', {rel: 'icon', href: './logo.svg'}],
 		['link', {rel: 'preconnect', href: 'https://fonts.googleapis.com'}],
 		[
 			'link',
