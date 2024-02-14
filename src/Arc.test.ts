@@ -4,7 +4,7 @@
 import 'jest-canvas-mock'
 import '../jest.setup'
 
-import {scalar, vec2} from 'linearly'
+import {mat2d, scalar, vec2} from 'linearly'
 
 import {Arc} from './Arc'
 
@@ -61,7 +61,7 @@ describe('toCenterParameterization', () => {
 		})
 	})
 
-	it('should wcork in the case [-120°, 120°]', () => {
+	it('should work in the case [-120°, 120°]', () => {
 		const startAngle = scalar.rad(-120)
 		const endAngle = scalar.rad(120)
 
@@ -78,6 +78,42 @@ describe('toCenterParameterization', () => {
 			radii: [1, 1],
 			angles: [startAngle, endAngle],
 			xAxisRotation: 0,
+			counterclockwise: false,
+		})
+	})
+
+	it('should work in an ellipse', () => {
+		const ret = Arc.toCenterParameterization({
+			start: [70, 50],
+			end: [30, 50],
+			command: ['A', [20, 10], 0, false, true],
+		})
+
+		expect(ret).toEqual({
+			center: [50, 50],
+			radii: [20, 10],
+			angles: [0, Math.PI],
+			xAxisRotation: 0,
+			counterclockwise: false,
+		})
+	})
+
+	it('should work in a rotated ellipse', () => {
+		const rotDeg = 45
+		const rotRad = scalar.rad(rotDeg)
+		const rotMat = mat2d.fromRotation(rotRad)
+
+		const ret = Arc.toCenterParameterization({
+			start: vec2.transformMat2d([70, 50], rotMat),
+			end: vec2.transformMat2d([30, 50], rotMat),
+			command: ['A', [20, 10], rotDeg, false, true],
+		})
+
+		expect(ret).toEqual({
+			center: vec2.transformMat2d([50, 50], rotMat),
+			radii: [20, 10],
+			angles: [0, Math.PI],
+			xAxisRotation: rotRad,
 			counterclockwise: false,
 		})
 	})
