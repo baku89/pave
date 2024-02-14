@@ -1,4 +1,4 @@
-import {mat2d, scalar, vec2} from 'linearly'
+import {mat2, mat2d, scalar, vec2} from 'linearly'
 
 import {CommandA, CommandC, Vertex} from './Path'
 import {Rect} from './Rect'
@@ -219,98 +219,98 @@ export namespace Arc {
 	}
 
 	/**
-	 * https://gist.github.com/timo22345/9413158#file-flatten-js-L443
+	 * Transforms the given arc segment with the given matrix.
+	 * @see https://gist.github.com/timo22345/9413158#file-flatten-js-L443-L547
 	 */
 	export function transform(
 		arc: Segment<CommandA>,
 		matrix: mat2d
 	): Segment<CommandA> {
-		const epsilon = 0.0000000001
+		// eslint-disable-next-line prefer-const
+		let [, [rh, rv], offsetRot, largeArc, sweep] = arc.command
 
-		let {
-			start,
-			end,
-			// eslint-disable-next-line prefer-const
-			command: [, [rx, ry], ax, largeArc, sweep],
-		} = arc
+		offsetRot = scalar.rad(offsetRot)
 
-		// We consider the current ellipse as image of the unit circle
-		// by first scale(rx,ry) and then rotate(ax) ...
-		// So we apply ma =  m x rotate(ax) x scale(rx,ry) to the unit circle.
+		const s = Math.sin(offsetRot)
+		const c = Math.cos(offsetRot)
 
-		const c = Math.cos(scalar.rad(ax)),
-			s = Math.sin(scalar.rad(ax))
-		const ma = [
-			rx * (matrix[0] * c + matrix[2] * s),
-			rx * (matrix[1] * c + matrix[3] * s),
-			ry * (-matrix[0] * s + matrix[2] * c),
-			ry * (-matrix[1] * s + matrix[3] * c),
+		// build ellipse representation matrix (unit circle transformation).
+		// the 2x2 matrix multiplication with the upper 2x2 of a_mat is inlined.
+		const mt = matrix //mat2.transpose([matrix[0], matrix[1], matrix[2], matrix[3]])
+
+		const m: mat2 = [
+			mt[0] * +rh * c + mt[2] * rh * s,
+			mt[1] * +rh * c + mt[3] * rh * s,
+			mt[0] * -rv * s + mt[2] * rv * c,
+			mt[1] * -rv * s + mt[3] * rv * c,
 		]
 
-		// ma * transpose(ma) = [ J L ]
-		//                      [ L K ]
-		// L is calculated later (if the image is not a circle)
-		const J = ma[0] * ma[0] + ma[2] * ma[2],
-			K = ma[1] * ma[1] + ma[3] * ma[3]
+		// to implict equation (centered)
+		const A = m[0] ** 2 + m[2] ** 2
+		const C = m[1] ** 2 + m[3] ** 2
+		const B = (m[0] * m[1] + m[2] * m[3]) * 2.0
 
-		// the discriminant of the characteristic polynomial of ma * transpose(ma)
-		let D =
-			((ma[0] - ma[3]) * (ma[0] - ma[3]) + (ma[2] + ma[1]) * (ma[2] + ma[1])) *
-			((ma[0] + ma[3]) * (ma[0] + ma[3]) + (ma[2] - ma[1]) * (ma[2] - ma[1]))
+		// precalculate distance A to C
+		const ac = A - C
 
-		// the "mean eigenvalue"
-		const JK = (J + K) / 2
+		// helpers for angle and halfaxis-extraction.
+		let A2: number, C2: number
 
-		// check if the image is (almost) a circle
-		if (D < epsilon * JK) {
-			// if it is
-			rx = ry = Math.sqrt(JK)
-			ax = 0
+		// convert implicit equation to angle and halfaxis:
+		if (nearZero(B)) {
+			offsetRot = 0
+			A2 = A
+			C2 = C
 		} else {
-			// if it is not a circle
-			const L = ma[0] * ma[1] + ma[2] * ma[3]
-
-			D = Math.sqrt(D)
-
-			// {l1,l2} = the two eigen values of ma * transpose(ma)
-			const l1 = JK + D / 2,
-				l2 = JK - D / 2
-			// the x - axis - rotation angle is the argument of the l1 - eigenvector
-			ax =
-				Math.abs(L) < epsilon && Math.abs(l1 - K) < epsilon
-					? 90
-					: (Math.atan(
-							Math.abs(L) > Math.abs(l1 - K) ? (l1 - J) / L : L / (l1 - K)
-					  ) *
-							180) /
-					  Math.PI
-
-			// if ax > 0 => rx = sqrt(l1), ry = sqrt(l2), else exchange axes and ax += 90
-			if (ax >= 0) {
-				// if ax in [0,90]
-				rx = Math.sqrt(l1)
-				ry = Math.sqrt(l2)
+			if (nearZero(ac)) {
+				A2 = A + B * 0.5
+				C2 = A - B * 0.5
+				offsetRot = Math.PI / 4.0
 			} else {
-				// if ax in ]-90,0[ => exchange axes
-				ax += 90
-				rx = Math.sqrt(l2)
-				ry = Math.sqrt(l1)
+				// Precalculate radical:
+				let K = 1 + (B * B) / (ac * ac)
+
+				// Clamp (precision issues might need this.. not likely, but better save than sorry)
+				K = K < 0 ? 0 : Math.sqrt(K)
+
+				A2 = 0.5 * (A + C + K * ac)
+				C2 = 0.5 * (A + C - K * ac)
+				offsetRot = 0.5 * Math.atan2(B, ac)
 			}
 		}
 
-		// flip sweep-flag if matrix is not orientation-preserving
+		// This can get slightly below zero due to rounding issues.
+		// it's save to clamp to zero in this case (this yields a zero length halfaxis)
+		A2 = A2 < 0 ? 0 : Math.sqrt(A2)
+		C2 = C2 < 0 ? 0 : Math.sqrt(C2)
+
+		// now A2 and C2 are half-axis:
+		if (ac <= 0) {
+			rv = C2
+			rh = A2
+		} else {
+			rv = C2
+			rh = A2
+		}
+
+		// If the transformation matrix contain a mirror-component
+		// winding order of the ellise needs to be changed.
 		if (mat2d.det(matrix) < 0) {
 			sweep = !sweep
 		}
 
-		// Transform end point as usual (without translation for relative notation)
-		start = vec2.transformMat2d(start, matrix)
-		end = vec2.transformMat2d(end, matrix)
+		// Radians back to degrees
+		offsetRot = scalar.deg(offsetRot)
 
 		return {
-			start,
-			end,
-			command: ['A', [rx, ry], ax, largeArc, sweep],
+			start: vec2.transformMat2d(arc.start, matrix),
+			end: vec2.transformMat2d(arc.end, matrix),
+			command: ['A', [rh, rv], offsetRot, largeArc, sweep],
+		}
+
+		function nearZero(B: number) {
+			if (Math.abs(B) < 0.0000000000000001) return true
+			else return false
 		}
 	}
 }
