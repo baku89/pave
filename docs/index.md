@@ -55,7 +55,7 @@ See the full documentation on [API](./api)
 - [Circle](./api/modules/Circle): The functions for handling circles.
 - [Line](./api/modules/Line): The functions for handling lines.
 - [Rect](./api/modules/Rect): The functions for handling rects.
-- [Type Aliases](./api#type-aliases)
+- [Type Aliases](./api#types)
 
 ## Getting Started
 

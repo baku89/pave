@@ -12,21 +12,21 @@ paper.setup(document.createElement('canvas'))
 
 /**
  * Line-to command.
- * @category Type Aliases
+ * @category Types
  * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Paths#line_commands
  */
 export type CommandL = readonly [code: 'L']
 
 /**
  * Cubic Bézier curve command.
- * @category Type Aliases
+ * @category Types
  * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Paths#curve_commands
  */
 export type CommandC = readonly [code: 'C', control1: vec2, control2: vec2]
 
 /**
  * Arc command
- * @category Type Aliases
+ * @category Types
  * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Paths#arcs
  */
 export type CommandA = readonly [
@@ -51,19 +51,19 @@ export type CommandA = readonly [
 
 /**
  * A command of a path, which only supports line-to, cubic Bézier curve, and arc commands.
- * @category Type Aliases
+ * @category Types
  *  */
 export type Command = CommandL | CommandC | CommandA
 
 /**
  * A vertex of a path. It consists of a end point and a command.
- * @category Type Aliases
+ * @category Types
  */
 export type Vertex<C extends Command = Command> = {point: vec2; command: C}
 
 /**
  * A single open or closed path represented as an array of . All of the points are represented as tuple of vector `[x: number, y: number]` and the commands are represented in absolute form.
- * @category Type Aliases
+ * @category Types
  */
 export interface Curve<C extends Command = Command> {
 	vertices: Vertex<C>[]
@@ -72,7 +72,7 @@ export interface Curve<C extends Command = Command> {
 
 /**
  * A path that consists of multiple curves.
- * @category Type Aliases
+ * @category Types
  */
 export interface Path<C extends Command = Command> {
 	curves: Curve<C>[]

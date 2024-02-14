@@ -2,7 +2,7 @@ import {vec2} from 'linearly'
 
 /**
  * A rect represented as a tuple of two diagonal points. The first point always must be always the minimum coordinates and the second point must be the maximum coordinates.
- * @category Type Aliases
+ * @category Types
  */
 export type Rect = readonly [min: vec2, max: vec2]
 
