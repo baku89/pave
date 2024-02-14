@@ -86,6 +86,9 @@ export default defineUserConfig({
 		//@ts-ignore
 		linkify: true,
 		typographer: true,
+		code: {
+			lineNumbers: false,
+		},
 	},
 	extendsMarkdown: md => {
 		const defaultRender = md.renderer.rules.fence!
