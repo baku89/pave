@@ -1,8 +1,9 @@
-import palettePlugin from '@vuepress/plugin-palette'
-import {defineUserConfig, defaultTheme} from 'vuepress'
+import {defineUserConfig} from 'vuepress'
 import {path} from '@vuepress/utils'
+import {defaultTheme} from '@vuepress/theme-default'
+import {viteBundler} from '@vuepress/bundler-vite'
 
-module.exports = defineUserConfig({
+export default defineUserConfig({
 	title: 'Pave',
 	base: '/pave/',
 	alias: {
@@ -68,7 +69,7 @@ module.exports = defineUserConfig({
 			description: 'SVG/Path2Dのパス操作に特化したライブラリ',
 		},
 	},
-	plugins: [palettePlugin({preset: 'sass'})],
+	bundler: viteBundler({}),
 	markdown: {
 		//@ts-ignore
 		linkify: true,
