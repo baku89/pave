@@ -47,6 +47,11 @@ h6 {
 	font-weight: 500;
 }
 
+#main-title,
+.site-name {
+	letter-spacing: -0.06em;
+}
+
 .theme-default-content {
 	h2 {
 		border-top: 2px solid var(--c-border);
