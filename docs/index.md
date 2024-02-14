@@ -60,7 +60,3 @@ See the full documentation on [API](./api)
 ## Getting Started
 
 See the [Guide](./guide) for more detailed information.
-
-```
-
-```
