@@ -57,12 +57,9 @@ export default defineUserConfig({
 				text: 'Sandbox',
 				link: '/sandbox',
 			},
-			{
-				text: 'Github',
-				link: 'https://github.com/baku89/pave',
-			},
 		],
 		logo: '/logo.svg',
+		repo: 'baku89/pave',
 	}),
 	locales: {
 		'/': {
