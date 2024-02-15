@@ -62,6 +62,10 @@ export type Command = CommandL | CommandC | CommandA
  */
 export type Vertex<C extends Command = Command> = {point: vec2; command: C}
 
+export type VertexL = Vertex<CommandL>
+export type VertexC = Vertex<CommandC>
+export type VertexA = Vertex<CommandA>
+
 /**
  * A single open or closed path represented as an array of . All of the points are represented as tuple of vector `[x: number, y: number]` and the commands are represented in absolute form.
  * @category Types
@@ -71,6 +75,10 @@ export interface Curve<C extends Command = Command> {
 	closed: boolean
 }
 
+export type CurveL = Curve<CommandL>
+export type CurveC = Curve<CommandC>
+export type CurveA = Curve<CommandA>
+
 /**
  * A path that consists of multiple curves.
  * @category Types
@@ -78,6 +86,10 @@ export interface Curve<C extends Command = Command> {
 export interface Path<C extends Command = Command> {
 	curves: Curve<C>[]
 }
+
+export type PathL = Path<CommandL>
+export type PathC = Path<CommandC>
+export type PathA = Path<CommandA>
 
 type UnarcPath = Path<CommandL | CommandC>
 
