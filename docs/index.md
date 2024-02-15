@@ -1,6 +1,5 @@
 ---
 home: true
-tagline: A library for manipulating SVG/Path2D curves.
 ---
 
 <div class="badges">
