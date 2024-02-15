@@ -56,42 +56,43 @@ export type CommandA = readonly [
  *  */
 export type Command = CommandL | CommandC | CommandA
 
+export type Code = Command[0]
+
+/* eslint prettier-vue/prettier: 0 */
+export type CommandForCode<C extends Code> = C extends 'L'
+	? CommandL
+	: C extends 'C'
+	? CommandC
+	: CommandA
+/* eslint prettier-vue/prettier: 1 */
+
 /**
  * A vertex of a path. It consists of a end point and a command.
  * @category Types
  */
-export type Vertex<C extends Command = Command> = {point: vec2; command: C}
-
-export type VertexL = Vertex<CommandL>
-export type VertexC = Vertex<CommandC>
-export type VertexA = Vertex<CommandA>
+export type Vertex<C extends Code = Code> = {
+	point: vec2
+	command: CommandForCode<C>
+}
 
 /**
  * A single open or closed path represented as an array of . All of the points are represented as tuple of vector `[x: number, y: number]` and the commands are represented in absolute form.
  * @category Types
  */
-export type Curve<C extends Command = Command> = {
+export type Curve<C extends Code = Code> = {
 	vertices: Vertex<C>[]
 	closed: boolean
 }
-
-export type CurveL = Curve<CommandL>
-export type CurveC = Curve<CommandC>
-export type CurveA = Curve<CommandA>
 
 /**
  * A path that consists of multiple curves.
  * @category Types
  */
-export type Path<C extends Command = Command> = {
+export type Path<C extends Code = Code> = {
 	curves: Curve<C>[]
 }
 
-export type PathL = Path<CommandL>
-export type PathC = Path<CommandC>
-export type PathA = Path<CommandA>
-
-type UnarcPath = Path<CommandL | CommandC>
+type UnarcPath = Path<'L' | 'C'>
 
 type SVGCommand =
 	| 'M'
@@ -584,10 +585,7 @@ export namespace Path {
 	 * @returns The newly created path
 	 * @category Modifiers
 	 */
-	export function flatMapVertex<
-		C1 extends Command = Command,
-		C2 extends Command = Command,
-	>(
+	export function flatMapVertex<C1 extends Code = Code, C2 extends Code = Code>(
 		path: Path<C1>,
 		fn: (
 			segment: Segment<C1>,
@@ -631,7 +629,7 @@ export namespace Path {
 				const c2 = vec2.transformMat2d(segment.command[2], matrix)
 				command = ['C', c1, c2]
 			} else {
-				command = Arc.transform(segment as Segment<CommandA>, matrix).command
+				command = Arc.transform(segment, matrix).command
 			}
 
 			return [{point, command}]
@@ -673,13 +671,13 @@ export namespace Path {
 	export function toCubicBezier(
 		path: Path,
 		unarcAngle: number = scalar.rad(45)
-	): PathC {
+	): Path<'C'> {
 		return flatMapVertex(path, segment => {
 			if (segment.command[0] === 'C') {
 				return [{point: segment.end, command: segment.command}]
 			} else if (segment.command[0] === 'A') {
 				return Arc.approximateByCubicBeziers(
-					segment as Segment<CommandA>,
+					segment,
 					unarcAngle ?? scalar.rad(45)
 				)
 			} else {
@@ -836,9 +834,9 @@ export namespace Path {
 
 		return flatMapVertex(unarc(path), (segment): Vertex[] => {
 			if (segment.command[0] === 'C') {
-				return CubicBezier.divideAtTimes(segment as Segment<CommandC>, times)
+				return CubicBezier.divideAtTimes(segment, times)
 			} else {
-				return Line.divideAtTimes(segment as Segment<CommandL>, times)
+				return Line.divideAtTimes(segment, times)
 			}
 		})
 	}

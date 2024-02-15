@@ -1,6 +1,6 @@
 import {vec2} from 'linearly'
 
-import {Command} from './Path'
+import {Code, Command} from './Path'
 import {Segment} from './Segment'
 
 export function toFixedSimple(a: number, fractionDigits = 2): string {
@@ -29,7 +29,7 @@ export function memoize<Arg extends object, ReturnType>(
 	}
 }
 
-export function memoizeSegmentFunction<C extends Command, T>(
+export function memoizeSegmentFunction<C extends Code, T>(
 	f: (segment: Segment<C>) => T
 ) {
 	const cache = new WeakMap<vec2, WeakMap<Command, WeakMap<vec2, T>>>()
