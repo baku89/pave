@@ -641,7 +641,7 @@ export namespace Path {
 			if (command[0] === 'A') {
 				return Arc.approximateByCubicBeziers({start, end, command}, angle)
 			} else {
-				return [{point: start, command}]
+				return [{point: end, command}]
 			}
 		})
 	}
