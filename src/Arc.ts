@@ -87,6 +87,8 @@ export namespace Arc {
 		arc: Segment<CommandA>,
 		angle: number
 	): Vertex<CommandC>[] {
+		angle = angle === 0 ? Math.PI / 4 : Math.abs(angle)
+
 		const {center, radii, angles, xAxisRotation} = toCenterParameterization(arc)
 
 		const [startAngle, endAngle] = angles
