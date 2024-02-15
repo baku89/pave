@@ -70,7 +70,7 @@ export type VertexA = Vertex<CommandA>
  * A single open or closed path represented as an array of . All of the points are represented as tuple of vector `[x: number, y: number]` and the commands are represented in absolute form.
  * @category Types
  */
-export interface Curve<C extends Command = Command> {
+export type Curve<C extends Command = Command> = {
 	vertices: Vertex<C>[]
 	closed: boolean
 }
@@ -83,7 +83,7 @@ export type CurveA = Curve<CommandA>
  * A path that consists of multiple curves.
  * @category Types
  */
-export interface Path<C extends Command = Command> {
+export type Path<C extends Command = Command> = {
 	curves: Curve<C>[]
 }
 
@@ -578,10 +578,10 @@ export namespace Path {
 	}
 
 	/**
-	 *
-	 * @param path
-	 * @param fn
-	 * @returns
+	 * Maps each segment in the path to a single or array of vertices and creates a new path concatinating those vertices. you can change the type of commands, and change the number of them in the path, but you cannot change the topology of the path. The segments that were originally continuous remains connected, and vice versa.
+	 * @param path The path to map
+	 * @param fn The vertex mapping function. It takes a {@link Segment} and returns a single or array of vertices.
+	 * @returns The newly created path
 	 * @category Modifiers
 	 */
 	export function flatMapVertex<
@@ -589,7 +589,11 @@ export namespace Path {
 		C2 extends Command = Command,
 	>(
 		path: Path<C1>,
-		fn: (segment: Segment<C1>, index: number, curve: Curve) => Vertex<C2>[]
+		fn: (
+			segment: Segment<C1>,
+			index: number,
+			curve: Curve
+		) => Vertex<C2> | Vertex<C2>[]
 	): Path<C2> {
 		return {
 			curves: path.curves.map(curve => {
@@ -658,6 +662,39 @@ export namespace Path {
 			}
 		})
 	}
+
+	/**
+	 * Converts all commands in the path to cubic Bézier curve commands.
+	 * @param path The path to convert
+	 * @param unarcAngle The angle step for approximating arc commands with cubic Béziers
+	 * @returns The new path with only cubic Bézier curve commands
+	 * @category Modifiers
+	 */
+	export function toCubicBezier(
+		path: Path,
+		unarcAngle: number = scalar.rad(45)
+	): PathC {
+		return flatMapVertex(path, segment => {
+			if (segment.command[0] === 'C') {
+				return [{point: segment.end, command: segment.command}]
+			} else if (segment.command[0] === 'A') {
+				return Arc.approximateByCubicBeziers(
+					segment as Segment<CommandA>,
+					unarcAngle ?? scalar.rad(45)
+				)
+			} else {
+				const c1 = vec2.lerp(segment.start, segment.end, 1 / 3)
+				const c2 = vec2.lerp(segment.start, segment.end, 2 / 3)
+				return [{point: segment.end, command: ['C', c1, c2]}]
+			}
+		})
+	}
+
+	/**
+	 * Alias for {@link toCubicBezier}
+	 * @category Modifiers
+	 */
+	export const toC = toCubicBezier
 
 	export interface OffsetOptions {
 		/**
@@ -788,8 +825,11 @@ export namespace Path {
 	 * @param path The path to subdivide
 	 * @param division The number of division for each segment
 	 * @returns The newly created path
+	 * @category Modifiers
 	 */
 	export function subdivide(path: Path, division: number): Path {
+		if (division <= 1) return path
+
 		const times = Array(division - 1)
 			.fill(0)
 			.map((_, i) => (i + 1) / division)
@@ -804,43 +844,60 @@ export namespace Path {
 	}
 
 	export interface DistortOptions {
+		/**
+		 * The angle step for approximating arc commands with cubic Béziers
+		 * @default 5
+		 */
 		unarcAngle?: number
+		/**
+		 * The number of subdivision for each segment
+		 * @default 1 (no subdivision applied)
+		 */
+		subdivide?: number
 	}
 
 	/**
-	 * Distorts path
-	 * @param path
-	 * @param transform
-	 * @returns
+	 * Distorts path by the given transformation function.  It assumes that the continuity of transformation is smooth in the spatial domain and has no singularities or cusps.
+	 * @param path The path to distort
+	 * @param transform The distort function that maps a point coordinate to a transformation matrix. The translation component is absolute, and affects points of Bézier curves. The rotation, scaling, and skewing components affect the orientation of two handles.
+	 * @returns The newly created path
+	 * @category Modifiers
+	 *
+	 * @example
+	 * ```js:pave
+	 * let p = Path.line([10, 50], [90, 50])
+	 * stroke(p, 'skyblue')
+	 *
+	 * const wave = (freq, width) => ([x, y]) => {
+	 *   const phase = x * freq
+	 *   return [
+	 *     1, Math.cos(phase) * width * freq,
+	 *     0, 1,
+	 *     x, y + Math.sin(phase) * width
+	 *   ]
+	 * }
+	 *
+	 * debug(Path.distort(p, wave(.2, 10), {subdivide: 10}))
+	 * ```
 	 */
 	export function distort(
 		path: Path,
 		transform: (position: vec2) => mat2d,
-		options: DistortOptions
+		{unarcAngle = 5, subdivide: subdivideNum = 1}: DistortOptions = {}
 	) {
 		return flatMapVertex(
-			unarc(path, options.unarcAngle ?? scalar.rad(15)),
+			toCubicBezier(subdivide(path, subdivideNum), unarcAngle),
 			(segment): Vertex[] => {
-				if (segment.command[0] === 'C') {
-					let [, c1, c2] = segment.command
-					const startXform = transform(segment.start)
-					const endXform = transform(segment.end)
+				let [, c1, c2] = segment.command
+				const startXform = transform(segment.start)
+				const endXform = transform(segment.end)
 
-					c1 = vec2.transformMat2d(vec2.sub(c1, segment.start), startXform)
-					c2 = vec2.transformMat2d(vec2.sub(c2, segment.end), endXform)
+				c1 = vec2.transformMat2d(vec2.sub(c1, segment.start), startXform)
+				c2 = vec2.transformMat2d(vec2.sub(c2, segment.end), endXform)
 
-					const point: vec2 = [endXform[4], endXform[5]]
+				const point: vec2 = [endXform[4], endXform[5]]
 
-					return [{point, command: ['C', c1, c2]}]
-				} else {
-					const xform = transform(segment.end)
-					return [
-						{
-							point: [xform[4], xform[5]],
-							command: segment.command,
-						},
-					]
-				}
+				return [{point, command: ['C', c1, c2]}]
 			}
 		)
 	}
