@@ -79,7 +79,7 @@
 	"dependencies": {
 		"@types/bezier-js": "^4.1.3",
 		"bezier-js": "^6.1.4",
-		"linearly": "0.22.0",
+		"linearly": "0.23.0",
 		"paper": "^0.12.17",
 		"paperjs-offset": "^1.0.8"
 	}
