@@ -9,16 +9,8 @@
 	--c-border-dark: var(--c-border);
 	--code-bg-color: black;
 	--code-ln-color: white;
-	--font-family: 'Work Sans', sans-serif; //'Inter', sans-serif;
+	--font-family: 'Work Sans', sans-serif;
 	--font-family-code: 'IBM Plex Mono', monospace;
-
-	--gradient-data: rgba(245, 214, 142, 1) 0%, rgba(240, 165, 155, 1) 14%,
-		rgba(250, 100, 100, 1) 31%, rgba(190, 80, 172, 1) 45%,
-		rgba(123, 47, 154, 1) 58%, rgba(102, 37, 115, 1) 62%,
-		rgba(123, 47, 154, 1) 69%, rgba(174, 117, 186, 1) 75%,
-		rgba(211, 237, 200, 1) 84%, rgba(255, 255, 148, 1) 93%,
-		rgba(245, 214, 142, 1) 99%;
-	--gradient-bg: linear-gradient(to right, var(--gradient-data));
 
 	--border-radius: 6px;
 }
