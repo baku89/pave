@@ -4,6 +4,7 @@ import {OffsetOptions as PaperOffsetOptions, PaperOffset} from 'paperjs-offset'
 
 import {Arc} from './Arc'
 import {CubicBezier} from './CubicBezier'
+import {Line} from './Line'
 import {Rect} from './Rect'
 import {Segment} from './Segment'
 import {memoize, toFixedSimple} from './utils'
@@ -768,6 +769,68 @@ export namespace Path {
 		const paperPath = toPaperPath(path).clone()
 		paperPath.flatten(flatness)
 		return fromPaperPath(paperPath)
+	}
+
+	/**
+	 * Subdivides each segment in the path into specific number of sub-segments.
+	 * @param path The path to subdivide
+	 * @param division The number of division for each segment
+	 * @returns The newly created path
+	 */
+	export function subdivide(path: Path, division: number): Path {
+		const times = Array(division - 1)
+			.fill(0)
+			.map((_, i) => (i + 1) / division)
+
+		return flatMapVertex(unarc(path), (segment): Vertex[] => {
+			if (segment.command[0] === 'C') {
+				return CubicBezier.divideAtTimes(segment as Segment<CommandC>, times)
+			} else {
+				return Line.divideAtTimes(segment as Segment<CommandL>, times)
+			}
+		})
+	}
+
+	export interface DistortOptions {
+		unarcAngle?: number
+	}
+
+	/**
+	 * Distorts path
+	 * @param path
+	 * @param transform
+	 * @returns
+	 */
+	export function distort(
+		path: Path,
+		transform: (position: vec2) => mat2d,
+		options: DistortOptions
+	) {
+		return flatMapVertex(
+			unarc(path, options.unarcAngle ?? scalar.rad(15)),
+			(segment): Vertex[] => {
+				if (segment.command[0] === 'C') {
+					let [, c1, c2] = segment.command
+					const startXform = transform(segment.start)
+					const endXform = transform(segment.end)
+
+					c1 = vec2.transformMat2d(vec2.sub(c1, segment.start), startXform)
+					c2 = vec2.transformMat2d(vec2.sub(c2, segment.end), endXform)
+
+					const point: vec2 = [endXform[4], endXform[5]]
+
+					return [{point, command: ['C', c1, c2]}]
+				} else {
+					const xform = transform(segment.end)
+					return [
+						{
+							point: [xform[4], xform[5]],
+							command: segment.command,
+						},
+					]
+				}
+			}
+		)
 	}
 
 	/**
