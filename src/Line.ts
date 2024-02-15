@@ -1,6 +1,6 @@
 import {vec2} from 'linearly'
 
-import {CommandL} from './Path'
+import {CommandL, Vertex} from './Path'
 import {Rect} from './Rect'
 import {Segment} from './Segment'
 
@@ -16,5 +16,14 @@ export namespace Line {
 	export function pointAtTime(line: Segment<CommandL>, t: number) {
 		const {start, end} = line
 		return vec2.lerp(start, end, t)
+	}
+
+	export function divideAtTimes(
+		line: Segment<CommandL>,
+		times: number[]
+	): Vertex<CommandL>[] {
+		return [...times, 1].map(t => {
+			return {point: vec2.lerp(line.start, line.end, t), command: line.command}
+		})
 	}
 }
