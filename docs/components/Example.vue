@@ -73,7 +73,7 @@ onMounted(async () => {
 				context.fill()
 			}
 
-			const dot = (point: vec2, size = 3, color = '') => {
+			const dot = (point: vec2, color = '', size = 3) => {
 				context.strokeStyle = 'none'
 				context.fillStyle = color || brandColor.value
 				Path.drawToCanvas(Path.circle(point, size / 2), context)
