@@ -13,7 +13,7 @@ npm i @baku89/pave
 As it supports ES modules, you can load it using the import statement. Symbols such as `Path` or `CubicBezier` can be used both as types and as modules (namespaces) consisting of functions related to those types.
 
 ```ts:no-line-numbers
-import {Path} from '@/baku89pave'
+import {Path} from '@baku89/pave'
 
 const circle = Path.circle([0, 0], 100)
 
