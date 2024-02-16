@@ -1854,11 +1854,11 @@ function drawToRenderingContext(
 			} else if (command[0] === 'C') {
 				context.bezierCurveTo(...command[1], ...command[2], ...point)
 			} else if (command[0] === 'A') {
-				const prev = vertices.at(i - 1)?.point
+				const start = vertices.at(i - 1)?.point
 
-				if (!prev) throw new Error('The previous point is not found')
+				if (!start) throw new Error('The start point is not found')
 
-				arcTo(context, prev, point, command)
+				arcTo(context, start, point, command)
 			}
 		})
 
@@ -1900,8 +1900,9 @@ function drawToRenderingContext(
 		contxt.ellipse(
 			...ret.center,
 			...ret.radii,
-			ret.xAxisRotation,
-			...ret.angles,
+			scalar.rad(ret.xAxisRotation),
+			scalar.rad(ret.angles[0]),
+			scalar.rad(ret.angles[1]),
 			ret.counterclockwise
 		)
 	}
