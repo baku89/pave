@@ -446,6 +446,34 @@ export namespace Path {
 	export const ngon = regularPolygon
 
 	/**
+	 * Creates a path consisting of a single C command.
+	 * @param start The start point
+	 * @param control1  The first control point
+	 * @param control2  The second control point
+	 * @param end The end point
+	 * @returns The newly created path
+	 * @category Primitives
+	 */
+	export function cubicBeizer(
+		start: vec2,
+		control1: vec2,
+		control2: vec2,
+		end: vec2
+	): Path {
+		return {
+			curves: [
+				{
+					vertices: [
+						{point: start, command: ['L']},
+						{point: end, command: ['C', control1, control2]},
+					],
+					closed: false,
+				},
+			],
+		}
+	}
+
+	/**
 	 * Creates an open path consist of only a single command.
 	 * @param segment The segment to create
 	 * @returns The newly created path
