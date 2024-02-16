@@ -599,7 +599,7 @@ export namespace Path {
 	 * @returns The newly created path
 	 * @category Modifiers
 	 */
-	export function flatMapVertex<C1 extends Code = Code, C2 extends Code = Code>(
+	export function spawnVertex<C1 extends Code = Code, C2 extends Code = Code>(
 		path: Path<C1>,
 		fn: (
 			segment: Segment<C1>,
@@ -632,7 +632,7 @@ export namespace Path {
 	 * @category Modifiers
 	 */
 	export function transform(path: Path, matrix: mat2d): Path {
-		return flatMapVertex(path, segment => {
+		return spawnVertex(path, segment => {
 			const point = vec2.transformMat2d(segment.end, matrix)
 			let command: Command
 
@@ -666,7 +666,7 @@ export namespace Path {
 	 * ```
 	 */
 	export function unarc(path: Path, angle = scalar.rad(90)): UnarcPath {
-		return flatMapVertex(path, ({start, end, command}) => {
+		return spawnVertex(path, ({start, end, command}) => {
 			if (command[0] === 'A') {
 				return Arc.approximateByCubicBeziers({start, end, command}, angle)
 			} else {
@@ -686,7 +686,7 @@ export namespace Path {
 		path: Path,
 		unarcAngle: number = scalar.rad(45)
 	): Path<'C'> {
-		return flatMapVertex(path, segment => {
+		return spawnVertex(path, segment => {
 			if (segment.command[0] === 'C') {
 				return [{point: segment.end, command: segment.command}]
 			} else if (segment.command[0] === 'A') {
@@ -846,7 +846,7 @@ export namespace Path {
 			.fill(0)
 			.map((_, i) => (i + 1) / division)
 
-		return flatMapVertex(unarc(path), (segment): Vertex[] => {
+		return spawnVertex(unarc(path), (segment): Vertex[] => {
 			if (segment.command[0] === 'C') {
 				return CubicBezier.divideAtTimes(segment, times)
 			} else {
@@ -897,7 +897,7 @@ export namespace Path {
 		transform: (position: vec2) => mat2d,
 		{unarcAngle = 5, subdivide: subdivideNum = 1}: DistortOptions = {}
 	) {
-		return flatMapVertex(
+		return spawnVertex(
 			toCubicBezier(subdivide(path, subdivideNum), unarcAngle),
 			(segment): Vertex[] => {
 				let [, c1, c2] = segment.command
