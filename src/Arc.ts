@@ -4,6 +4,7 @@ import {SegmentLocation, UnitSegmentLocation} from './Location'
 import {VertexC} from './Path'
 import {Rect} from './Rect'
 import {SegmentA} from './Segment'
+import {memoize} from './utils'
 
 /**
  * The angle range to check. `startAngle` is always in the range of [-π, π], and the `endAngle` is relative angle considering the rotation direction, with start angle as a reference.
@@ -168,7 +169,7 @@ export namespace Arc {
 	 * stroke(Path.rect(...bound), 'tomato')
 	 * ```
 	 */
-	export function bounds(arc: SegmentA): Rect {
+	export const bounds = memoize((arc: SegmentA): Rect => {
 		const {start, end} = arc
 		const {center, radii, angles, xAxisRotation} = toCenterParameterization(arc)
 
@@ -218,7 +219,7 @@ export namespace Arc {
 			[xMin, yMin],
 			[xMax, yMax],
 		]
-	}
+	})
 
 	/**
 	 * Transforms the given arc segment with the given matrix.
@@ -308,10 +309,10 @@ export namespace Arc {
 		}
 	}
 
-	export function length(arc: SegmentA): number {
+	export const length = memoize((arc: SegmentA): number => {
 		const {radii, angles} = toCenterParameterization(arc)
 		return ellipticArcLength(radii, angles)
-	}
+	})
 
 	export function toTime(arc: SegmentA, loc: SegmentLocation): number {
 		if (typeof loc === 'number') {
@@ -359,10 +360,10 @@ export namespace Arc {
 	/**
 	 * Returns true if the length of arc segment is zero.
 	 */
-	export function isZero(arc: SegmentA) {
+	export const isZero = memoize((arc: SegmentA): boolean => {
 		const {start, end} = arc
 		return vec2.equals(start, end)
-	}
+	})
 
 	export function ellipticArcLength(radii: vec2, angles: AngleRange): number {
 		const [rx, ry] = radii
