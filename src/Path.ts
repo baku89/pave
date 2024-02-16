@@ -167,6 +167,20 @@ export namespace Path {
 	export const rect = rectangle
 
 	/**
+	 * Creates a rectangle path from the given center and size.
+	 * @param center The center of the rectangle
+	 * @param size The size of the rectangle
+	 * @returns The newly created path
+	 * @category Primitives
+	 */
+	export function rectFromCenter(center: vec2, size: vec2): Path {
+		const halfSize = vec2.scale(size, 0.5)
+		const start = vec2.sub(center, halfSize)
+		const end = vec2.add(center, halfSize)
+		return rectangle(start, end)
+	}
+
+	/**
 	 * Creates a circle path from the given center and radius.
 	 * @param center The center of the circle
 	 * @param radius The radius of the circle
