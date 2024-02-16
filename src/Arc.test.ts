@@ -21,7 +21,7 @@ describe('toCenterParameterization', () => {
 			radii: [40, 40],
 			angles: [0, 90],
 			xAxisRotation: 0,
-			counterclockwise: false,
+			sweep: true,
 		})
 	})
 
@@ -37,7 +37,7 @@ describe('toCenterParameterization', () => {
 			radii: [40, 40],
 			angles: [0, -180],
 			xAxisRotation: 0,
-			counterclockwise: true,
+			sweep: false,
 		})
 	})
 
@@ -57,7 +57,7 @@ describe('toCenterParameterization', () => {
 			radii: [40, 40],
 			angles: [0, angle],
 			xAxisRotation: 0,
-			counterclockwise: false,
+			sweep: true,
 		})
 	})
 
@@ -78,7 +78,7 @@ describe('toCenterParameterization', () => {
 			radii: [1, 1],
 			angles: [startAngle, endAngle],
 			xAxisRotation: 0,
-			counterclockwise: false,
+			sweep: true,
 		})
 	})
 
@@ -94,7 +94,7 @@ describe('toCenterParameterization', () => {
 			radii: [20, 10],
 			angles: [0, 180],
 			xAxisRotation: 0,
-			counterclockwise: false,
+			sweep: true,
 		})
 	})
 
@@ -113,7 +113,7 @@ describe('toCenterParameterization', () => {
 			radii: [20, 10],
 			angles: [0, 180],
 			xAxisRotation,
-			counterclockwise: false,
+			sweep: true,
 		})
 	})
 
@@ -135,7 +135,7 @@ describe('toCenterParameterization', () => {
 			radii: [r, r],
 			angles: [startAngle, endAngle],
 			xAxisRotation: 0,
-			counterclockwise: false,
+			sweep: true,
 		})
 	})
 })

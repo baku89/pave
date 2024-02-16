@@ -65,7 +65,7 @@ export namespace Arc {
 			radii: [rx, ry] as vec2,
 			angles: [startAngle, endAngle] as AngleRange,
 			xAxisRotation,
-			counterclockwise: deltaAngle < 0,
+			sweep: deltaAngle > 0,
 		}
 
 		function correctRadii(signedRadii: vec2, p: vec2): vec2 {
@@ -339,11 +339,10 @@ export namespace Arc {
 
 	export function derivative(arc: SegmentA, loc: SegmentLocation): vec2 {
 		const time = toTime(arc, loc)
-		const {radii, angles, xAxisRotation, counterclockwise} =
-			toCenterParameterization(arc)
+		const {radii, angles, xAxisRotation, sweep} = toCenterParameterization(arc)
 
 		const angle = scalar.lerp(...angles, time)
-		const derivativeAtUnit = vec2.dir(angle + 90 * (counterclockwise ? -1 : 1))
+		const derivativeAtUnit = vec2.dir(angle + 90 * (sweep ? 1 : -1))
 		const xform = mat2d.trs(null, xAxisRotation, radii)
 
 		return vec2.transformMat2d(derivativeAtUnit, xform)

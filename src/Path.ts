@@ -1903,7 +1903,7 @@ function drawToRenderingContext(
 			scalar.rad(ret.xAxisRotation),
 			scalar.rad(ret.angles[0]),
 			scalar.rad(ret.angles[1]),
-			ret.counterclockwise
+			!ret.sweep
 		)
 	}
 }
