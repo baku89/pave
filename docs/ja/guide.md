@@ -46,7 +46,7 @@ p = Path.closePath(p)
 ```ts
 import {produce} from 'immer'
 
-const pathA = Path.arc([50, 50], 40, 0, Math.PI)
+const pathA = Path.arc([50, 50], 40, 0, 90)
 const pathB = produce(pathA, draft => {
 	draft.curves[0].closed = true
 })
@@ -62,6 +62,10 @@ import {vec2, mat2d} from 'linearly'
 const c = Path.ellipse(vec2.zero, vec2.of(20, 30))
 const t = Path.transform(c, mat2d.fromTranslation([50, 50]))
 ```
+
+### 角度
+
+Paveでは、**角度は度数法で表現されます**。JavaScriptの標準の`Math`や`Canvas2DRenderingContext`などではラジアン法が用いられているため、ラジアン法との変換が必要な場合、Linearlyの`rad`関数などを用いて変換してください。なお、Linearlyにおける角度も度数法で表現されるため、`scalar.cos(90) === 0`のように度数法での計算が可能です。
 
 ### 各種データとの相互変換
 

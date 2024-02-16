@@ -52,7 +52,7 @@ Or use a library for manipulating immutable data structures such as [immer](http
 ```ts
 import {produce} from 'immer'
 
-const pathA = Path.arc([50, 50], 40, 0, Math.PI)
+const pathA = Path.arc([50, 50], 40, 0, 180)
 const pathB = produce(pathA, draft => {
 	draft.curves[0].closed = true
 })
@@ -61,6 +61,10 @@ const pathB = produce(pathA, draft => {
 ### Vector and Transform
 
 In Pave, vectors and matrices are represented as plain 1D arrays of numbers. For example, a position is `[x, y]`, and a 2D affine transformation is `[a, b, c, d, tx, ty]`. These data can be manipulated using libraries such as [Linearly](https://baku89.github.io/linearly) or [gl-matrix](https://glmatrix.net/), but the latter allows mutable value changes, so it is recommended to use Linearly, which is designed to work with immutable data like Pave.
+
+### Angle
+
+In Pave, **angles are represented in degrees**. JavaScript's standard `Math` and `Canvas2DRenderingContext` use radians, so if you need to use those functions, convert them to radians by using utilities like Linearly's `rad` function. Note that angles in Linearly are also represented in degrees, so calculations in degrees are possible, such as `scalar.cos(90) === 0`.
 
 ```ts
 import {vec2, mat2d} from 'linearly'

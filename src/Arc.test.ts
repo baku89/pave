@@ -4,7 +4,7 @@
 import 'jest-canvas-mock'
 import '../jest.setup'
 
-import {mat2d, scalar, vec2} from 'linearly'
+import {mat2d, vec2} from 'linearly'
 
 import {Arc} from './Arc'
 
@@ -19,7 +19,7 @@ describe('toCenterParameterization', () => {
 		expect(ret).toEqual({
 			center: [50, 50],
 			radii: [40, 40],
-			angles: [0, Math.PI / 2],
+			angles: [0, 90],
 			xAxisRotation: 0,
 			counterclockwise: false,
 		})
@@ -35,7 +35,7 @@ describe('toCenterParameterization', () => {
 		expect(ret).toEqual({
 			center: [50, 50],
 			radii: [40, 40],
-			angles: [0, -Math.PI],
+			angles: [0, -180],
 			xAxisRotation: 0,
 			counterclockwise: true,
 		})
@@ -43,7 +43,7 @@ describe('toCenterParameterization', () => {
 
 	it('should work in small angle case (18°)', () => {
 		const center: vec2 = [50, 50]
-		const angle = scalar.rad(18)
+		const angle = 18
 		const end = vec2.scaleAndAdd(center, vec2.direction(angle), 40)
 
 		const ret = Arc.toCenterParameterization({
@@ -62,8 +62,8 @@ describe('toCenterParameterization', () => {
 	})
 
 	it('should work in the case [-120°, 120°]', () => {
-		const startAngle = scalar.rad(-120)
-		const endAngle = scalar.rad(120)
+		const startAngle = -120
+		const endAngle = 120
 
 		const ret = Arc.toCenterParameterization({
 			start: vec2.direction(startAngle),
@@ -92,28 +92,49 @@ describe('toCenterParameterization', () => {
 		expect(ret).toEqual({
 			center: [50, 50],
 			radii: [20, 10],
-			angles: [0, Math.PI],
+			angles: [0, 180],
 			xAxisRotation: 0,
 			counterclockwise: false,
 		})
 	})
 
 	it('should work in a rotated ellipse', () => {
-		const rotDeg = 45
-		const rotRad = scalar.rad(rotDeg)
-		const rotMat = mat2d.fromRotation(rotRad)
+		const xAxisRotation = 45
+		const rotMat = mat2d.fromRotation(xAxisRotation)
 
 		const ret = Arc.toCenterParameterization({
 			start: vec2.transformMat2d([70, 50], rotMat),
 			end: vec2.transformMat2d([30, 50], rotMat),
-			command: ['A', [20, 10], rotDeg, false, true],
+			command: ['A', [20, 10], xAxisRotation, false, true],
 		})
 
 		expect(ret).toEqual({
 			center: vec2.transformMat2d([50, 50], rotMat),
 			radii: [20, 10],
-			angles: [0, Math.PI],
-			xAxisRotation: rotRad,
+			angles: [0, 180],
+			xAxisRotation,
+			counterclockwise: false,
+		})
+	})
+
+	test('should work in the angle case [170°, 190°]', () => {
+		const startAngle = 170
+		const endAngle = 190
+		const r = 1
+		const start = vec2.direction(startAngle, r)
+		const end = vec2.direction(endAngle, r)
+
+		const ret = Arc.toCenterParameterization({
+			start,
+			end,
+			command: ['A', [r, r], 0, false, true],
+		})
+
+		expect(ret).toEqual({
+			center: vec2.zero,
+			radii: [r, r],
+			angles: [startAngle, endAngle],
+			xAxisRotation: 0,
 			counterclockwise: false,
 		})
 	})
@@ -134,8 +155,8 @@ describe('bounds', () => {
 	})
 
 	test('should work in the angle case [0°, 120°]', () => {
-		const startAngle = scalar.rad(0)
-		const endAngle = scalar.rad(120)
+		const startAngle = 0
+		const endAngle = 120
 		const r = 1
 		const start = vec2.direction(startAngle, r)
 		const end = vec2.direction(endAngle, r)
@@ -153,8 +174,8 @@ describe('bounds', () => {
 	})
 
 	test('should work in the angle case [170°, 190°]', () => {
-		const startAngle = scalar.rad(170)
-		const endAngle = scalar.rad(190)
+		const startAngle = 170
+		const endAngle = 190
 		const r = 1
 		const start = vec2.direction(startAngle, r)
 		const end = vec2.direction(endAngle, r)
@@ -169,8 +190,8 @@ describe('bounds', () => {
 	})
 
 	test('should work in the angle case [-120°, 120°]', () => {
-		const startAngle = scalar.rad(-120)
-		const endAngle = scalar.rad(120)
+		const startAngle = -120
+		const endAngle = 120
 		const r = 1
 		const start = vec2.direction(startAngle, r)
 		const end = vec2.direction(endAngle, r)

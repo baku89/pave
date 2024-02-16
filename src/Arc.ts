@@ -20,8 +20,7 @@ export namespace Arc {
 	 * */
 	export function toCenterParameterization(arcSegment: SegmentA) {
 		const {start, end, command} = arcSegment
-		const [, radii, xAxisRotationDeg, largeArcFlag, sweepFlag] = command
-		const xAxisRotation = scalar.rad(xAxisRotationDeg)
+		const [, radii, xAxisRotation, largeArcFlag, sweepFlag] = command
 
 		const [x1p, y1p] = vec2.rotate(
 			vec2.scale(vec2.sub(start, end), 0.5),
@@ -47,13 +46,13 @@ export namespace Arc {
 		const a = vec2.div(vec2.sub([x1p, y1p], [cxp, cyp]), [rx, ry])
 		const b = vec2.div(vec2.sub(vec2.zero, [x1p, y1p], [cxp, cyp]), [rx, ry])
 		const startAngle = vec2.angle(a)
-		const deltaAngle0 = vec2.angle(a, b) % (2 * Math.PI)
+		const deltaAngle0 = vec2.angle(a, b) % 360
 
 		let deltaAngle: number
 		if (!sweepFlag && deltaAngle0 > 0) {
-			deltaAngle = deltaAngle0 - 2 * Math.PI
+			deltaAngle = deltaAngle0 - 360
 		} else if (sweepFlag && deltaAngle0 < 0) {
-			deltaAngle = deltaAngle0 + 2 * Math.PI
+			deltaAngle = deltaAngle0 + 360
 		} else {
 			deltaAngle = deltaAngle0
 		}
@@ -87,7 +86,7 @@ export namespace Arc {
 		arc: SegmentA,
 		angle: number
 	): VertexC[] {
-		angle = angle === 0 ? Math.PI / 4 : Math.abs(angle)
+		angle = angle === 0 ? 90 : Math.abs(angle)
 
 		const {center, radii, angles, xAxisRotation} = toCenterParameterization(arc)
 
@@ -117,13 +116,13 @@ export namespace Arc {
 
 			const control1 = vec2.scaleAndAdd(
 				start,
-				vec2.direction(a0 + (Math.PI / 2) * dir),
+				vec2.direction(a0 + 90 * dir),
 				handleLength
 			)
 
 			const control2 = vec2.scaleAndAdd(
 				end,
-				vec2.direction(a1 - (Math.PI / 2) * dir),
+				vec2.direction(a1 - 90 * dir),
 				handleLength
 			)
 
@@ -150,8 +149,8 @@ export namespace Arc {
 	 * @example
 	 * ```js:pave
 	 * const center = [50, 50]
-	 * const startAngle = scalar.rad(-120)
-	 * const endAngle = scalar.rad(30)
+	 * const startAngle = -120
+	 * const endAngle = 30
 	 * const radius = 40
 	 * const start = vec2.add(center, vec2.direction(startAngle, 40))
 	 * const end = vec2.add(center, vec2.direction(endAngle, 40))
@@ -174,18 +173,18 @@ export namespace Arc {
 
 		const sy = radii[1] / radii[0]
 
-		const angleAtXmax = -Math.atan2(
-			sy * Math.sin(xAxisRotation),
-			Math.cos(xAxisRotation)
+		const angleAtXmax = -scalar.atan(
+			sy * scalar.sin(xAxisRotation),
+			scalar.cos(xAxisRotation)
 		)
-		const angleAtXmin = normalizeAngle(angleAtXmax + Math.PI)
+		const angleAtXmin = normalizeAngle(angleAtXmax + 180)
 
-		const angleAtYmax = -Math.atan2(
-			-sy * Math.cos(xAxisRotation),
-			Math.sin(xAxisRotation)
+		const angleAtYmax = -scalar.atan(
+			-sy * scalar.cos(xAxisRotation),
+			scalar.sin(xAxisRotation)
 		)
 
-		const angleAtYmin = normalizeAngle(angleAtYmax + Math.PI)
+		const angleAtYmin = normalizeAngle(angleAtYmax + 180)
 
 		const xform = mat2d.scale(
 			mat2d.rotate(mat2d.fromTranslation(center), xAxisRotation),
@@ -228,10 +227,8 @@ export namespace Arc {
 		// eslint-disable-next-line prefer-const
 		let [, [rh, rv], offsetRot, largeArc, sweep] = arc.command
 
-		offsetRot = scalar.rad(offsetRot)
-
-		const s = Math.sin(offsetRot)
-		const c = Math.cos(offsetRot)
+		const s = scalar.sin(offsetRot)
+		const c = scalar.cos(offsetRot)
 
 		// build ellipse representation matrix (unit circle transformation).
 		// the 2x2 matrix multiplication with the upper 2x2 of a_mat is inlined.
@@ -264,7 +261,7 @@ export namespace Arc {
 			if (nearZero(ac)) {
 				A2 = A + B * 0.5
 				C2 = A - B * 0.5
-				offsetRot = Math.PI / 4.0
+				offsetRot = 45
 			} else {
 				// Precalculate radical:
 				let K = 1 + (B * B) / (ac * ac)
@@ -274,7 +271,7 @@ export namespace Arc {
 
 				A2 = 0.5 * (A + C + K * ac)
 				C2 = 0.5 * (A + C - K * ac)
-				offsetRot = 0.5 * Math.atan2(B, ac)
+				offsetRot = 0.5 * scalar.atan(B, ac)
 			}
 		}
 
@@ -298,9 +295,6 @@ export namespace Arc {
 			sweep = !sweep
 		}
 
-		// Radians back to degrees
-		offsetRot = scalar.deg(offsetRot)
-
 		return {
 			start: vec2.transformMat2d(arc.start, matrix),
 			end: vec2.transformMat2d(arc.end, matrix),
@@ -323,12 +317,12 @@ export namespace Arc {
 }
 
 /**
- * Normalizes the angle to the range of [-π, π].
+ * Normalizes the angle to the range of [-180, 180].
  * @param angle The angle to normalize.
  * @returns The normalized angle.
  */
 function normalizeAngle(angle: number) {
-	return ((angle + Math.PI) % (2 * Math.PI)) - Math.PI
+	return ((angle + 180) % 360) - 180
 }
 
 /**
@@ -345,7 +339,7 @@ function crossAtAngle(angle: number, [startAngle, endAngle]: AngleRange) {
 			return angle < endAngle
 		} else {
 			// Consider the case when the angle range crosses [-1, 0]
-			return angle < endAngle - 2 * Math.PI
+			return angle < endAngle - 360
 		}
 	} else {
 		// Counterclockwise
@@ -353,7 +347,7 @@ function crossAtAngle(angle: number, [startAngle, endAngle]: AngleRange) {
 			return endAngle < angle
 		} else {
 			// Consider the case when the angle range crosses [0, 1]
-			return angle < endAngle + 2 * Math.PI
+			return angle < endAngle + 360
 		}
 	}
 }

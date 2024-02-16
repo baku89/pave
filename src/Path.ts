@@ -356,7 +356,7 @@ export namespace Path {
 	 * @category Primitives
 	 * @example
 	 * ```js:pave
-	 * const a = Path.arc([50, 50], 40, 0, Math.PI / 2)
+	 * const a = Path.arc([50, 50], 40, 0, 90)
 	 * stroke(a)
 	 * ```
 	 */
@@ -373,8 +373,8 @@ export namespace Path {
 
 		const points: Vertex[] = [{point: start, command: ['L']}]
 
-		while (Math.abs(endAngle - startAngle) > Math.PI) {
-			startAngle += Math.PI * (sweepFlag ? 1 : -1)
+		while (Math.abs(endAngle - startAngle) > 180) {
+			startAngle += 180 * (sweepFlag ? 1 : -1)
 			const through = vec2.add(center, vec2.direction(startAngle, radius))
 
 			points.push({point: through, command: ['A', radii, 0, false, sweepFlag]})
@@ -405,7 +405,7 @@ export namespace Path {
 	 * @category Primitives
 	 * @example
 	 * ```js:pave
-	 * const f = Path.fan([50, 50], 20, 40, 0, Math.PI / 2)
+	 * const f = Path.fan([50, 50], 20, 40, 0, 90)
 	 * stroke(f)
 	 * ```
 	 */
@@ -532,7 +532,7 @@ export namespace Path {
 		radius: number,
 		sides: number
 	): Path {
-		const angleStep = (2 * Math.PI) / sides
+		const angleStep = 360 / sides
 		const points: vec2[] = []
 
 		for (let i = 0; i < sides; i++) {
@@ -713,7 +713,7 @@ export namespace Path {
 	 */
 	export function normalAtOffset(path: Path, offset: number): vec2 {
 		const tangent = tangentAtOffset(path, offset)
-		return vec2.rotate(tangent, Math.PI / 2)
+		return vec2.rotate(tangent, 90)
 	}
 
 	/**
@@ -764,7 +764,7 @@ export namespace Path {
 	export function transformAtOffset(path: Path, offset: number): mat2d {
 		const point = pointAtOffset(path, offset)
 		const xAxis = tangentAtOffset(path, offset)
-		const yAxis = vec2.rotate(xAxis, Math.PI / 2)
+		const yAxis = vec2.rotate(xAxis, 90)
 		return [...xAxis, ...yAxis, ...point]
 	}
 
@@ -852,13 +852,13 @@ export namespace Path {
 	 *
 	 * @example
 	 * ```js:pave
-	 * const p = Path.arc([50, 50], 40, 0, Math.PI)
+	 * const p = Path.arc([50, 50], 40, 0, 90)
 	 * stroke(p, 'skyblue', 5)
 	 * const pa = Path.unarc(p)
 	 * stroke(pa, 'tomato')
 	 * ```
 	 */
-	export function unarc(path: Path, angle = scalar.rad(90)): UnarcPath {
+	export function unarc(path: Path, angle = 90): UnarcPath {
 		return spawnVertex(path, ({start, end, command}) => {
 			if (command[0] === 'A') {
 				return Arc.approximateByCubicBeziers({start, end, command}, angle)
@@ -875,18 +875,12 @@ export namespace Path {
 	 * @returns The new path with only cubic Bézier curve commands
 	 * @category Modifiers
 	 */
-	export function toCubicBezier(
-		path: Path,
-		unarcAngle: number = scalar.rad(45)
-	): PathC {
+	export function toCubicBezier(path: Path, unarcAngle = 90): PathC {
 		return spawnVertex(path, segment => {
 			if (segment.command[0] === 'C') {
 				return [{point: segment.end, command: segment.command}]
 			} else if (segment.command[0] === 'A') {
-				return Arc.approximateByCubicBeziers(
-					segment as SegmentA,
-					unarcAngle ?? scalar.rad(45)
-				)
+				return Arc.approximateByCubicBeziers(segment as SegmentA, unarcAngle)
 			} else {
 				const c1 = vec2.lerp(segment.start, segment.end, 1 / 3)
 				const c2 = vec2.lerp(segment.start, segment.end, 2 / 3)
@@ -1076,9 +1070,9 @@ export namespace Path {
 	 * const wave = (freq, width) => ([x, y]) => {
 	 *   const phase = x * freq
 	 *   return [
-	 *     1, Math.cos(phase) * width * freq,
+	 *     1, scalar.cos(phase) * width * freq,
 	 *     0, 1,
-	 *     x, y + Math.sin(phase) * width
+	 *     x, y + scalar.sin(phase) * width
 	 *   ]
 	 * }
 	 *
@@ -1572,7 +1566,7 @@ export namespace Path {
 						case 'A': {
 							const beziers = Arc.approximateByCubicBeziers(
 								{start: prev!, end: point, command},
-								scalar.rad(90)
+								90
 							)
 
 							for (const {point, command} of beziers) {
