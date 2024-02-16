@@ -3,6 +3,7 @@ import paper from 'paper'
 import {OffsetOptions as PaperOffsetOptions, PaperOffset} from 'paperjs-offset'
 
 import {Arc} from './Arc'
+import {Circle} from './Circle'
 import {CubicBezier} from './CubicBezier'
 import {Line} from './Line'
 import {Rect} from './Rect'
@@ -211,6 +212,109 @@ export namespace Path {
 	 */
 	export function circle(center: vec2, radius: number): Path {
 		return ellipse(center, [radius, radius])
+	}
+
+	export interface CircleFromPointsOptions {
+		/**
+		 * If the given points are less than three and the circumcenter cannot be well-defined, the circle will be drawn in the direction of the sweep flag. (in Canvas API, it means clockwise).
+		 * @default true
+		 */
+		preferredSweep?: boolean
+	}
+
+	/**
+	 * Creates a circle path which passes through the given points.
+	 * @param p1 The first point
+	 * @param p2 The second point
+	 * @param p3 The third point
+	 * @returns The circle path, whose first point matches to `p1`. After duplicating points are removed, if there are only one point, creates a circle with zero radius. For two points, creates a circle from the two points as the diameter. Otherwise, creates a circle that passes through the three points.
+	 * @category Primitives
+	 * @example
+	 * ```js:pave
+	 * const p1 = [30, 30]
+	 * const p2 = [70, 30]
+	 * const p3 = [50, 60]
+	 *
+	 * dot(p1)
+	 * dot(p2)
+	 * dot(p3)
+	 *
+	 * stroke(Path.circleFromPoints(p1, p2))
+	 * stroke(Path.circleFromPoints(p1, p2, p3), 'skyblue')
+	 * ```
+	 */
+	export function circleFromPoints(
+		p1: vec2,
+		p2?: vec2 | null,
+		p3?: vec2 | null,
+		{preferredSweep = true}: CircleFromPointsOptions = {}
+	): Path {
+		// Remove duplicate points
+		if (p2 && p3 && vec2.equals(p2, p3)) {
+			p3 = undefined
+		}
+		if (p3 && vec2.equals(p3, p1)) {
+			p3 = undefined
+		}
+		if (p2 && vec2.equals(p1, p2)) {
+			p2 = p3
+			p3 = undefined
+		}
+
+		// If there are only one point, create a circle with zero radius
+		if (!p2) {
+			p2 = p1
+		}
+
+		// If there are only two points, create a circle from the two points as the diameter
+		if (!p3) {
+			const radius = vec2.distance(p1, p2) / 2
+			const radii: vec2 = [radius, radius]
+			return {
+				curves: [
+					{
+						vertices: [
+							{
+								point: p1,
+								command: ['A', radii, 0, false, preferredSweep],
+							},
+							{
+								point: p2,
+								command: ['A', radii, 0, false, preferredSweep],
+							},
+						],
+						closed: true,
+					},
+				],
+			}
+		}
+
+		const [, radius] = Circle.circumcircle(p1, p2, p3)
+		const radii: vec2 = [radius, radius]
+
+		const sweep = vec2.angle(vec2.sub(p2, p1), vec2.sub(p3, p1)) > 0
+
+		return {
+			curves: [
+				{
+					vertices: [
+						{
+							point: p1,
+							command: ['A', radii, 0, false, sweep],
+						},
+						{
+							point: p2,
+							command: ['A', radii, 0, false, sweep],
+						},
+						{
+							point: p3,
+							command: ['A', radii, 0, false, sweep],
+						},
+					],
+					closed: true,
+				},
+			],
+		}
 	}
 
 	/**
