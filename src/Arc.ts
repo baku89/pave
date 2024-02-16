@@ -1,8 +1,8 @@
 import {mat2, mat2d, scalar, vec2} from 'linearly'
 
-import {Vertex} from './Path'
+import {VertexC} from './Path'
 import {Rect} from './Rect'
-import {Segment} from './Segment'
+import {SegmentA} from './Segment'
 
 /**
  * The angle range to check. `startAngle` is always in the range of [-π, π], and the `endAngle` is relative angle considering the rotation direction, with start angle as a reference.
@@ -18,7 +18,7 @@ export namespace Arc {
 	 * https://observablehq.com/@awhitty/svg-2-elliptical-arc-to-canvas-path2d
 	 * @category Utilities
 	 * */
-	export function toCenterParameterization(arcSegment: Segment<'A'>) {
+	export function toCenterParameterization(arcSegment: SegmentA) {
 		const {start, end, command} = arcSegment
 		const [, radii, xAxisRotationDeg, largeArcFlag, sweepFlag] = command
 		const xAxisRotation = scalar.rad(xAxisRotationDeg)
@@ -84,9 +84,9 @@ export namespace Arc {
 	}
 
 	export function approximateByCubicBeziers(
-		arc: Segment<'A'>,
+		arc: SegmentA,
 		angle: number
-	): Vertex<'C'>[] {
+	): VertexC[] {
 		angle = angle === 0 ? Math.PI / 4 : Math.abs(angle)
 
 		const {center, radii, angles, xAxisRotation} = toCenterParameterization(arc)
@@ -102,7 +102,7 @@ export namespace Arc {
 			radii
 		)
 
-		const beziers: Vertex<'C'>[] = []
+		const beziers: VertexC[] = []
 
 		for (let i = 0; i < n; i++) {
 			const a0 = startAngle + i * delta
@@ -128,7 +128,7 @@ export namespace Arc {
 			)
 
 			// Apply the transformation to the unit circle
-			const vertex: Vertex<'C'> = {
+			const vertex: VertexC = {
 				point: vec2.transformMat2d(end, xform),
 				command: [
 					'C',
@@ -168,7 +168,7 @@ export namespace Arc {
 	 * stroke(Path.rect(...bound), 'tomato')
 	 * ```
 	 */
-	export function bounds(arc: Segment<'A'>): Rect {
+	export function bounds(arc: SegmentA): Rect {
 		const {start, end} = arc
 		const {center, radii, angles, xAxisRotation} = toCenterParameterization(arc)
 
@@ -224,7 +224,7 @@ export namespace Arc {
 	 * Transforms the given arc segment with the given matrix.
 	 * @see https://gist.github.com/timo22345/9413158#file-flatten-js-L443-L547
 	 */
-	export function transform(arc: Segment<'A'>, matrix: mat2d): Segment<'A'> {
+	export function transform(arc: SegmentA, matrix: mat2d): SegmentA {
 		// eslint-disable-next-line prefer-const
 		let [, [rh, rv], offsetRot, largeArc, sweep] = arc.command
 

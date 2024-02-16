@@ -6,7 +6,7 @@ import {Arc} from './Arc'
 import {CubicBezier} from './CubicBezier'
 import {Line} from './Line'
 import {Rect} from './Rect'
-import {Segment} from './Segment'
+import {Segment, SegmentA, SegmentC, SegmentL} from './Segment'
 import {memoize, toFixedSimple} from './utils'
 
 paper.setup(document.createElement('canvas'))
@@ -56,43 +56,60 @@ export type CommandA = readonly [
  *  */
 export type Command = CommandL | CommandC | CommandA
 
-export type Code = Command[0]
-
-/* eslint prettier-vue/prettier: 0 */
-export type CommandForCode<C extends Code> = C extends 'L'
-	? CommandL
-	: C extends 'C'
-	? CommandC
-	: CommandA
-/* eslint prettier-vue/prettier: 1 */
-
 /**
  * A vertex of a path. It consists of a end point and a command.
  * @category Types
  */
-export type Vertex<C extends Code = Code> = {
+export type Vertex<C extends Command = Command> = {
 	point: vec2
-	command: CommandForCode<C>
+	command: C
 }
+
+/** @category Types */
+export type VertexL = Vertex<CommandL>
+
+/** @category Types */
+export type VertexC = Vertex<CommandC>
+
+/** @category Types */
+export type VertexA = Vertex<CommandA>
 
 /**
  * A single open or closed path represented as an array of . All of the points are represented as tuple of vector `[x: number, y: number]` and the commands are represented in absolute form.
  * @category Types
  */
-export type Curve<C extends Code = Code> = {
+export type Curve<C extends Command = Command> = {
 	vertices: Vertex<C>[]
 	closed: boolean
 }
+
+/** @category Types */
+export type CurveL = Curve<CommandL>
+
+/** @category Types */
+export type CurveC = Curve<CommandC>
+
+/** @category Types */
+export type CurveA = Curve<CommandA>
 
 /**
  * A path that consists of multiple curves.
  * @category Types
  */
-export type Path<C extends Code = Code> = {
+export type Path<C extends Command = Command> = {
 	curves: Curve<C>[]
 }
 
-type UnarcPath = Path<'L' | 'C'>
+/** @category Types */
+export type PathL = Path<CommandL>
+
+/** @category Types */
+export type PathC = Path<CommandC>
+
+/** @category Types */
+export type PathA = Path<CommandA>
+
+type UnarcPath = Path<CommandL | CommandC>
 
 type SVGCommand =
 	| 'M'
@@ -599,7 +616,10 @@ export namespace Path {
 	 * @returns The newly created path
 	 * @category Modifiers
 	 */
-	export function spawnVertex<C1 extends Code = Code, C2 extends Code = Code>(
+	export function spawnVertex<
+		C1 extends Command = Command,
+		C2 extends Command = Command,
+	>(
 		path: Path<C1>,
 		fn: (
 			segment: Segment<C1>,
@@ -643,7 +663,7 @@ export namespace Path {
 				const c2 = vec2.transformMat2d(segment.command[2], matrix)
 				command = ['C', c1, c2]
 			} else {
-				command = Arc.transform(segment, matrix).command
+				command = Arc.transform(segment as SegmentA, matrix).command
 			}
 
 			return [{point, command}]
@@ -685,13 +705,13 @@ export namespace Path {
 	export function toCubicBezier(
 		path: Path,
 		unarcAngle: number = scalar.rad(45)
-	): Path<'C'> {
+	): PathC {
 		return spawnVertex(path, segment => {
 			if (segment.command[0] === 'C') {
 				return [{point: segment.end, command: segment.command}]
 			} else if (segment.command[0] === 'A') {
 				return Arc.approximateByCubicBeziers(
-					segment,
+					segment as SegmentA,
 					unarcAngle ?? scalar.rad(45)
 				)
 			} else {
@@ -848,9 +868,9 @@ export namespace Path {
 
 		return spawnVertex(unarc(path), (segment): Vertex[] => {
 			if (segment.command[0] === 'C') {
-				return CubicBezier.divideAtTimes(segment, times)
+				return CubicBezier.divideAtTimes(segment as SegmentC, times)
 			} else {
-				return Line.divideAtTimes(segment, times)
+				return Line.divideAtTimes(segment as SegmentL, times)
 			}
 		})
 	}

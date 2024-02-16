@@ -1,8 +1,8 @@
 import {Bezier as BezierJS, Point} from 'bezier-js'
 import {vec2} from 'linearly'
 
-import {Vertex} from './Path'
-import {Segment} from './Segment'
+import {VertexC} from './Path'
+import {SegmentC} from './Segment'
 import {memoizeSegmentFunction} from './utils'
 
 /**
@@ -10,7 +10,7 @@ import {memoizeSegmentFunction} from './utils'
  */
 export namespace CubicBezier {
 	export const toBezierJS = memoizeSegmentFunction(
-		(bezier: Segment<'C'>): BezierJS => {
+		(bezier: SegmentC): BezierJS => {
 			const {
 				start,
 				command: [, control1, control2],
@@ -33,7 +33,7 @@ export namespace CubicBezier {
 		start: vec2,
 		control: vec2,
 		end: vec2
-	): Segment<'C'> {
+	): SegmentC {
 		const control1 = vec2.lerp(start, control, 2 / 3)
 		const control2 = vec2.lerp(end, control, 2 / 3)
 
@@ -43,18 +43,16 @@ export namespace CubicBezier {
 	/**
 	 * Calculates the length of the Bezier curve. Length is calculated using numerical approximation, specifically the Legendre-Gauss quadrature algorithm.
 	 */
-	export const length = memoizeSegmentFunction(
-		(bezier: Segment<'C'>): number => {
-			const bezierJS = toBezierJS(bezier)
-			return bezierJS.length()
-		}
-	)
+	export const length = memoizeSegmentFunction((bezier: SegmentC): number => {
+		const bezierJS = toBezierJS(bezier)
+		return bezierJS.length()
+	})
 
 	/**
 	 * Calculates the rect of this Bezier curve.
 	 */
 	export const bounds = memoizeSegmentFunction(
-		(bezier: Segment<'C'>): [vec2, vec2] => {
+		(bezier: SegmentC): [vec2, vec2] => {
 			const bezierJS = toBezierJS(bezier)
 			const {x, y} = bezierJS.bbox()
 
@@ -68,7 +66,7 @@ export namespace CubicBezier {
 	/**
 	 * Calculates the point on the curve at the specified `t` value.
 	 */
-	export function pointAtTime(bezier: Segment<'C'>, t: number): vec2 {
+	export function pointAtTime(bezier: SegmentC, t: number): vec2 {
 		const {
 			start,
 			command: [, control1, control2],
@@ -91,7 +89,7 @@ export namespace CubicBezier {
 	/**
 	 * Calculates the curve tangent at the specified `t` value. Note that this yields a not-normalized vector.
 	 */
-	export function derivativeAtTime(bezier: Segment<'C'>, t: number): vec2 {
+	export function derivativeAtTime(bezier: SegmentC, t: number): vec2 {
 		const bezierJS = toBezierJS(bezier)
 		const {x, y} = bezierJS.derivative(t)
 		return [x, y]
@@ -100,14 +98,14 @@ export namespace CubicBezier {
 	/**
 	 * Calculates the curve tangent at the specified `t` value. Unlike {@link derivativeAtTime}, this yields a normalized vector.
 	 */
-	export function tangentAtTime(bezier: Segment<'C'>, t: number): vec2 {
+	export function tangentAtTime(bezier: SegmentC, t: number): vec2 {
 		return vec2.normalize(derivativeAtTime(bezier, t))
 	}
 
 	/**
 	 * Calculates the curve normal at the specified `t` value. Note that this yields a normalized vector.
 	 */
-	export function normalAtTime(bezier: Segment<'C'>, t: number): vec2 {
+	export function normalAtTime(bezier: SegmentC, t: number): vec2 {
 		const bezierJS = toBezierJS(bezier)
 		const {x, y} = bezierJS.normal(t)
 		return [x, y]
@@ -117,7 +115,7 @@ export namespace CubicBezier {
 	 * Finds the on-curve point closest to the specific off-curve point
 	 */
 	export function project(
-		bezier: Segment<'C'>,
+		bezier: SegmentC,
 		origin: vec2
 	): {position: vec2; t?: number; distance?: number} {
 		const bezierJS = toBezierJS(bezier)
@@ -125,13 +123,10 @@ export namespace CubicBezier {
 		return {position: [x, y], t, distance: d}
 	}
 
-	export function divideAtTimes(
-		segment: Segment<'C'>,
-		times: number[]
-	): Vertex<'C'>[] {
+	export function divideAtTimes(segment: SegmentC, times: number[]): VertexC[] {
 		const bezier = toBezierJS(segment)
 
-		const vertices: Vertex<'C'>[] = []
+		const vertices: VertexC[] = []
 
 		times = [0, ...times, 1]
 
