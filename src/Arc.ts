@@ -1,5 +1,6 @@
 import {mat2, mat2d, scalar, vec2} from 'linearly'
 
+import {SegmentLocation, UnitSegmentLocation} from './Location'
 import {VertexC} from './Path'
 import {Rect} from './Rect'
 import {SegmentA} from './Segment'
@@ -311,6 +312,33 @@ export namespace Arc {
 		const {radii, angles} = toCenterParameterization(arc)
 		return ellipticArcLength(radii, angles)
 	}
+
+	export function toTime(arc: SegmentA, loc: SegmentLocation): number {
+		const clamp = (x: number) => scalar.clamp(x, 0, 1)
+
+		if (typeof loc === 'number') {
+			return clamp(unitToTime(arc, loc))
+		} else if ('time' in loc) {
+			return clamp(loc.time)
+		} else if ('unit' in loc) {
+			return clamp(unitToTime(arc, loc.unit))
+		} else if ('offset' in loc) {
+			const unit = loc.offset / Arc.length(arc)
+			return clamp(unitToTime(arc, unit))
+		} else {
+			throw new Error('Invalid location')
+		}
+	}
+
+	export function point(arc: SegmentA, loc: SegmentLocation): vec2 {
+		const time = toTime(arc, loc)
+		const {center, radii, angles, xAxisRotation} = toCenterParameterization(arc)
+		const angle = scalar.lerp(...angles, time)
+		const xform = mat2d.trs(center, xAxisRotation, radii)
+
+		return vec2.transformMat2d(vec2.dir(angle), xform)
+	}
+
 	/**
 	 * Returns true if the length of arc segment is zero.
 	 */
@@ -388,4 +416,48 @@ function crossAtAngle(angle: number, [startAngle, endAngle]: AngleRange) {
 			return angle < endAngle + 360
 		}
 	}
+}
+
+function unitToTime(arc: SegmentA, unitLocation: UnitSegmentLocation): number {
+	const targetUnit =
+		typeof unitLocation === 'number' ? unitLocation : unitLocation.unit
+
+	const length = Arc.length(arc)
+
+	// For a circle
+	const [rx, ry] = arc.command[1]
+	if (scalar.equals(rx, ry)) {
+		return targetUnit
+	}
+
+	// For an elliptic arc
+	const {
+		radii,
+		angles: [startAngle, endAngle],
+	} = Arc.toCenterParameterization(arc)
+
+	let lowerTime = 0
+	let upperTime = 1
+
+	let time: number
+
+	for (let i = 0; i < 16; i++) {
+		time = scalar.lerp(lowerTime, upperTime, 0.5)
+		const midAngle = scalar.lerp(startAngle, endAngle, time)
+
+		const unitAtTime =
+			Arc.ellipticArcLength(radii, [startAngle, midAngle]) / length
+
+		if (unitAtTime < targetUnit) {
+			lowerTime = time
+		} else {
+			upperTime = time
+		}
+
+		if (scalar.equals(unitAtTime, targetUnit)) {
+			break
+		}
+	}
+
+	return time!
 }
