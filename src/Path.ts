@@ -61,8 +61,8 @@ export type Command = CommandL | CommandC | CommandA
  * @category Types
  */
 export type Vertex<C extends Command = Command> = {
-	point: vec2
-	command: C
+	readonly point: vec2
+	readonly command: C
 }
 
 /** @category Types */
@@ -79,8 +79,8 @@ export type VertexA = Vertex<CommandA>
  * @category Types
  */
 export type Curve<C extends Command = Command> = {
-	vertices: Vertex<C>[]
-	closed: boolean
+	readonly vertices: Vertex<C>[]
+	readonly closed: boolean
 }
 
 /** @category Types */
@@ -97,7 +97,7 @@ export type CurveA = Curve<CommandA>
  * @category Types
  */
 export type Path<C extends Command = Command> = {
-	curves: Curve<C>[]
+	readonly curves: Curve<C>[]
 }
 
 /** @category Types */
@@ -1383,8 +1383,7 @@ export namespace Path {
 					currentPath.vertices.pop()
 				}
 
-				currentPath.closed = true
-				paths.push(currentPath)
+				paths.push({...currentPath, closed: true})
 				currentPath = undefined
 			}
 		}

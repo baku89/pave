@@ -7,9 +7,9 @@ import {Command, CommandA, CommandC, CommandL} from './Path'
  * @category Types
  */
 export type Segment<C extends Command = Command> = {
-	start: vec2
-	end: vec2
-	command: C
+	readonly start: vec2
+	readonly end: vec2
+	readonly command: C
 }
 
 /** @category Types */
