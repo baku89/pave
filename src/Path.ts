@@ -446,6 +446,25 @@ export namespace Path {
 	export const ngon = regularPolygon
 
 	/**
+	 * Creates an open path consist of only a single command.
+	 * @param segment The segment to create
+	 * @returns The newly created path
+	 */
+	export function fromSegment(segment: Segment): Path {
+		return {
+			curves: [
+				{
+					vertices: [
+						{point: segment.start, command: ['L']},
+						{point: segment.end, command: segment.command},
+					],
+					closed: false,
+				},
+			],
+		}
+	}
+
+	/**
 	 * Returns the length of the given path. The returned value is memoized.
 	 * @param path The path to measure
 	 * @returns The length of the path
