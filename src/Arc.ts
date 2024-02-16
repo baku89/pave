@@ -314,17 +314,15 @@ export namespace Arc {
 	}
 
 	export function toTime(arc: SegmentA, loc: SegmentLocation): number {
-		const clamp = (x: number) => scalar.clamp(x, 0, 1)
-
 		if (typeof loc === 'number') {
-			return clamp(unitToTime(arc, loc))
+			return scalar.clamp(unitToTime(arc, loc), 0, 1)
 		} else if ('time' in loc) {
-			return clamp(loc.time)
+			return scalar.clamp(loc.time, 0, 1)
 		} else if ('unit' in loc) {
-			return clamp(unitToTime(arc, loc.unit))
+			return scalar.clamp(unitToTime(arc, loc.unit), 0, 1)
 		} else if ('offset' in loc) {
 			const unit = loc.offset / Arc.length(arc)
-			return clamp(unitToTime(arc, unit))
+			return scalar.clamp(unitToTime(arc, unit), 0, 1)
 		} else {
 			throw new Error('Invalid location')
 		}
