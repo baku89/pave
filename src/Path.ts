@@ -479,13 +479,35 @@ export namespace Path {
 	 * @param path The path to calculate
 	 * @returns The rect of the path
 	 * @category Properties
+	 * @example
+	 * ```js:pave
+	 * const p = Path.ellipse([50, 50], [20, 40])
+	 * stroke(p, 'skyblue')
+	 *
+	 * const b = Path.bounds(p)
+	 * stroke(Path.rect(...b))
+	 * ```
 	 */
 	export const bounds = memoize((path: Path): Rect => {
-		const bounds = toPaperPath(path).bounds
-		return [
-			paperPointToVec2(bounds.topLeft),
-			paperPointToVec2(bounds.bottomRight),
-		]
+		let min: vec2 = [Infinity, Infinity]
+		let max: vec2 = [-Infinity, -Infinity]
+
+		for (const seg of iterateSegments(path)) {
+			if (seg.command[0] === 'L') {
+				min = vec2.min(min, seg.start, seg.end)
+				max = vec2.max(max, seg.start, seg.end)
+			} else if (seg.command[0] === 'C') {
+				const [sMin, sMax] = CubicBezier.bounds(seg as SegmentC)
+				min = vec2.min(min, sMin)
+				max = vec2.max(max, sMax)
+			} else {
+				const [sMin, sMax] = Arc.bounds(seg as SegmentA)
+				min = vec2.min(min, sMin)
+				max = vec2.max(max, sMax)
+			}
+		}
+
+		return [min, max]
 	})
 
 	/**
