@@ -208,3 +208,83 @@ describe('bounds', () => {
 		])
 	})
 })
+
+describe('length', () => {
+	test('should work in unit circle', () => {
+		const ret = Arc.length({
+			start: [1, 0],
+			end: [-1, 0],
+			command: ['A', [1, 1], 0, false, true],
+		})
+
+		expect(ret).toEqual(Math.PI)
+	})
+
+	test('should work in an ellipse whose radii are [.5, 1]', () => {
+		const ret = Arc.length({
+			start: [0.5, 0],
+			end: [-0.5, 0],
+			command: ['A', [0.5, 1], 0, false, true],
+		})
+
+		expect(ret).toEqual(2.42211)
+	})
+
+	test('should work in an ellipse whose radii are [2, 1]', () => {
+		const ret = Arc.length({
+			start: [2, 0],
+			end: [-2, 0],
+			command: ['A', [2, 1], 0, false, true],
+		})
+
+		expect(ret).toEqual(4.84422)
+	})
+
+	test('should work in an ellipse whose radii are [2, 3]', () => {
+		const ret = Arc.length({
+			start: [2, 0],
+			end: [-2, 0],
+			command: ['A', [2, 3], 0, false, true],
+		})
+
+		expect(ret).toEqual(7.93272)
+	})
+})
+
+describe('ellipticArcLength', () => {
+	test('should work in unit circle', () => {
+		const ret = Arc.ellipticArcLength([1, 1], [0, 180])
+
+		expect(ret).toEqual(Math.PI)
+	})
+
+	test('should work in an ellipse whose radii are [.5, 1]', () => {
+		const ret = Arc.ellipticArcLength([0.5, 1], [0, 180])
+
+		expect(ret).toEqual(2.42211)
+	})
+
+	test('should work in an ellipse whose radii are [2, 1]', () => {
+		const ret = Arc.ellipticArcLength([2, 1], [0, 180])
+
+		expect(ret).toEqual(4.84422)
+	})
+
+	test('should work in an ellipse whose radii are [2, 3]', () => {
+		const ret = Arc.ellipticArcLength([2, 3], [0, 180])
+
+		expect(ret).toEqual(7.93272)
+	})
+
+	test('should work in a unit arc whose angles are [30°, 70°]', () => {
+		const ret = Arc.ellipticArcLength([1, 1], [30, 70])
+
+		expect(ret).toEqual(0.698132)
+	})
+
+	test('should work in an ellipse whose radii are [1, 2] and angles are [0°, 30°]', () => {
+		const ret = Arc.ellipticArcLength([1, 2], [0, 30])
+
+		expect(ret).toEqual(1.01218)
+	})
+})

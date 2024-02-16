@@ -307,12 +307,50 @@ export namespace Arc {
 		}
 	}
 
+	export function length(arc: SegmentA): number {
+		const {radii, angles} = toCenterParameterization(arc)
+		return ellipticArcLength(radii, angles)
+	}
 	/**
 	 * Returns true if the length of arc segment is zero.
 	 */
 	export function isZero(arc: SegmentA) {
 		const {start, end} = arc
 		return vec2.equals(start, end)
+	}
+
+	export function ellipticArcLength(radii: vec2, angles: AngleRange): number {
+		const [rx, ry] = radii
+		const [startAngle, endAngle] = angles
+
+		if (rx === ry) {
+			// For a circle
+			return scalar.rad(Math.abs(endAngle - startAngle)) * rx
+		}
+
+		// TODO: For an elliptic arc. But it'd be better to optimize the algorithm
+		const minAngle = 0.25
+
+		const angleBetween = Math.abs(endAngle - startAngle)
+
+		const steps = Math.ceil(angleBetween / minAngle)
+
+		const startRad = scalar.rad(startAngle)
+		const endRad = scalar.rad(endAngle)
+		const deltaRad = scalar.rad(angleBetween) / steps
+
+		// The derivative of the ellipse is:
+		// f'(x) = sqrt((rx * sin(t)) ** 2, (ry * sin(t)) ** 2)
+		// So compute the length by integrating the derivative.
+		let length = 0
+
+		for (let i = 0; i < steps; i++) {
+			const a = scalar.lerp(startRad, endRad, (i + 0.5) / steps)
+			length +=
+				deltaRad * Math.sqrt((rx * Math.sin(a)) ** 2 + (ry * Math.cos(a)) ** 2)
+		}
+
+		return length
 	}
 }
 
