@@ -21,7 +21,8 @@ context: CanvasRenderingContext2D
 
 // Shorhands for drawing functions
 stroke: (path: Path, color = accentCoor, width = 1) => void
-fill: (path: Path, color: string) => void
+fill: (path: Path, color = accentColor) => void
+dot: (point: vec2, color = accentColor, size = 3) => void
 
 // This is the debug function to inspect path commands
 debug: (path: Path, color = accentColor) => void

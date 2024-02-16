@@ -73,6 +73,13 @@ onMounted(async () => {
 				context.fill()
 			}
 
+			const dot = (point: vec2, size = 3, color = '') => {
+				context.strokeStyle = 'none'
+				context.fillStyle = color || brandColor.value
+				Path.drawToCanvas(Path.circle(point, size / 2), context)
+				context.fill()
+			}
+
 			const debug = (path: Path, color = '') => {
 				const lineWidth = 0.5
 				const vertexSize = 3
@@ -149,6 +156,7 @@ onMounted(async () => {
 					mat2d,
 					stroke,
 					fill,
+					dot,
 					debug,
 				})
 			} catch (e) {
