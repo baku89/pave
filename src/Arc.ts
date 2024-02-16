@@ -337,6 +337,26 @@ export namespace Arc {
 		return vec2.transformMat2d(vec2.dir(angle), xform)
 	}
 
+	export function derivative(arc: SegmentA, loc: SegmentLocation): vec2 {
+		const time = toTime(arc, loc)
+		const {radii, angles, xAxisRotation, counterclockwise} =
+			toCenterParameterization(arc)
+
+		const angle = scalar.lerp(...angles, time)
+		const derivativeAtUnit = vec2.dir(angle + 90 * (counterclockwise ? -1 : 1))
+		const xform = mat2d.trs(null, xAxisRotation, radii)
+
+		return vec2.transformMat2d(derivativeAtUnit, xform)
+	}
+
+	export function tangent(arc: SegmentA, loc: SegmentLocation): vec2 {
+		return vec2.normalize(derivative(arc, loc))
+	}
+
+	export function normal(arc: SegmentA, loc: SegmentLocation): vec2 {
+		return vec2.rotate(tangent(arc, loc), 90)
+	}
+
 	/**
 	 * Returns true if the length of arc segment is zero.
 	 */
