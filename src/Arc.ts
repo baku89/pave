@@ -312,6 +312,14 @@ export namespace Arc {
 			else return false
 		}
 	}
+
+	/**
+	 * Returns true if the length of arc segment is zero.
+	 */
+	export function isZero(arc: SegmentA) {
+		const {start, end} = arc
+		return vec2.equals(start, end)
+	}
 }
 
 /**

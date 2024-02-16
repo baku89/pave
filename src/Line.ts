@@ -23,4 +23,11 @@ export namespace Line {
 			return {point: vec2.lerp(line.start, line.end, t), command: line.command}
 		})
 	}
+
+	/**
+	 * Returns true if the length of line segment is zero.
+	 */
+	export function isZero(line: SegmentL) {
+		return vec2.equals(line.start, line.end)
+	}
 }

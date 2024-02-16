@@ -143,6 +143,19 @@ export namespace CubicBezier {
 
 		return vertices
 	}
+
+	export function isZero(bezier: SegmentC) {
+		const {
+			start,
+			end,
+			command: [, c1, c2],
+		} = bezier
+		return (
+			vec2.equals(start, end) &&
+			vec2.equals(start, c1) &&
+			vec2.equals(start, c2)
+		)
+	}
 }
 
 function toPoint([x, y]: vec2): Point {
