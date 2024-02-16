@@ -2,7 +2,7 @@
 
 ## Installation
 
-```sh:no-line-numbers
+```sh
 npm i @baku89/pave
 ```
 
@@ -12,7 +12,7 @@ npm i @baku89/pave
 
 As it supports ES modules, you can load it using the import statement. Symbols such as `Path` or `CubicBezier` can be used both as types and as modules (namespaces) consisting of functions related to those types.
 
-```ts:no-line-numbers
+```ts
 import {Path} from '@baku89/pave'
 
 const circle = Path.circle([0, 0], 100)
@@ -30,7 +30,7 @@ context.stroke(path2d)
 
 What you need to be aware of is that Pave is functional programming-oriented and all data is plain and immutable. Information associated with a path, such as the length of the path or its bounding box, is obtained using functions instead of accessing it as a property of the path data itself.
 
-```ts:no-line-numbers
+```ts
 const length = Path.length(rect)
 const bounds = Path.bounds(rect)
 const normal = Path.normalAtTime(rect, 0.5)
@@ -40,7 +40,7 @@ These functions are appropriately memoized, so even if called multiple times for
 
 Therefore, when modifying path data, it is recommended to use utility functions that generate new path data (such as `moveTo` or `lineTo` similar to the Canvas API):
 
-```ts:no-line-numbers
+```ts
 let p = Path.moveTo(Path.empty, [10, 10])
 p = Path.lineTo(p, [20, 20])
 p = Path.cubicBezierTo(p, [80, 30], [0, 40], [50, 50])
@@ -49,7 +49,7 @@ p = Path.closePath(p)
 
 Or use a library for manipulating immutable data structures such as [immer](https://immerjs.github.io/immer/):
 
-```ts:no-line-numbers
+```ts
 import {produce} from 'immer'
 
 const pathA = Path.arc([50, 50], 40, 0, Math.PI)
@@ -62,7 +62,7 @@ const pathB = produce(pathA, draft => {
 
 In Pave, vectors and matrices are represented as plain 1D arrays of numbers. For example, a position is `[x, y]`, and a 2D affine transformation is `[a, b, c, d, tx, ty]`. These data can be manipulated using libraries such as [Linearly](https://baku89.github.io/linearly) or [gl-matrix](https://glmatrix.net/), but the latter allows mutable value changes, so it is recommended to use Linearly, which is designed to work with immutable data like Pave.
 
-```ts:no-line-numbers
+```ts
 import {vec2, mat2d} from 'linearly'
 
 const c = Path.ellipse(vec2.zero, vec2.of(20, 30))
@@ -84,7 +84,7 @@ Also, the path data structure has the following hierarchy, similar to how in 3D 
 
 If you are familiar with TypeScript, it might be easier to understand by looking at the type definitions.
 
-```ts:no-line-numbers
+```ts
 type Path = {paths: Curves[]; fillRule: 'nonzero' | 'evenodd'}
 type Curve = {vertices: Vertex[]; closed: boolean}
 type Vertex = {point: vec2; command: Command}
@@ -96,6 +96,6 @@ type Command =
 
 In addition to the above hierarchy, there is also a type called **[Segment](./api/interfaces/Segment)**, which is a cut-out part of a Curve corresponding to a single command. Unlike Vertex, it includes information on both the starting and ending points.
 
-```ts:no-line-numbers
+```ts
 type Segment = {start: vec2; end: vec2; command: Command}
 ```
