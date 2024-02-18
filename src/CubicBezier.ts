@@ -1,5 +1,6 @@
 import {Bezier as BezierJS, Point} from 'bezier-js'
 import {scalar, vec2} from 'linearly'
+import paper from 'paper'
 
 import {SegmentLocation} from './Location'
 import {VertexC} from './Path'
@@ -39,8 +40,8 @@ export namespace CubicBezier {
 
 		return new paper.Curve(
 			new paper.Point(x0, y0),
-			new paper.Point(x1, y1),
-			new paper.Point(x2, y2),
+			new paper.Point(x1 - x0, y1 - y0),
+			new paper.Point(x2 - x3, y2 - y3),
 			new paper.Point(x3, y3)
 		)
 	})
