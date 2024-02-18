@@ -7,13 +7,29 @@ export type UnitSegmentLocation = number | {unit: number}
 export type OffsetSegmentLocation = {offset: number}
 export type TimeSegmentLocation = {time: number}
 
-export type LocationIndices = {
-	curveIndex: number
-	segmentIndex: number
+export type CurveLocation =
+	| UnitCurveLocation
+	| OffsetCurveLocation
+	| TimeCurveLocation
+
+type CurveLocationIndices = {
+	segmentIndex?: number
 }
 
-export type Location = UnitLocation | OffsetLocation | TimeLocation
+export type UnitCurveLocation = number | ({unit: number} & CurveLocationIndices)
+export type OffsetCurveLocation = OffsetSegmentLocation & CurveLocationIndices
+export type TimeCurveLocation = TimeSegmentLocation & CurveLocationIndices
 
-export type UnitLocation = number | ({unit: number} & Partial<LocationIndices>)
-export type OffsetLocation = OffsetSegmentLocation & Partial<LocationIndices>
-export type TimeLocation = TimeSegmentLocation & Partial<LocationIndices>
+type PathLocationIndices = {
+	curveIndex?: number
+	segmentIndex?: number
+}
+
+export type PathLocation =
+	| UnitPathLocation
+	| OffsetPathLocation
+	| TimePathLocation
+
+export type UnitPathLocation = number | ({unit: number} & PathLocationIndices)
+export type OffsetPathLocation = OffsetSegmentLocation & PathLocationIndices
+export type TimePathLocation = TimeSegmentLocation & PathLocationIndices
