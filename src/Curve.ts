@@ -74,6 +74,29 @@ export namespace Curve {
 		return segs
 	})
 
+	export function close(curve: Curve, fuse = true): Curve {
+		if (fuse) {
+			const firstVertex = curve.vertices.at(0)
+			const lastVertex = curve.vertices.at(-1)
+
+			if (
+				firstVertex &&
+				lastVertex &&
+				vec2.equals(firstVertex.point, lastVertex.point)
+			) {
+				return {
+					vertices: [lastVertex, ...curve.vertices.slice(1)],
+					closed: true,
+				}
+			}
+		}
+
+		return {
+			...curve,
+			closed: true,
+		}
+	}
+
 	export function toSegmentLocation(
 		curve: Curve,
 		loc: CurveLocation
