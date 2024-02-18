@@ -1,6 +1,7 @@
 import {Bezier as BezierJS, Point} from 'bezier-js'
-import {vec2} from 'linearly'
+import {scalar, vec2} from 'linearly'
 
+import {SegmentLocation} from './Location'
 import {VertexC} from './Path'
 import {SegmentC} from './Segment'
 import {memoizeSegmentFunction} from './utils'
@@ -78,10 +79,31 @@ export namespace CubicBezier {
 		}
 	)
 
+	export function toTime(bezier: SegmentC, loc: SegmentLocation): number {
+		if (typeof loc === 'number') {
+			return scalar.clamp(loc, 0, 1)
+		} else if ('time' in loc) {
+			return scalar.clamp(loc.time, 0, 1)
+		}
+
+		const bezierJS = toBezierJS(bezier)
+		const len = bezierJS.length()
+
+		if ('unit' in loc) {
+			loc = {offset: loc.unit * len}
+		}
+
+		const paperBezier = toPaperBezier(bezier)
+
+		return paperBezier.getTimeAt(loc.offset)
+	}
+
 	/**
 	 * Calculates the point on the curve at the specified `t` value.
 	 */
-	export function pointAtTime(bezier: SegmentC, t: number): vec2 {
+	export function point(bezier: SegmentC, loc: SegmentLocation): vec2 {
+		const t = toTime(bezier, loc)
+
 		const {
 			start,
 			command: [, control1, control2],
@@ -104,26 +126,26 @@ export namespace CubicBezier {
 	/**
 	 * Calculates the curve tangent at the specified `t` value. Note that this yields a not-normalized vector.
 	 */
-	export function derivativeAtTime(bezier: SegmentC, t: number): vec2 {
-		const bezierJS = toBezierJS(bezier)
-		const {x, y} = bezierJS.derivative(t)
-		return [x, y]
+	export function derivative(bezier: SegmentC, loc: SegmentLocation): vec2 {
+		const time = toTime(bezier, loc)
+
+		const derivativeFn = getDerivativeFn(bezier)
+
+		return derivativeFn(time)
 	}
 
 	/**
-	 * Calculates the curve tangent at the specified `t` value. Unlike {@link derivativeAtTime}, this yields a normalized vector.
+	 * Calculates the curve tangent at the specified `t` value. Unlike {@link derivative}, this yields a normalized vector.
 	 */
-	export function tangentAtTime(bezier: SegmentC, t: number): vec2 {
-		return vec2.normalize(derivativeAtTime(bezier, t))
+	export function tangent(bezier: SegmentC, loc: SegmentLocation): vec2 {
+		return vec2.normalize(derivative(bezier, loc))
 	}
 
 	/**
 	 * Calculates the curve normal at the specified `t` value. Note that this yields a normalized vector.
 	 */
-	export function normalAtTime(bezier: SegmentC, t: number): vec2 {
-		const bezierJS = toBezierJS(bezier)
-		const {x, y} = bezierJS.normal(t)
-		return [x, y]
+	export function normal(bezier: SegmentC, loc: SegmentLocation): vec2 {
+		return vec2.rotate(tangent(bezier, loc), 90)
 	}
 
 	/**
@@ -176,3 +198,28 @@ export namespace CubicBezier {
 function toPoint([x, y]: vec2): Point {
 	return {x, y}
 }
+
+const getDerivativeFn = memoizeSegmentFunction((bezier: SegmentC) => {
+	// https://github.com/paperjs/paper.js/blob/develop/src/path/Curve.js#L1403-L1424
+
+	// Calculate the coefficients of a Bezier derivative.
+	const {
+		start: [x0, y0],
+		command: [, [x1, y1], [x2, y2]],
+		end: [x3, y3],
+	} = bezier
+
+	const ax = 9 * (x1 - x2) + 3 * (x3 - x0),
+		bx = 6 * (x0 + x2) - 12 * x1,
+		cx = 3 * (x1 - x0),
+		ay = 9 * (y1 - y2) + 3 * (y3 - y0),
+		by = 6 * (y0 + y2) - 12 * y1,
+		cy = 3 * (y1 - y0)
+
+	return (time: number): vec2 => {
+		// Calculate quadratic equations of derivatives for x and y
+		const dx = (ax * time + bx) * time + cx,
+			dy = (ay * time + by) * time + cy
+		return [dx, dy]
+	}
+})
