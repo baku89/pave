@@ -6,6 +6,7 @@ import {Arc} from './Arc'
 import {Circle} from './Circle'
 import {CubicBezier} from './CubicBezier'
 import {Curve} from './Curve'
+import {CurveGroup} from './CurveGroup'
 import {Line} from './Line'
 import {PathLocation, SegmentLocation} from './Location'
 import {Rect} from './Rect'
@@ -414,7 +415,7 @@ export namespace Path {
 		const outerRim = arc(center, outerRadius, startAngle, endAngle)
 		const innerRim = arc(center, innerRadius, endAngle, startAngle)
 
-		return closePath(join([outerRim, innerRim]))
+		return close(join([outerRim, innerRim]))
 	}
 
 	/**
@@ -1869,28 +1870,43 @@ export namespace Path {
 		})
 	}
 
+	export type PathCloseOptions = {
+		/**
+		 * If true, deletes overwrapped first and last vertices.
+		 * @default true
+		 */
+		fuse?: boolean
+		/**
+		 * Specifies which curves to close. Default is the last curve.
+		 * @default -1
+		 */
+		group?: CurveGroup
+	}
+
 	/**
-	 * Returns the new path with the new Z (close path) command at the end.
+	 * Closes the specified curves
 	 * @param path The base path
 	 * @returns The newely created path
 	 * @category Draw Functions
 	 */
-	export function closePath(path: Path): Path {
+	export function close(
+		path: Path,
+		{fuse = true, group = -1}: PathCloseOptions = {}
+	): Path {
 		const lastCurve = path.curves.at(-1)
+
+		const matcher = CurveGroup.getMatcher(group, path)
 
 		if (lastCurve) {
 			return {
-				curves: [
-					...path.curves.slice(0, -1),
-					{
-						vertices: lastCurve.vertices,
-						closed: true,
-					},
-				],
+				curves: path.curves.map((curve, i) =>
+					matcher(curve, i) ? Curve.close(curve, fuse) : curve
+				),
 			}
-		} else {
-			return path
 		}
+
+		// Empty path
+		return path
 	}
 }
 
