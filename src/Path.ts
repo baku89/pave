@@ -723,12 +723,22 @@ export namespace Path {
 		path: Path,
 		loc: PathLocation
 	): [segment: Segment, loc: SegmentLocation] {
+		// TODO: Fix this
+
 		if (typeof loc === 'number') {
 			loc = {unit: loc}
 		}
 
-		const curveIndex = loc.curveIndex ?? null
-		const segmentIndex = loc.segmentIndex ?? null
+		const segs = segments(path)
+
+		const curveIndex =
+			typeof loc.curveIndex === 'number'
+				? scalar.clamp(loc.curveIndex, 0, path.curves.length - 1)
+				: null
+		const segmentIndex =
+			typeof loc.segmentIndex === 'number'
+				? scalar.clamp(loc.segmentIndex, 0, segs.length - 1)
+				: null
 
 		if (curveIndex !== null && segmentIndex !== null) {
 			// Location in the specified segment
@@ -746,57 +756,70 @@ export namespace Path {
 
 		if (curveIndex === null && segmentIndex === null) {
 			// Location in the whole path
-			if ('time' in loc) {
-				const extendedTime = loc.time * segmentCount(path)
-				const linearSegmentIndex = Math.floor(extendedTime)
 
-				const seg = linearSegment(path, linearSegmentIndex)
-				const time = extendedTime % 1
+			if ('time' in loc) {
+				const extendedTime = loc.time * segs.length
+				const linearSegmentIndex = scalar.clamp(
+					Math.floor(extendedTime),
+					0,
+					segs.length - 1
+				)
+
+				const seg = segs[linearSegmentIndex]
+				const time = extendedTime - linearSegmentIndex
 
 				return [seg, {time}]
-			}
+			} else {
+				const pathLen = length(path)
 
-			if ('unit' in loc) {
-				loc = {offset: loc.unit * length(path)}
-			}
-
-			let offset = loc.offset
-
-			for (const seg of segments(path)) {
-				const segLength = Segment.length(seg)
-				if (offset < segLength) {
-					return [seg, {offset}]
+				if ('unit' in loc) {
+					loc = {offset: loc.unit * pathLen}
 				}
-				offset -= segLength
-			}
-		}
 
-		{
-			// curveIndex === null && segmentIndex !== null
+				let offset = scalar.clamp(loc.offset, 0, pathLen)
+
+				for (const seg of segs) {
+					const segLength = Segment.length(seg)
+					if (offset < segLength) {
+						return [seg, {offset}]
+					}
+					offset -= segLength
+				}
+
+				const lastSeg = segs.at(-1)
+				if (lastSeg) {
+					offset = Segment.length(lastSeg)
+					return [lastSeg, {offset}]
+				}
+			}
+		} else if (curveIndex === null && segmentIndex !== null) {
 			// Location in the segment specified by linear index
 
 			if ('time' in loc) {
-				const extendedTime = loc.time * segmentCount(path)
-				const linearSegmentIndex = Math.floor(extendedTime)
-
-				const seg = linearSegment(path, linearSegmentIndex)
-				const time = extendedTime % 1
-
-				return [seg, {time}]
+				const seg = segs[segmentIndex]
+				return [seg, loc]
 			}
+
+			const pathLen = length(path)
 
 			if ('unit' in loc) {
-				loc = {offset: loc.unit * length(path)}
+				loc = {offset: loc.unit * pathLen}
 			}
 
-			let offset = loc.offset
+			let offset = scalar.clamp(loc.offset, 0, pathLen)
 
-			for (const seg of segments(path)) {
+			for (const seg of segs) {
 				const segLength = Segment.length(seg)
 				if (offset < segLength) {
 					return [seg, {offset}]
 				}
 				offset -= segLength
+			}
+
+			const lastSeg = segs.at(-1)
+			if (lastSeg) {
+				offset = Segment.length(lastSeg)
+				return [lastSeg, {offset}]
 			}
 		}
 
@@ -1281,9 +1304,9 @@ export namespace Path {
 	 * @param path The path to iterate
 	 * @category Properties
 	 */
-	export function segments(path: Path): Segment[] {
+	export const segments = memoize((path: Path): Segment[] => {
 		return path.curves.flatMap(Curve.segments)
-	}
+	})
 
 	/**
 	 * Converts an array of SVG commands to a {@link Path}.
