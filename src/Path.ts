@@ -553,7 +553,7 @@ export namespace Path {
 	 * @returns The newly created path
 	 * @category Primitives
 	 */
-	export function cubicBeizer(
+	export function cubicBezier(
 		start: vec2,
 		control1: vec2,
 		control2: vec2,
