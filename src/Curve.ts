@@ -85,7 +85,7 @@ export namespace Curve {
 		throw new Error('Location is out of bounds')
 	}
 
-	export const iterateSegments = memoize(function* (
+	export const iterateSegments = function* (
 		curve: Curve
 	): Generator<Segment & {segmentIndex: number}> {
 		let prevPoint: vec2 | undefined
@@ -112,5 +112,5 @@ export namespace Curve {
 				}
 			}
 		}
-	})
+	}
 }
