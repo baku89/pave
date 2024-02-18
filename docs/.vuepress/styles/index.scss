@@ -292,6 +292,7 @@ td code {
 }
 
 .sandbox-code {
-	font-size: 22px;
+	font-size: 40px;
 	font-family: var(--font-family-code);
+	width: min-content;
 }

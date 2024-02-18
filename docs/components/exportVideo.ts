@@ -1,5 +1,6 @@
 import {useCssVar} from '@vueuse/core'
 import LightTheme from 'monaco-themes/themes/Clouds.json'
+import saferEval from 'safer-eval'
 
 import {createDrawFunction, setupEvalContextCreator} from './createDrawFunction'
 
@@ -16,9 +17,8 @@ export async function exportVideo(code: string) {
 	monaco.editor.defineTheme('LightTheme', LightTheme as any)
 
 	const canvas = document.createElement('canvas')
-	canvas.width = 1000
-	canvas.height = 1000
-
+	canvas.width = 1000 / window.devicePixelRatio
+	canvas.height = 1000 / window.devicePixelRatio
 	document.body.append(canvas)
 
 	const ctx = canvas.getContext('2d')!
@@ -48,18 +48,22 @@ export async function exportVideo(code: string) {
 		videoContext.fillRect(0, 0, 1920, 1080)
 		videoContext.fillStyle = 'black'
 
-		const codeImg = await renderCode(
-			code.replace(
-				/([^a-zA-Z0-9{])time([^a-zA-Z0-9]?)/g,
-				`$1${time.toFixed(2)}$2`
-			)
+		const codeImg = await renderCode(code, time)
+
+		const codeWidth = 1920 - 1080 - 40
+		const codeHeight = codeImg.height * (codeWidth / codeImg.width)
+		videoContext.drawImage(
+			codeImg,
+			1080,
+			(1080 - codeHeight) / 2,
+			codeWidth,
+			codeHeight
 		)
-		videoContext.drawImage(codeImg, 40, (1080 - codeImg.height) / 2)
 
 		const canvasTop = 40
 		const canvasBottom = 1080 - 40
-		const canvasLeft = 880
-		const canvasRight = 1920 - 40
+		const canvasLeft = 40
+		const canvasRight = 1040
 
 		videoContext.strokeStyle = '#ccc'
 		videoContext.beginPath()
@@ -72,10 +76,12 @@ export async function exportVideo(code: string) {
 		videoContext.stroke()
 
 		evalFn(time)
-		videoContext.drawImage(canvas, 880, 40)
+		videoContext.drawImage(canvas, 40, 40, 1000, 1000)
 
 		const frame = videoCanvas.toDataURL('image/webp')
 		frames.push(frame)
+
+		console.log('Rendering...', i)
 	}
 
 	const capturer = new CCapture({
@@ -95,13 +101,31 @@ export async function exportVideo(code: string) {
 				resolve(null)
 			}
 		})
+		console.log('Encoding...', frames.indexOf(frame))
 	}
 
 	capturer.stop()
 
 	capturer.save()
 
-	async function renderCode(code: string): Promise<HTMLImageElement> {
+	async function renderCode(
+		code: string,
+		time: number
+	): Promise<HTMLImageElement> {
+		code.replace(
+			/([^a-zA-Z0-9{])time([^a-zA-Z0-9]?)/g,
+			`$1${time.toFixed(2)}$2`
+		)
+
+		for (const m of code.matchAll(/\/\*{\*\/(.*?)\/\*}\*\//g)) {
+			const expr = m[1]
+			const evaluated = saferEval(`(() => ${expr})()`, {
+				...evalContext,
+				time,
+			}) as unknown as number
+			code = code.replace(m[0], evaluated.toFixed(2))
+		}
+
 		codeEl.innerHTML = code
 
 		await monaco.editor.colorizeElement(codeEl, {
