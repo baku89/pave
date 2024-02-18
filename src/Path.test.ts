@@ -145,6 +145,68 @@ describe('segmentCount', () => {
 	})
 })
 
+describe('segment', () => {
+	const rect: Path = Path.rect([0, 0], [1, 1])
+
+	it('should return the first segment of a path', () => {
+		expect(Path.segment(rect, 0, 0)).toEqual({
+			segmentIndex: 0,
+			start: [0, 0],
+			command: ['L'],
+			end: [1, 0],
+		})
+	})
+
+	it('should return the second segment of a path', () => {
+		expect(Path.segment(rect, 0, 1)).toEqual({
+			segmentIndex: 1,
+			start: [1, 0],
+			command: ['L'],
+			end: [1, 1],
+		})
+	})
+
+	it('should return the last segment of a path', () => {
+		expect(Path.segment(rect, 0, 3)).toEqual({
+			segmentIndex: 3,
+			start: [0, 1],
+			command: ['L'],
+			end: [0, 0],
+		})
+	})
+})
+
+describe('linearSegment', () => {
+	const rect: Path = Path.rect([0, 0], [1, 1])
+
+	it('should return the first segment of a path', () => {
+		expect(Path.linearSegment(rect, 0)).toEqual({
+			segmentIndex: 0,
+			start: [0, 0],
+			command: ['L'],
+			end: [1, 0],
+		})
+	})
+
+	it('should return the second segment of a path', () => {
+		expect(Path.linearSegment(rect, 1)).toEqual({
+			segmentIndex: 1,
+			start: [1, 0],
+			command: ['L'],
+			end: [1, 1],
+		})
+	})
+
+	it('should return the last segment of a path', () => {
+		expect(Path.linearSegment(rect, 3)).toEqual({
+			segmentIndex: 3,
+			start: [0, 1],
+			command: ['L'],
+			end: [0, 0],
+		})
+	})
+})
+
 describe('fromSVG', () => {
 	it('should convert a line', () => {
 		const path = Path.fromSVG(['M', [0, 1], 'L', [2, 3]])
