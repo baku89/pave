@@ -29,6 +29,21 @@ export namespace CubicBezier {
 		}
 	)
 
+	export const toPaperBezier = memoizeSegmentFunction((beizer: SegmentC) => {
+		const {
+			start: [x0, y0],
+			command: [, [x1, y1], [x2, y2]],
+			end: [x3, y3],
+		} = beizer
+
+		return new paper.Curve(
+			new paper.Point(x0, y0),
+			new paper.Point(x1, y1),
+			new paper.Point(x2, y2),
+			new paper.Point(x3, y3)
+		)
+	})
+
 	export function fromQuadraticBezier(
 		start: vec2,
 		control: vec2,
