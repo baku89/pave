@@ -74,7 +74,7 @@ export namespace Curve {
 		return segs
 	})
 
-	export function segmentAndLocation(
+	export function toSegmentLocation(
 		curve: Curve,
 		loc: CurveLocation
 	): [segment: Segment, time: number] {
@@ -84,8 +84,16 @@ export namespace Curve {
 
 		if ('time' in loc) {
 			const segCount = segmentCount(curve)
-			const extendedTime = loc.time * segCount
-			const segmentIndex = Math.floor(extendedTime)
+			let extendedTime = loc.time * segCount
+			let segmentIndex = Math.floor(extendedTime)
+
+			if (segmentIndex < 0) {
+				segmentIndex = 0
+				extendedTime = 0
+			} else if (segmentIndex >= segCount) {
+				segmentIndex = segCount - 1
+				extendedTime = segCount
+			}
 
 			const seg = Curve.segment(curve, segmentIndex)
 			const time = extendedTime - segmentIndex

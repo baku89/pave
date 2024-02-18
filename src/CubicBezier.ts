@@ -85,14 +85,11 @@ export namespace CubicBezier {
 			return scalar.clamp(loc.time, 0, 1)
 		}
 
-		const bezierJS = toBezierJS(bezier)
-		const len = bezierJS.length()
+		const paperBezier = toPaperBezier(bezier)
 
 		if ('unit' in loc) {
-			loc = {offset: loc.unit * len}
+			loc = {offset: loc.unit * paperBezier.length}
 		}
-
-		const paperBezier = toPaperBezier(bezier)
 
 		return paperBezier.getTimeAt(loc.offset)
 	}

@@ -731,14 +731,25 @@ export namespace Path {
 
 		const segs = segments(path)
 
-		const curveIndex =
-			typeof loc.curveIndex === 'number'
-				? scalar.clamp(loc.curveIndex, 0, path.curves.length - 1)
-				: null
-		const segmentIndex =
-			typeof loc.segmentIndex === 'number'
-				? scalar.clamp(loc.segmentIndex, 0, segs.length - 1)
-				: null
+		let curveIndex = loc.curveIndex ?? null
+		if (typeof curveIndex === 'number') {
+			if (curveIndex < 0) {
+				curveIndex = 0
+			} else if (curveIndex > path.curves.length - 1) {
+				curveIndex = path.curves.length - 1
+				loc = {time: 1}
+			}
+		}
+
+		let segmentIndex = loc.segmentIndex ?? null
+		if (typeof segmentIndex === 'number') {
+			if (segmentIndex < 0) {
+				segmentIndex = 0
+			} else if (segmentIndex > segs.length - 1) {
+				segmentIndex = segs.length - 1
+				loc = {time: 1}
+			}
+		}
 
 		if (curveIndex !== null && segmentIndex !== null) {
 			// Location in the specified segment
@@ -751,7 +762,7 @@ export namespace Path {
 			// Location in the specific curve
 			const curve = path.curves[curveIndex]
 
-			return Curve.segmentAndLocation(curve, loc)
+			return Curve.toSegmentLocation(curve, loc)
 		}
 
 		if (curveIndex === null && segmentIndex === null) {
@@ -835,6 +846,7 @@ export namespace Path {
 	 */
 	export function point(path: Path, loc: PathLocation): vec2 {
 		const [seg, segLoc] = toSegmentLocation(path, loc)
+		console.log({seg, segLoc})
 		return Segment.point(seg, segLoc)
 	}
 
