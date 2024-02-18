@@ -38,6 +38,7 @@ export async function setupEvalContextCreator(brandColor: Ref<string>) {
 
 			ctx.strokeStyle = color || brandColor.value
 			ctx.lineCap = 'round'
+			ctx.lineJoin = 'round'
 			ctx.lineWidth = lineWidth
 
 			for (const curve of path.curves) {

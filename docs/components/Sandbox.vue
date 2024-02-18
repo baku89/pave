@@ -108,7 +108,7 @@ whenever(exportKey, async () => {
 				type="range"
 				min="0"
 				max="1"
-				step=".01"
+				step=".001"
 				:value="time"
 				@input="onInput"
 			/>
