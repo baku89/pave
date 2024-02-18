@@ -28,6 +28,7 @@ export default defineUserConfig({
 			{
 				rel: 'stylesheet',
 				href: 'https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500&family=Work+Sans:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500;1,600&display=swap',
+				crossorigin: 'anonymous',
 			},
 		],
 		['link', {rel: 'icon', href: '/logo.svg'}],
@@ -36,6 +37,14 @@ export default defineUserConfig({
 			{
 				rel: 'stylesheet',
 				href: 'https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200',
+				crossorigin: 'anonymous',
+			},
+		],
+		[
+			'script',
+			{
+				src: 'https://cdn.jsdelivr.net/npm/ccapture.js-npmfixed@1.1.0/build/CCapture.all.min.js',
+				crossorigin: 'anonymous',
 			},
 		],
 	],

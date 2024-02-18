@@ -290,3 +290,8 @@ td code {
 .sandbox .theme-default-content {
 	max-width: unset;
 }
+
+.sandbox-code {
+	font-size: 22px;
+	font-family: var(--font-family-code);
+}

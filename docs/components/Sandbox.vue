@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import {useLocalStorage, useRafFn} from '@vueuse/core'
+import {useLocalStorage, useMagicKeys, useRafFn, whenever} from '@vueuse/core'
 import {ref, watch} from 'vue'
 
 import Editor from './Editor.vue'
@@ -82,6 +82,14 @@ watch(
 	},
 	{flush: 'sync'}
 )
+
+const keys = useMagicKeys()
+const exportKey = keys.shift_cmd_e
+whenever(exportKey, async () => {
+	const {exportVideo} = await import('./exportVideo')
+
+	exportVideo(code.value)
+})
 </script>
 
 <template>
