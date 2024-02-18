@@ -4,37 +4,37 @@ import {scalar, vec2} from 'linearly'
 import {SegmentLocation} from './Location'
 import {VertexC} from './Path'
 import {SegmentC} from './Segment'
-import {memoizeSegmentFunction} from './utils'
+import {memoize, PartialBy} from './utils'
+
+type SimpleSegmentC = PartialBy<SegmentC, 'command'>
 
 /**
  * A collection of functions to handle a cubic bezier represented with {@link CommandC}.
  */
 export namespace CubicBezier {
-	export const toBezierJS = memoizeSegmentFunction(
-		(bezier: SegmentC): BezierJS => {
-			const {
-				start,
-				command: [, control1, control2],
-				end,
-			} = bezier
-			return new BezierJS(
-				start[0],
-				start[1],
-				control1[0],
-				control1[1],
-				control2[0],
-				control2[1],
-				end[0],
-				end[1]
-			)
-		}
-	)
+	export const toBezierJS = memoize((bezier: SimpleSegmentC): BezierJS => {
+		const {
+			start,
+			args: [control1, control2],
+			point,
+		} = bezier
+		return new BezierJS(
+			start[0],
+			start[1],
+			control1[0],
+			control1[1],
+			control2[0],
+			control2[1],
+			point[0],
+			point[1]
+		)
+	})
 
-	export const toPaperBezier = memoizeSegmentFunction((beizer: SegmentC) => {
+	export const toPaperBezier = memoize((beizer: SegmentC) => {
 		const {
 			start: [x0, y0],
-			command: [, [x1, y1], [x2, y2]],
-			end: [x3, y3],
+			args: [[x1, y1], [x2, y2]],
+			point: [x3, y3],
 		} = beizer
 
 		return new paper.Curve(
@@ -48,18 +48,18 @@ export namespace CubicBezier {
 	export function fromQuadraticBezier(
 		start: vec2,
 		control: vec2,
-		end: vec2
+		point: vec2
 	): SegmentC {
 		const control1 = vec2.lerp(start, control, 2 / 3)
-		const control2 = vec2.lerp(end, control, 2 / 3)
+		const control2 = vec2.lerp(point, control, 2 / 3)
 
-		return {start, command: ['C', control1, control2], end}
+		return {command: 'C', start, args: [control1, control2], point}
 	}
 
 	/**
 	 * Calculates the length of the Bezier curve. Length is calculated using numerical approximation, specifically the Legendre-Gauss quadrature algorithm.
 	 */
-	export const length = memoizeSegmentFunction((bezier: SegmentC): number => {
+	export const length = memoize((bezier: SimpleSegmentC): number => {
 		const bezierJS = toBezierJS(bezier)
 		return bezierJS.length()
 	})
@@ -67,17 +67,15 @@ export namespace CubicBezier {
 	/**
 	 * Calculates the rect of this Bezier curve.
 	 */
-	export const bounds = memoizeSegmentFunction(
-		(bezier: SegmentC): [vec2, vec2] => {
-			const bezierJS = toBezierJS(bezier)
-			const {x, y} = bezierJS.bbox()
+	export const bounds = memoize((bezier: SimpleSegmentC): [vec2, vec2] => {
+		const bezierJS = toBezierJS(bezier)
+		const {x, y} = bezierJS.bbox()
 
-			return [
-				[x.min, y.min],
-				[x.max, y.max],
-			]
-		}
-	)
+		return [
+			[x.min, y.min],
+			[x.max, y.max],
+		]
+	})
 
 	export function toTime(bezier: SegmentC, loc: SegmentLocation): number {
 		if (typeof loc === 'number') {
@@ -106,19 +104,19 @@ export namespace CubicBezier {
 
 		const {
 			start,
-			command: [, control1, control2],
-			end,
+			args: [control1, control2],
+			point,
 		} = bezier
 		const x =
 			(1 - t) ** 3 * start[0] +
 			3 * (1 - t) ** 2 * t * control1[0] +
 			3 * (1 - t) * t ** 2 * control2[0] +
-			t ** 3 * end[0]
+			t ** 3 * point[0]
 		const y =
 			(1 - t) ** 3 * start[1] +
 			3 * (1 - t) ** 2 * t * control1[1] +
 			3 * (1 - t) * t ** 2 * control2[1] +
-			t ** 3 * end[1]
+			t ** 3 * point[1]
 
 		return [x, y]
 	}
@@ -175,20 +173,20 @@ export namespace CubicBezier {
 
 			const [c1, c2, point] = points.slice(1).map(({x, y}) => [x, y] as vec2)
 
-			vertices.push({command: ['C', c1, c2], point})
+			vertices.push({command: 'C', args: [c1, c2], point})
 		}
 
 		return vertices
 	}
 
-	export function isZero(bezier: SegmentC) {
+	export function isZero(bezier: SimpleSegmentC) {
 		const {
 			start,
-			end,
-			command: [, c1, c2],
+			args: [c1, c2],
+			point,
 		} = bezier
 		return (
-			vec2.equals(start, end) &&
+			vec2.equals(start, point) &&
 			vec2.equals(start, c1) &&
 			vec2.equals(start, c2)
 		)
@@ -199,14 +197,14 @@ function toPoint([x, y]: vec2): Point {
 	return {x, y}
 }
 
-const getDerivativeFn = memoizeSegmentFunction((bezier: SegmentC) => {
+const getDerivativeFn = memoize((bezier: SimpleSegmentC) => {
 	// https://github.com/paperjs/paper.js/blob/develop/src/path/Curve.js#L1403-L1424
 
 	// Calculate the coefficients of a Bezier derivative.
 	const {
 		start: [x0, y0],
-		command: [, [x1, y1], [x2, y2]],
-		end: [x3, y3],
+		args: [[x1, y1], [x2, y2]],
+		point: [x3, y3],
 	} = bezier
 
 	const ax = 9 * (x1 - x2) + 3 * (x3 - x0),

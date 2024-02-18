@@ -22,8 +22,15 @@ const path = {
 	curves: [
 		{
 			vertices: [
-				{point: [10, 50], command: ['L']},
-				{point: [90, 50], command: ['C', [34, 100], [75, 0]]},
+				{point: [10, 50], command: 'L'},
+				{
+					point: [90, 50],
+					command: 'C',
+					args: [
+						[34, 100],
+						[75, 0],
+					],
+				},
 			],
 			closed: false,
 		},

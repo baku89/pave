@@ -1,6 +1,7 @@
 export * from './Arc'
 export * from './Circle'
 export * from './CubicBezier'
+export * from './Curve'
 export * from './Line'
 export * from './Path'
 export * from './Rect'

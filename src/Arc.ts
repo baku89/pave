@@ -4,12 +4,14 @@ import {SegmentLocation, UnitSegmentLocation} from './Location'
 import {VertexC} from './Path'
 import {Rect} from './Rect'
 import {SegmentA} from './Segment'
-import {memoize} from './utils'
+import {memoize, PartialBy} from './utils'
 
 /**
  * The angle range to check. `startAngle` is always in the range of [-π, π], and the `endAngle` is relative angle considering the rotation direction, with start angle as a reference.
  */
 type AngleRange = readonly [startAngle: number, endAngle: number]
+
+type SimpleSegmentA = PartialBy<SegmentA, 'command'>
 
 /**
  * A collection of functions to handle arcs represented with {@link CommandA}.
@@ -20,12 +22,15 @@ export namespace Arc {
 	 * https://observablehq.com/@awhitty/svg-2-elliptical-arc-to-canvas-path2d
 	 * @category Utilities
 	 * */
-	export function toCenterParameterization(arcSegment: SegmentA) {
-		const {start, end, command} = arcSegment
-		const [, radii, xAxisRotation, largeArcFlag, sweepFlag] = command
+	export function toCenterParameterization(arc: SimpleSegmentA) {
+		const {
+			start,
+			point,
+			args: [radii, xAxisRotation, largeArcFlag, sweepFlag],
+		} = arc
 
 		const [x1p, y1p] = vec2.rotate(
-			vec2.scale(vec2.sub(start, end), 0.5),
+			vec2.scale(vec2.sub(start, point), 0.5),
 			-xAxisRotation
 		)
 
@@ -42,7 +47,7 @@ export namespace Arc {
 
 		const center = vec2.add(
 			vec2.rotate([cxp, cyp], -xAxisRotation),
-			vec2.lerp(start, end, 0.5)
+			vec2.lerp(start, point, 0.5)
 		)
 
 		const a = vec2.div(vec2.sub([x1p, y1p], [cxp, cyp]), [rx, ry])
@@ -85,7 +90,7 @@ export namespace Arc {
 	}
 
 	export function approximateByCubicBeziers(
-		arc: SegmentA,
+		arc: SimpleSegmentA,
 		angle: number
 	): VertexC[] {
 		angle = angle === 0 ? 90 : Math.abs(angle)
@@ -112,7 +117,7 @@ export namespace Arc {
 			// Calculate the arc for unit circle
 			// without considering the radii and rotation
 			const start = vec2.direction(a0)
-			const end = vec2.direction(a1)
+			const point = vec2.direction(a1)
 
 			const handleLength = (4 / 3) * Math.tan((a1 - a0) / 4)
 
@@ -123,16 +128,16 @@ export namespace Arc {
 			)
 
 			const control2 = vec2.scaleAndAdd(
-				end,
+				point,
 				vec2.direction(a1 - 90 * dir),
 				handleLength
 			)
 
 			// Apply the transformation to the unit circle
 			const vertex: VertexC = {
-				point: vec2.transformMat2d(end, xform),
-				command: [
-					'C',
+				point: vec2.transformMat2d(point, xform),
+				command: 'C',
+				args: [
 					vec2.transformMat2d(control1, xform),
 					vec2.transformMat2d(control2, xform),
 				],
@@ -155,22 +160,22 @@ export namespace Arc {
 	 * const endAngle = 30
 	 * const radius = 40
 	 * const start = vec2.add(center, vec2.direction(startAngle, 40))
-	 * const end = vec2.add(center, vec2.direction(endAngle, 40))
+	 * const point = vec2.add(center, vec2.direction(endAngle, 40))
 	 *
 	 * const arc = Path.arc([50, 50], 40, startAngle, endAngle)
 	 * stroke(arc, 'skyblue')
 	 *
 	 * const bound = Arc.bounds({
 	 * 	start,
-	 * 	end,
-	 * 	command: ['A', [radius, radius], 0, false, true]
+	 * 	point,
+	 * 	command: [[radius, radius], 0, false, true]
 	 * })
 	 *
 	 * stroke(Path.rect(...bound), 'tomato')
 	 * ```
 	 */
-	export const bounds = memoize((arc: SegmentA): Rect => {
-		const {start, end} = arc
+	export const bounds = memoize((arc: SimpleSegmentA): Rect => {
+		const {start, point} = arc
 		const {center, radii, angles, xAxisRotation} = toCenterParameterization(arc)
 
 		const sy = radii[1] / radii[0]
@@ -193,10 +198,10 @@ export namespace Arc {
 			radii
 		)
 
-		let xMax = Math.max(start[0], end[0])
-		let xMin = Math.min(start[0], end[0])
-		let yMax = Math.max(start[1], end[1])
-		let yMin = Math.min(start[1], end[1])
+		let xMax = Math.max(start[0], point[0])
+		let xMin = Math.min(start[0], point[0])
+		let yMax = Math.max(start[1], point[1])
+		let yMin = Math.min(start[1], point[1])
 
 		if (crossAtAngle(angleAtXmax, angles)) {
 			const p = vec2.transformMat2d(vec2.direction(angleAtXmax), xform)
@@ -225,9 +230,9 @@ export namespace Arc {
 	 * Transforms the given arc segment with the given matrix.
 	 * @see https://gist.github.com/timo22345/9413158#file-flatten-js-L443-L547
 	 */
-	export function transform(arc: SegmentA, matrix: mat2d): SegmentA {
+	export function transform(arc: SimpleSegmentA, matrix: mat2d): SegmentA {
 		// eslint-disable-next-line prefer-const
-		let [, [rh, rv], offsetRot, largeArc, sweep] = arc.command
+		let [[rh, rv], offsetRot, largeArc, sweep] = arc.args
 
 		const s = scalar.sin(offsetRot)
 		const c = scalar.cos(offsetRot)
@@ -299,8 +304,9 @@ export namespace Arc {
 
 		return {
 			start: vec2.transformMat2d(arc.start, matrix),
-			end: vec2.transformMat2d(arc.end, matrix),
-			command: ['A', [rh, rv], offsetRot, largeArc, sweep],
+			point: vec2.transformMat2d(arc.point, matrix),
+			command: 'A',
+			args: [[rh, rv], offsetRot, largeArc, sweep],
 		}
 
 		function nearZero(B: number) {
@@ -309,12 +315,12 @@ export namespace Arc {
 		}
 	}
 
-	export const length = memoize((arc: SegmentA): number => {
+	export const length = memoize((arc: SimpleSegmentA): number => {
 		const {radii, angles} = toCenterParameterization(arc)
 		return ellipticArcLength(radii, angles)
 	})
 
-	export function toTime(arc: SegmentA, loc: SegmentLocation): number {
+	export function toTime(arc: SimpleSegmentA, loc: SegmentLocation): number {
 		if (typeof loc === 'number') {
 			return scalar.clamp(unitToTime(arc, loc), 0, 1)
 		} else if ('time' in loc) {
@@ -329,7 +335,7 @@ export namespace Arc {
 		}
 	}
 
-	export function point(arc: SegmentA, loc: SegmentLocation): vec2 {
+	export function point(arc: SimpleSegmentA, loc: SegmentLocation): vec2 {
 		const time = toTime(arc, loc)
 		const {center, radii, angles, xAxisRotation} = toCenterParameterization(arc)
 		const angle = scalar.lerp(...angles, time)
@@ -338,7 +344,7 @@ export namespace Arc {
 		return vec2.transformMat2d(vec2.dir(angle), xform)
 	}
 
-	export function derivative(arc: SegmentA, loc: SegmentLocation): vec2 {
+	export function derivative(arc: SimpleSegmentA, loc: SegmentLocation): vec2 {
 		const time = toTime(arc, loc)
 		const {radii, angles, xAxisRotation, sweep} = toCenterParameterization(arc)
 
@@ -349,20 +355,20 @@ export namespace Arc {
 		return vec2.transformMat2d(derivativeAtUnit, xform)
 	}
 
-	export function tangent(arc: SegmentA, loc: SegmentLocation): vec2 {
+	export function tangent(arc: SimpleSegmentA, loc: SegmentLocation): vec2 {
 		return vec2.normalize(derivative(arc, loc))
 	}
 
-	export function normal(arc: SegmentA, loc: SegmentLocation): vec2 {
+	export function normal(arc: SimpleSegmentA, loc: SegmentLocation): vec2 {
 		return vec2.rotate(tangent(arc, loc), 90)
 	}
 
 	/**
 	 * Returns true if the length of arc segment is zero.
 	 */
-	export const isZero = memoize((arc: SegmentA): boolean => {
-		const {start, end} = arc
-		return vec2.equals(start, end)
+	export const isZero = memoize((arc: SimpleSegmentA): boolean => {
+		const {start, point} = arc
+		return vec2.equals(start, point)
 	})
 
 	export function ellipticArcLength(radii: vec2, angles: AngleRange): number {
@@ -436,14 +442,17 @@ function crossAtAngle(angle: number, [startAngle, endAngle]: AngleRange) {
 	}
 }
 
-function unitToTime(arc: SegmentA, unitLocation: UnitSegmentLocation): number {
+function unitToTime(
+	arc: SimpleSegmentA,
+	unitLocation: UnitSegmentLocation
+): number {
 	const targetUnit =
 		typeof unitLocation === 'number' ? unitLocation : unitLocation.unit
 
 	const length = Arc.length(arc)
 
 	// For a circle
-	const [rx, ry] = arc.command[1]
+	const [rx, ry] = arc.args[0]
 	if (scalar.equals(rx, ry)) {
 		return targetUnit
 	}

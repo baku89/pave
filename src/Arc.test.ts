@@ -12,8 +12,8 @@ describe('toCenterParameterization', () => {
 	it('should work in right angle case', () => {
 		const ret = Arc.toCenterParameterization({
 			start: [90, 50],
-			end: [50, 90],
-			command: ['A', [40, 40], 0, false, true],
+			point: [50, 90],
+			args: [[40, 40], 0, false, true],
 		})
 
 		expect(ret).toEqual({
@@ -28,8 +28,8 @@ describe('toCenterParameterization', () => {
 	it('should work in two right angle case (CCW)', () => {
 		const ret = Arc.toCenterParameterization({
 			start: [90, 50],
-			end: [10, 50],
-			command: ['A', [40, 40], 0, false, false],
+			point: [10, 50],
+			args: [[40, 40], 0, false, false],
 		})
 
 		expect(ret).toEqual({
@@ -44,12 +44,13 @@ describe('toCenterParameterization', () => {
 	it('should work in small angle case (18°)', () => {
 		const center: vec2 = [50, 50]
 		const angle = 18
-		const end = vec2.scaleAndAdd(center, vec2.direction(angle), 40)
+		const point = vec2.scaleAndAdd(center, vec2.direction(angle), 40)
 
 		const ret = Arc.toCenterParameterization({
 			start: [90, 50],
-			end,
-			command: ['A', [40, 40], 0, false, true],
+			point,
+			command: 'A',
+			args: [[40, 40], 0, false, true],
 		})
 
 		expect(ret).toEqual({
@@ -67,8 +68,8 @@ describe('toCenterParameterization', () => {
 
 		const ret = Arc.toCenterParameterization({
 			start: vec2.direction(startAngle),
-			end: vec2.direction(endAngle),
-			command: ['A', [1, 1], 0, true, true],
+			point: vec2.direction(endAngle),
+			args: [[1, 1], 0, true, true],
 		})
 
 		ret.angles = [startAngle, endAngle]
@@ -85,8 +86,8 @@ describe('toCenterParameterization', () => {
 	it('should work in an ellipse', () => {
 		const ret = Arc.toCenterParameterization({
 			start: [70, 50],
-			end: [30, 50],
-			command: ['A', [20, 10], 0, false, true],
+			point: [30, 50],
+			args: [[20, 10], 0, false, true],
 		})
 
 		expect(ret).toEqual({
@@ -104,8 +105,8 @@ describe('toCenterParameterization', () => {
 
 		const ret = Arc.toCenterParameterization({
 			start: vec2.transformMat2d([70, 50], rotMat),
-			end: vec2.transformMat2d([30, 50], rotMat),
-			command: ['A', [20, 10], xAxisRotation, false, true],
+			point: vec2.transformMat2d([30, 50], rotMat),
+			args: [[20, 10], xAxisRotation, false, true],
 		})
 
 		expect(ret).toEqual({
@@ -122,12 +123,12 @@ describe('toCenterParameterization', () => {
 		const endAngle = 190
 		const r = 1
 		const start = vec2.direction(startAngle, r)
-		const end = vec2.direction(endAngle, r)
+		const point = vec2.direction(endAngle, r)
 
 		const ret = Arc.toCenterParameterization({
 			start,
-			end,
-			command: ['A', [r, r], 0, false, true],
+			point,
+			args: [[r, r], 0, false, true],
 		})
 
 		expect(ret).toEqual({
@@ -144,8 +145,8 @@ describe('bounds', () => {
 	test('should work in the angle case [0°, 90°]', () => {
 		const ret = Arc.bounds({
 			start: [90, 50],
-			end: [50, 90],
-			command: ['A', [40, 40], 0, false, true],
+			point: [50, 90],
+			args: [[40, 40], 0, false, true],
 		})
 
 		expect(ret).toEqual([
@@ -159,16 +160,16 @@ describe('bounds', () => {
 		const endAngle = 120
 		const r = 1
 		const start = vec2.direction(startAngle, r)
-		const end = vec2.direction(endAngle, r)
+		const point = vec2.direction(endAngle, r)
 
 		const ret = Arc.bounds({
 			start,
-			end,
-			command: ['A', [r, r], 0, false, true],
+			point,
+			args: [[r, r], 0, false, true],
 		})
 
 		expect(ret).toEqual([
-			[end[0], 0],
+			[point[0], 0],
 			[r, r],
 		])
 	})
@@ -178,15 +179,15 @@ describe('bounds', () => {
 		const endAngle = 190
 		const r = 1
 		const start = vec2.direction(startAngle, r)
-		const end = vec2.direction(endAngle, r)
+		const point = vec2.direction(endAngle, r)
 
 		const ret = Arc.bounds({
 			start,
-			end,
-			command: ['A', [r, r], 0, false, true],
+			point,
+			args: [[r, r], 0, false, true],
 		})
 
-		expect(ret).toEqual([[-r, end[1]], start])
+		expect(ret).toEqual([[-r, point[1]], start])
 	})
 
 	test('should work in the angle case [-120°, 120°]', () => {
@@ -194,16 +195,16 @@ describe('bounds', () => {
 		const endAngle = 120
 		const r = 1
 		const start = vec2.direction(startAngle, r)
-		const end = vec2.direction(endAngle, r)
+		const point = vec2.direction(endAngle, r)
 
 		const ret = Arc.bounds({
 			start,
-			end,
-			command: ['A', [r, r], 0, true, true],
+			point,
+			args: [[r, r], 0, true, true],
 		})
 
 		expect(ret).toEqual([
-			[end[0], -r],
+			[point[0], -r],
 			[r, r],
 		])
 	})
@@ -213,8 +214,8 @@ describe('length', () => {
 	test('should work in unit circle', () => {
 		const ret = Arc.length({
 			start: [1, 0],
-			end: [-1, 0],
-			command: ['A', [1, 1], 0, false, true],
+			point: [-1, 0],
+			args: [[1, 1], 0, false, true],
 		})
 
 		expect(ret).toEqual(Math.PI)
@@ -223,8 +224,8 @@ describe('length', () => {
 	test('should work in an ellipse whose radii are [.5, 1]', () => {
 		const ret = Arc.length({
 			start: [0.5, 0],
-			end: [-0.5, 0],
-			command: ['A', [0.5, 1], 0, false, true],
+			point: [-0.5, 0],
+			args: [[0.5, 1], 0, false, true],
 		})
 
 		expect(ret).toEqual(2.42211)
@@ -233,8 +234,8 @@ describe('length', () => {
 	test('should work in an ellipse whose radii are [2, 1]', () => {
 		const ret = Arc.length({
 			start: [2, 0],
-			end: [-2, 0],
-			command: ['A', [2, 1], 0, false, true],
+			point: [-2, 0],
+			args: [[2, 1], 0, false, true],
 		})
 
 		expect(ret).toEqual(4.84422)
@@ -243,8 +244,8 @@ describe('length', () => {
 	test('should work in an ellipse whose radii are [2, 3]', () => {
 		const ret = Arc.length({
 			start: [2, 0],
-			end: [-2, 0],
-			command: ['A', [2, 3], 0, false, true],
+			point: [-2, 0],
+			args: [[2, 3], 0, false, true],
 		})
 
 		expect(ret).toEqual(7.93272)

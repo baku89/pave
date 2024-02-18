@@ -4,32 +4,35 @@ import {Arc} from './Arc'
 import {CubicBezier} from './CubicBezier'
 import {Line} from './Line'
 import {SegmentLocation} from './Location'
-import {Command, CommandA, CommandC, CommandL} from './Path'
+import {Vertex, VertexA, VertexC, VertexL} from './Path'
 import {memoize} from './utils'
 
 /**
  * A segment of a path, which consists of a starting point, end point, and an interpolation command.
  * @category Types
  */
-export type Segment<C extends Command = Command> = {
-	readonly start: vec2
-	readonly end: vec2
-	readonly command: C
-}
+// prettier-ignore
+export type Segment<V extends Vertex = Vertex> = V extends VertexL
+	? SegmentL
+	: V extends VertexC
+	? SegmentC
+	: V extends VertexA
+	? SegmentA
+	: SegmentL | SegmentC | SegmentA
 
 /** @category Types */
-export type SegmentL = Segment<CommandL>
+export type SegmentL = VertexL & {start: vec2}
 
 /** @category Types */
-export type SegmentC = Segment<CommandC>
+export type SegmentC = VertexC & {start: vec2}
 
 /** @category Types */
-export type SegmentA = Segment<CommandA>
+export type SegmentA = VertexA & {start: vec2}
 
 export namespace Segment {
 	export const length = memoize((seg: Segment): number => {
 		if (seg.command[0] === 'L') {
-			return vec2.distance(seg.start, seg.end)
+			return vec2.distance(seg.start, seg.point)
 		} else if (seg.command[0] === 'C') {
 			return CubicBezier.length(seg as SegmentC)
 		} else {

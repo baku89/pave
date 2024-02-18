@@ -15,26 +15,18 @@ import {memoize, toFixedSimple} from './utils'
 paper.setup(document.createElement('canvas'))
 
 /**
- * Line-to command.
- * @category Types
- * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Paths#line_commands
- */
-export type CommandL = readonly [code: 'L']
-
-/**
  * Cubic Bézier curve command.
  * @category Types
  * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Paths#curve_commands
  */
-export type CommandC = readonly [code: 'C', control1: vec2, control2: vec2]
+export type CommandArgsC = readonly [control1: vec2, control2: vec2]
 
 /**
  * Arc command
  * @category Types
  * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Paths#arcs
  */
-export type CommandA = readonly [
-	code: 'A',
+export type CommandArgsA = readonly [
 	/**
 	 * The radii of the ellipse used to draw the arc.
 	 */
@@ -53,48 +45,50 @@ export type CommandA = readonly [
 	sweepFlag: boolean,
 ]
 
-/**
- * A command of a path, which only supports line-to, cubic Bézier curve, and arc commands.
- * @category Types
- *  */
-export type Command = CommandL | CommandC | CommandA
+export type Vertex = VertexL | VertexC | VertexA
 
 /**
  * A vertex of a path. It consists of a end point and a command.
  * @category Types
  */
-export type Vertex<C extends Command = Command> = {
+export type VertexL = {
 	readonly point: vec2
-	readonly command: C
+	readonly command: 'L'
+	readonly args?: undefined
 }
 
 /** @category Types */
-export type VertexL = Vertex<CommandL>
+export type VertexC = {
+	readonly point: vec2
+	readonly command: 'C'
+	readonly args: CommandArgsC
+}
 
 /** @category Types */
-export type VertexC = Vertex<CommandC>
-
-/** @category Types */
-export type VertexA = Vertex<CommandA>
+export type VertexA = {
+	readonly point: vec2
+	readonly command: 'A'
+	readonly args: CommandArgsA
+}
 
 /**
  * A path that consists of multiple curves.
  * @category Types
  */
-export type Path<C extends Command = Command> = {
-	readonly curves: Curve<C>[]
+export type Path<V extends Vertex = Vertex> = {
+	readonly curves: Curve<V>[]
 }
 
 /** @category Types */
-export type PathL = Path<CommandL>
+export type PathL = Path<VertexL>
 
 /** @category Types */
-export type PathC = Path<CommandC>
+export type PathC = Path<VertexC>
 
 /** @category Types */
-export type PathA = Path<CommandA>
+export type PathA = Path<VertexA>
 
-type UnarcPath = Path<CommandL | CommandC>
+type UnarcPath = Path<VertexL | VertexC>
 
 type SVGCommand =
 	| 'M'
@@ -151,10 +145,10 @@ export namespace Path {
 			curves: [
 				{
 					vertices: [
-						{point: start, command: ['L']},
-						{point: [end[0], start[1]], command: ['L']},
-						{point: end, command: ['L']},
-						{point: [start[0], end[1]], command: ['L']},
+						{point: start, command: 'L'},
+						{point: [end[0], start[1]], command: 'L'},
+						{point: end, command: 'L'},
+						{point: [start[0], end[1]], command: 'L'},
 					],
 					closed: true,
 				},
@@ -260,11 +254,13 @@ export namespace Path {
 						vertices: [
 							{
 								point: p1,
-								command: ['A', radii, 0, false, preferredSweep],
+								command: 'A',
+								args: [radii, 0, false, preferredSweep],
 							},
 							{
 								point: p2,
-								command: ['A', radii, 0, false, preferredSweep],
+								command: 'A',
+								args: [radii, 0, false, preferredSweep],
 							},
 						],
 						closed: true,
@@ -284,15 +280,18 @@ export namespace Path {
 					vertices: [
 						{
 							point: p1,
-							command: ['A', radii, 0, false, sweep],
+							command: 'A',
+							args: [radii, 0, false, sweep],
 						},
 						{
 							point: p2,
-							command: ['A', radii, 0, false, sweep],
+							command: 'A',
+							args: [radii, 0, false, sweep],
 						},
 						{
 							point: p3,
-							command: ['A', radii, 0, false, sweep],
+							command: 'A',
+							args: [radii, 0, false, sweep],
 						},
 					],
 					closed: true,
@@ -321,8 +320,16 @@ export namespace Path {
 			curves: [
 				{
 					vertices: [
-						{point: [cx + rx, cy], command: ['A', radius, 0, false, true]},
-						{point: [cx - rx, cy], command: ['A', radius, 0, false, true]},
+						{
+							point: [cx + rx, cy],
+							command: 'A',
+							args: [radius, 0, false, true],
+						},
+						{
+							point: [cx - rx, cy],
+							command: 'A',
+							args: [radius, 0, false, true],
+						},
 					],
 					closed: true,
 				},
@@ -355,18 +362,22 @@ export namespace Path {
 		const radii: vec2 = [radius, radius]
 		const sweepFlag = endAngle > startAngle
 
-		const points: Vertex[] = [{point: start, command: ['L']}]
+		const points: Vertex[] = [{point: start, command: 'L'}]
 
 		while (Math.abs(endAngle - startAngle) > 180) {
 			startAngle += 180 * (sweepFlag ? 1 : -1)
 			const through = vec2.add(center, vec2.direction(startAngle, radius))
 
-			points.push({point: through, command: ['A', radii, 0, false, sweepFlag]})
+			points.push({
+				point: through,
+				command: 'A',
+				args: [radii, 0, false, sweepFlag],
+			})
 		}
 
-		const end = vec2.add(center, vec2.direction(endAngle, radius))
+		const point = vec2.add(center, vec2.direction(endAngle, radius))
 
-		points.push({point: end, command: ['A', radii, 0, false, sweepFlag]})
+		points.push({point, command: 'A', args: [radii, 0, false, sweepFlag]})
 
 		return {
 			curves: [
@@ -423,8 +434,8 @@ export namespace Path {
 			curves: [
 				{
 					vertices: [
-						{point: start, command: ['L']},
-						{point: end, command: ['L']},
+						{point: start, command: 'L'},
+						{point: end, command: 'L'},
 					],
 					closed: false,
 				},
@@ -447,7 +458,7 @@ export namespace Path {
 		return {
 			curves: [
 				{
-					vertices: [{point, command: ['L']}],
+					vertices: [{point, command: 'L'}],
 					closed: true,
 				},
 			],
@@ -469,7 +480,7 @@ export namespace Path {
 		return {
 			curves: [
 				{
-					vertices: points.map(point => ({point, command: ['L']})),
+					vertices: points.map(point => ({point, command: 'L'})),
 					closed: false,
 				},
 			],
@@ -491,7 +502,7 @@ export namespace Path {
 		return {
 			curves: [
 				{
-					vertices: points.map(point => ({point, command: ['L']})),
+					vertices: points.map(point => ({point, command: 'L'})),
 					closed: true,
 				},
 			],
@@ -538,7 +549,7 @@ export namespace Path {
 	 * @param start The start point
 	 * @param control1  The first control point
 	 * @param control2  The second control point
-	 * @param end The end point
+	 * @param point The end point
 	 * @returns The newly created path
 	 * @category Primitives
 	 */
@@ -546,14 +557,14 @@ export namespace Path {
 		start: vec2,
 		control1: vec2,
 		control2: vec2,
-		end: vec2
+		point: vec2
 	): Path {
 		return {
 			curves: [
 				{
 					vertices: [
-						{point: start, command: ['L']},
-						{point: end, command: ['C', control1, control2]},
+						{point: start, command: 'L'},
+						{point, command: 'C', args: [control1, control2]},
 					],
 					closed: false,
 				},
@@ -571,8 +582,12 @@ export namespace Path {
 			curves: [
 				{
 					vertices: [
-						{point: segment.start, command: ['L']},
-						{point: segment.end, command: segment.command},
+						{point: segment.start, command: 'L'},
+						{
+							point: segment.point,
+							command: segment.command,
+							args: segment.args,
+						} as Vertex,
 					],
 					closed: false,
 				},
@@ -589,13 +604,13 @@ export namespace Path {
 	export const length = memoize((path: Path): number => {
 		let length = 0
 
-		for (const seg of iterateSegments(path)) {
-			if (seg.command[0] === 'L') {
-				length += vec2.distance(seg.start, seg.end)
-			} else if (seg.command[0] === 'C') {
-				length += CubicBezier.length(seg as SegmentC)
+		for (const seg of segments(path)) {
+			if (seg.command === 'L') {
+				length += vec2.distance(seg.start, seg.point)
+			} else if (seg.command === 'C') {
+				length += CubicBezier.length(seg)
 			} else {
-				length += Arc.length(seg as SegmentA)
+				length += Arc.length(seg)
 			}
 		}
 
@@ -620,10 +635,10 @@ export namespace Path {
 		let min: vec2 = [Infinity, Infinity]
 		let max: vec2 = [-Infinity, -Infinity]
 
-		for (const seg of iterateSegments(path)) {
-			if (seg.command[0] === 'L') {
-				min = vec2.min(min, seg.start, seg.end)
-				max = vec2.max(max, seg.start, seg.end)
+		for (const seg of segments(path)) {
+			if (seg.command === 'L') {
+				min = vec2.min(min, seg.start, seg.point)
+				max = vec2.max(max, seg.start, seg.point)
 			} else if (seg.command[0] === 'C') {
 				const [sMin, sMax] = CubicBezier.bounds(seg as SegmentC)
 				min = vec2.min(min, sMin)
@@ -673,7 +688,7 @@ export namespace Path {
 			const segCount = Curve.segmentCount(curve)
 
 			if (index < segCount) {
-				return [...Curve.iterateSegments(curve)][index]
+				return Curve.segments(curve)[index]
 			}
 
 			index -= segCount
@@ -747,7 +762,7 @@ export namespace Path {
 
 			let offset = loc.offset
 
-			for (const seg of iterateSegments(path)) {
+			for (const seg of segments(path)) {
 				const segLength = Segment.length(seg)
 				if (offset < segLength) {
 					return [seg, {offset}]
@@ -776,7 +791,7 @@ export namespace Path {
 
 			let offset = loc.offset
 
-			for (const seg of iterateSegments(path)) {
+			for (const seg of segments(path)) {
 				const segLength = Segment.length(seg)
 				if (offset < segLength) {
 					return [seg, {offset}]
@@ -856,25 +871,22 @@ export namespace Path {
 	 * @category Modifiers
 	 */
 	export function spawnVertex<
-		C1 extends Command = Command,
-		C2 extends Command = Command,
+		V1 extends Vertex = Vertex,
+		V2 extends Vertex = Vertex,
 	>(
-		path: Path<C1>,
-		fn: (
-			segment: Segment<C1>,
-			index: number,
-			curve: Curve
-		) => Vertex<C2> | Vertex<C2>[]
-	): Path<C2> {
+		path: Path<V1>,
+		fn: (segment: Segment<V1>, index: number, curve: Curve) => V2 | V2[]
+	): Path<V2> {
 		return {
 			curves: path.curves.map(curve => {
 				return {
 					vertices: curve.vertices.flatMap((vertex, i, vertices) => {
-						const segment: Segment<C1> = {
+						const segment = {
 							start: vertices.at(i - 1)!.point,
-							end: vertex.point,
+							point: vertex.point,
 							command: vertex.command,
-						}
+							args: vertex.args,
+						} as Segment<V1>
 						return fn(segment, i, curve)
 					}),
 					closed: curve.closed,
@@ -891,21 +903,20 @@ export namespace Path {
 	 * @category Modifiers
 	 */
 	export function transform(path: Path, matrix: mat2d): Path {
-		return spawnVertex(path, segment => {
-			const point = vec2.transformMat2d(segment.end, matrix)
-			let command: Command
+		return spawnVertex(path, (segment): Vertex[] => {
+			const {command, args} = segment
+			const point = vec2.transformMat2d(segment.point, matrix)
 
-			if (segment.command[0] === 'L') {
-				command = segment.command
-			} else if (segment.command[0] === 'C') {
-				const c1 = vec2.transformMat2d(segment.command[1], matrix)
-				const c2 = vec2.transformMat2d(segment.command[2], matrix)
-				command = ['C', c1, c2]
+			if (command === 'L') {
+				return [{point, command: 'L'}]
+			} else if (command === 'C') {
+				const c1 = vec2.transformMat2d(args[0], matrix)
+				const c2 = vec2.transformMat2d(args[1], matrix)
+				return [{point, command: 'C', args: [c1, c2]}]
 			} else {
-				command = Arc.transform(segment as SegmentA, matrix).command
+				const arc = Arc.transform(segment, matrix)
+				return [{point, command: 'A', args: arc.args}]
 			}
-
-			return [{point, command}]
 		})
 	}
 
@@ -925,11 +936,11 @@ export namespace Path {
 	 * ```
 	 */
 	export function unarc(path: Path, angle = 90): UnarcPath {
-		return spawnVertex(path, ({start, end, command}) => {
-			if (command[0] === 'A') {
-				return Arc.approximateByCubicBeziers({start, end, command}, angle)
+		return spawnVertex(path, (seg): (VertexL | VertexC)[] => {
+			if (seg.command === 'A') {
+				return Arc.approximateByCubicBeziers(seg, angle)
 			} else {
-				return [{point: end, command}]
+				return [seg]
 			}
 		})
 	}
@@ -942,15 +953,15 @@ export namespace Path {
 	 * @category Modifiers
 	 */
 	export function toCubicBezier(path: Path, unarcAngle = 90): PathC {
-		return spawnVertex(path, segment => {
-			if (segment.command[0] === 'C') {
-				return [{point: segment.end, command: segment.command}]
-			} else if (segment.command[0] === 'A') {
-				return Arc.approximateByCubicBeziers(segment as SegmentA, unarcAngle)
+		return spawnVertex(path, (seg): VertexC[] => {
+			if (seg.command === 'C') {
+				return [{point: seg.point, command: 'C', args: seg.args}]
+			} else if (seg.command === 'A') {
+				return Arc.approximateByCubicBeziers(seg, unarcAngle)
 			} else {
-				const c1 = vec2.lerp(segment.start, segment.end, 1 / 3)
-				const c2 = vec2.lerp(segment.start, segment.end, 2 / 3)
-				return [{point: segment.end, command: ['C', c1, c2]}]
+				const c1 = vec2.lerp(seg.start, seg.point, 1 / 3)
+				const c2 = vec2.lerp(seg.start, seg.point, 2 / 3)
+				return [{point: seg.point, command: 'C', args: [c1, c2]}]
 			}
 		})
 	}
@@ -1100,7 +1111,7 @@ export namespace Path {
 			.map((_, i) => (i + 1) / division)
 
 		return spawnVertex(unarc(path), (segment): Vertex[] => {
-			if (segment.command[0] === 'C') {
+			if (segment.command === 'C') {
 				return CubicBezier.divideAtTimes(segment as SegmentC, times)
 			} else {
 				return Line.divideAtTimes(segment as SegmentL, times)
@@ -1153,16 +1164,16 @@ export namespace Path {
 		return spawnVertex(
 			toCubicBezier(subdivide(path, subdivideNum), unarcAngle),
 			(segment): Vertex[] => {
-				let [, c1, c2] = segment.command
+				let [c1, c2] = segment.args
 				const startXform = transform(segment.start)
-				const endXform = transform(segment.end)
+				const endXform = transform(segment.point)
 
 				c1 = vec2.transformMat2d(vec2.sub(c1, segment.start), startXform)
-				c2 = vec2.transformMat2d(vec2.sub(c2, segment.end), endXform)
+				c2 = vec2.transformMat2d(vec2.sub(c2, segment.point), endXform)
 
 				const point: vec2 = [endXform[4], endXform[5]]
 
-				return [{point, command: ['C', c1, c2]}]
+				return [{point, command: 'C', args: [c1, c2]}]
 			}
 		)
 	}
@@ -1214,30 +1225,26 @@ export namespace Path {
 	export function toSVGString(path: Path): string {
 		return path.curves
 			.flatMap(curve => {
-				const strs = curve.vertices.map(({point, command}, i) => {
+				const strs = curve.vertices.map(({point, command, args}, i) => {
 					if (i === 0) {
 						return `M ${vec2ToString(point)}`
-					} else if (command[0] === 'L') {
+					} else if (command === 'L') {
 						return `L ${vec2ToString(point)}`
-					} else if (command[0] === 'C') {
-						return commandCToString(point, command)
-					} else if (command[0] === 'A') {
-						return commandAToString(point, command)
+					} else if (command === 'C') {
+						return commandCToString(point, args)
+					} else if (command === 'A') {
+						return commandAToString(point, args)
 					}
 				})
 
 				if (curve.closed) {
 					const firstVertex = curve.vertices.at(0)
 
-					if (firstVertex && firstVertex.command[0] !== 'L') {
-						if (firstVertex.command[0] === 'C') {
-							strs.push(
-								commandCToString(firstVertex.point, firstVertex.command)
-							)
-						} else if (firstVertex.command[0] === 'A') {
-							strs.push(
-								commandAToString(firstVertex.point, firstVertex.command)
-							)
+					if (firstVertex && firstVertex.command !== 'L') {
+						if (firstVertex.command === 'C') {
+							strs.push(commandCToString(firstVertex.point, firstVertex.args))
+						} else if (firstVertex.command === 'A') {
+							strs.push(commandAToString(firstVertex.point, firstVertex.args))
 						}
 					}
 
@@ -1252,36 +1259,30 @@ export namespace Path {
 			return `${v[0]},${v[1]}`
 		}
 
-		function commandCToString(point: vec2, command: CommandC) {
-			const c1 = vec2ToString(command[1])
-			const c2 = vec2ToString(command[2])
+		function commandCToString(point: vec2, command: CommandArgsC) {
+			const c1 = vec2ToString(command[0])
+			const c2 = vec2ToString(command[1])
 			const p = vec2ToString(point)
 			return `C ${c1} ${c2} ${p}`
 		}
 
-		function commandAToString(point: vec2, command: CommandA) {
-			const radii = vec2ToString(command[1])
-			const xAxisRotation = toFixedSimple(command[2])
-			const largeArc = command[3] ? '1' : '0'
-			const sweep = command[4] ? '1' : '0'
+		function commandAToString(point: vec2, command: CommandArgsA) {
+			const radii = vec2ToString(command[0])
+			const xAxisRotation = toFixedSimple(command[1])
+			const largeArc = command[2] ? '1' : '0'
+			const sweep = command[3] ? '1' : '0'
 			const p = vec2ToString(point)
 			return `A ${radii} ${xAxisRotation} ${largeArc} ${sweep} ${p}`
 		}
 	}
 
 	/**
-	 * Iterates over the segments of the given path.
+	 * Returns all segmentse
 	 * @param path The path to iterate
-	 * @category Utilities
+	 * @category Properties
 	 */
-	export function* iterateSegments(
-		path: Path
-	): Generator<Segment & {curveIndex: number; segmentIndex: number}> {
-		for (const [curveIndex, curve] of path.curves.entries()) {
-			for (const seg of Curve.iterateSegments(curve)) {
-				yield {...seg, curveIndex}
-			}
-		}
+	export function segments(path: Path): Segment[] {
+		return path.curves.flatMap(Curve.segments)
 	}
 
 	/**
@@ -1327,7 +1328,7 @@ export namespace Path {
 					point = vec2.add(prevPoint, point)
 				}
 
-				currentPath = {vertices: [{point, command: ['L']}], closed: false}
+				currentPath = {vertices: [{point, command: 'L'}], closed: false}
 				firstPoint = prevPoint = point
 				continue
 			}
@@ -1350,7 +1351,7 @@ export namespace Path {
 					point = vec2.add(prevPoint, point)
 				}
 
-				currentPath.vertices.push({point, command: ['L']})
+				currentPath.vertices.push({point, command: 'L'})
 
 				prevPoint = point
 				prevControl = undefined
@@ -1370,7 +1371,7 @@ export namespace Path {
 					point = [point[0] + prevPoint[0], point[1]]
 				}
 
-				currentPath.vertices.push({point, command: ['L']})
+				currentPath.vertices.push({point, command: 'L'})
 
 				prevPoint = point
 				prevControl = undefined
@@ -1390,7 +1391,7 @@ export namespace Path {
 					point = [point[0], point[1] + prevPoint[1]]
 				}
 
-				currentPath.vertices.push({point, command: ['L']})
+				currentPath.vertices.push({point, command: 'L'})
 
 				prevPoint = point
 				prevControl = undefined
@@ -1410,13 +1411,13 @@ export namespace Path {
 					point = vec2.add(prevPoint, point)
 				}
 
-				const {command} = CubicBezier.fromQuadraticBezier(
+				const {command, args} = CubicBezier.fromQuadraticBezier(
 					prevPoint,
 					control,
 					point
 				)
 
-				currentPath.vertices.push({point, command})
+				currentPath.vertices.push({point, command, args})
 
 				prevPoint = point
 				prevControl = undefined
@@ -1436,13 +1437,13 @@ export namespace Path {
 
 				const control = vec2.sub(prevPoint, prevControl)
 
-				const {command} = CubicBezier.fromQuadraticBezier(
+				const {command, args} = CubicBezier.fromQuadraticBezier(
 					prevPoint,
 					control,
 					point
 				)
 
-				currentPath.vertices.push({point, command})
+				currentPath.vertices.push({point, command, args})
 
 				prevPoint = point
 				prevControl = control
@@ -1464,7 +1465,11 @@ export namespace Path {
 					point = vec2.add(prevPoint, point)
 				}
 
-				currentPath.vertices.push({point, command: ['C', control1, control2]})
+				currentPath.vertices.push({
+					point,
+					command: 'C',
+					args: [control1, control2],
+				})
 
 				prevPoint = point
 				prevControl = control2
@@ -1485,7 +1490,11 @@ export namespace Path {
 				}
 
 				const control1 = vec2.sub(prevPoint, prevControl)
-				currentPath.vertices.push({point, command: ['C', control1, control2]})
+				currentPath.vertices.push({
+					point,
+					command: 'C',
+					args: [control1, control2],
+				})
 
 				prevPoint = point
 				prevControl = control2
@@ -1513,7 +1522,8 @@ export namespace Path {
 
 				currentPath.vertices.push({
 					point,
-					command: ['A', radii, xAxisRotation, !!largeArc, !!sweep],
+					command: 'A',
+					args: [radii, xAxisRotation, !!largeArc, !!sweep],
 				})
 
 				prevPoint = point
@@ -1594,32 +1604,27 @@ export namespace Path {
 					}
 				}
 
-				for (const {point, command} of vertices) {
-					switch (command[0]) {
-						case 'L':
-							paperPath.lineTo(toPoint(point))
-							break
-						case 'C':
+				for (const {point, command, args} of vertices) {
+					if (command === 'L') {
+						paperPath.lineTo(toPoint(point))
+					} else if (command === 'C') {
+						paperPath.cubicCurveTo(
+							toPoint(args[0]),
+							toPoint(args[1]),
+							toPoint(point)
+						)
+					} else {
+						const beziers = Arc.approximateByCubicBeziers(
+							{start: prev!, point, args},
+							90
+						)
+
+						for (const {point, args} of beziers) {
 							paperPath.cubicCurveTo(
-								toPoint(command[1]),
-								toPoint(command[2]),
+								toPoint(args[0]),
+								toPoint(args[1]),
 								toPoint(point)
 							)
-							break
-						case 'A': {
-							const beziers = Arc.approximateByCubicBeziers(
-								{start: prev!, end: point, command},
-								90
-							)
-
-							for (const {point, command} of beziers) {
-								paperPath.cubicCurveTo(
-									toPoint(command[1]),
-									toPoint(command[2]),
-									toPoint(point)
-								)
-							}
-							break
 						}
 					}
 
@@ -1659,12 +1664,12 @@ export namespace Path {
 			const vertices: Vertex[] = curves.map(curve => {
 				const {point1, point2, handle1, handle2} = curve
 				if (curve.isStraight()) {
-					return {point: paperPointToVec2(point2), command: ['L']}
+					return {point: paperPointToVec2(point2), command: 'L'}
 				} else {
 					return {
 						point: paperPointToVec2(point2),
-						command: [
-							'C',
+						command: 'C',
+						args: [
 							paperPointToVec2(point1.add(handle1)),
 							paperPointToVec2(point2.add(handle2)),
 						],
@@ -1679,7 +1684,7 @@ export namespace Path {
 			} else {
 				vertices.unshift({
 					point: paperPointToVec2(curves[0].point1),
-					command: ['L'],
+					command: 'L',
 				})
 			}
 
@@ -1701,7 +1706,7 @@ export namespace Path {
 			curves: [
 				...path.curves,
 				{
-					vertices: [{point, command: ['L']}],
+					vertices: [{point, command: 'L'}],
 					closed: false,
 				},
 			],
@@ -1716,11 +1721,7 @@ export namespace Path {
 	 * @returns The newely created path
 	 * @category Draw Functions
 	 */
-	export function appendCommand(
-		path: Path,
-		point: vec2,
-		command: Command
-	): Path {
+	export function addVertex(path: Path, vertex: Vertex): Path {
 		const lastCurve = path.curves.at(-1)
 
 		if (lastCurve) {
@@ -1728,7 +1729,7 @@ export namespace Path {
 				curves: [
 					...path.curves.slice(0, -1),
 					{
-						vertices: [...lastCurve.vertices, {point, command}],
+						vertices: [...lastCurve.vertices, vertex],
 						closed: lastCurve.closed,
 					},
 				],
@@ -1737,7 +1738,7 @@ export namespace Path {
 			return {
 				curves: [
 					{
-						vertices: [{point, command}],
+						vertices: [vertex],
 						closed: false,
 					},
 				],
@@ -1753,7 +1754,7 @@ export namespace Path {
 	 * @category Draw Functions
 	 */
 	export function lineTo(path: Path, point: vec2): Path {
-		return appendCommand(path, point, ['L'])
+		return addVertex(path, {point, command: 'L'})
 	}
 
 	/**
@@ -1761,7 +1762,7 @@ export namespace Path {
 	 * @param path The base path
 	 * @param control1 The first control point
 	 * @param control2 The second control point
-	 * @param end The end point
+	 * @param point The end point
 	 * @returns The newely created path
 	 * @category Draw Functions
 	 */
@@ -1769,23 +1770,27 @@ export namespace Path {
 		path: Path,
 		control1: vec2,
 		control2: vec2,
-		end: vec2
+		point: vec2
 	): Path {
-		return appendCommand(path, end, ['C', control1, control2])
+		return addVertex(path, {
+			point,
+			command: 'C',
+			args: [control1, control2],
+		})
 	}
 
 	/**
 	 * Returns the new path with the new Q (quadratic Bézier curve) command at the end.
 	 * @param path The base path
 	 * @param control The control point
-	 * @param end The end point
+	 * @param point The end point
 	 * @returns The newely created path
 	 * @category Draw Functions
 	 */
 	export function quadraticBezierTo(
 		path: Path,
 		control: vec2,
-		end: vec2
+		point: vec2
 	): Path {
 		const lastPoint = path.curves.at(-1)?.vertices.at(-1)?.point
 
@@ -1794,9 +1799,13 @@ export namespace Path {
 		}
 
 		const control1 = vec2.lerp(lastPoint, control, 2 / 3)
-		const control2 = vec2.lerp(end, control, 2 / 3)
+		const control2 = vec2.lerp(point, control, 2 / 3)
 
-		return appendCommand(path, end, ['C', control1, control2])
+		return addVertex(path, {
+			point,
+			command: 'C',
+			args: [control1, control2],
+		})
 	}
 
 	/**
@@ -1806,7 +1815,7 @@ export namespace Path {
 	 * @param xAxisRotation The rotation angle of the ellipse's x-axis relative to the x-axis of the current coordinate system, expressed in degrees
 	 * @param largeArcFlag The large arc flag. If true, then draw the arc spanning greather than 180 degrees. Otherwise, draw the arc spanning less than 180 degrees.
 	 * @param sweepFlag The sweep flag. If true, then draw the arc in a "positive-angle" direction in the current coordinate system. Otherwise, draw it in a "negative-angle" direction.
-	 * @param end The end point of the arc
+	 * @param point The end point of the arc
 	 * @returns The newely created path
 	 * @category Draw Functions
 	 */
@@ -1816,15 +1825,13 @@ export namespace Path {
 		xAxisRotation: number,
 		largeArcFlag: boolean,
 		sweepFlag: boolean,
-		end: vec2
+		point: vec2
 	): Path {
-		return appendCommand(path, end, [
-			'A',
-			radii,
-			xAxisRotation,
-			largeArcFlag,
-			sweepFlag,
-		])
+		return addVertex(path, {
+			command: 'A',
+			args: [radii, xAxisRotation, largeArcFlag, sweepFlag],
+			point,
+		})
 	}
 
 	/**
@@ -1861,38 +1868,38 @@ function drawToRenderingContext(
 	context: Path2D | CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D
 ) {
 	for (const {vertices, closed} of path.curves) {
-		vertices.forEach(({point, command}, i) => {
+		vertices.forEach(({point, command, args}, i) => {
 			if (i === 0) {
 				context.moveTo(...point)
 				return
 			}
 
-			if (command[0] === 'L') {
+			if (command === 'L') {
 				context.lineTo(...point)
-			} else if (command[0] === 'C') {
-				context.bezierCurveTo(...command[1], ...command[2], ...point)
-			} else if (command[0] === 'A') {
+			} else if (command === 'C') {
+				context.bezierCurveTo(...args[0], ...args[1], ...point)
+			} else if (command === 'A') {
 				const start = vertices.at(i - 1)?.point
 
 				if (!start) throw new Error('The start point is not found')
 
-				arcTo(context, start, point, command)
+				arcTo(context, start, point, args)
 			}
 		})
 
 		if (closed) {
 			const first = vertices.at(0)
 
-			if (first && first.command[0] !== 'L') {
-				const {point, command} = first
-				if (command[0] === 'C') {
-					context.bezierCurveTo(...command[1], ...command[2], ...point)
-				} else if (first.command[0] === 'A') {
+			if (first && first.command !== 'L') {
+				const {point, command, args} = first
+				if (command === 'C') {
+					context.bezierCurveTo(...args[0], ...args[1], ...point)
+				} else if (command === 'A') {
 					const prev = vertices.at(-1)?.point
 
 					if (!prev) throw new Error('The previous point is not found')
 
-					arcTo(context, prev, point, command)
+					arcTo(context, prev, point, args)
 				}
 			}
 
@@ -1901,21 +1908,22 @@ function drawToRenderingContext(
 	}
 
 	function arcTo(
-		contxt:
+		context:
 			| Path2D
 			| CanvasRenderingContext2D
 			| OffscreenCanvasRenderingContext2D,
 		start: vec2,
-		end: vec2,
-		command: CommandA
+		point: vec2,
+		args: CommandArgsA
 	) {
 		const ret = Arc.toCenterParameterization({
 			start,
-			end,
-			command,
+			point,
+			command: 'A',
+			args,
 		})
 
-		contxt.ellipse(
+		context.ellipse(
 			...ret.center,
 			...ret.radii,
 			scalar.rad(ret.xAxisRotation),

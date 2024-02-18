@@ -12,7 +12,7 @@
 <script lang="ts" setup>
 import {pausableWatch, throttledWatch, useCssVar} from '@vueuse/core'
 import {mat2d, scalar, vec2} from 'linearly'
-import {type Path} from 'pave'
+import {Curve, type Path} from 'pave'
 import saferEval from 'safer-eval'
 import {onMounted, ref, watch} from 'vue'
 
@@ -90,48 +90,49 @@ onMounted(async () => {
 				context.lineCap = 'round'
 				context.lineWidth = lineWidth
 
-				const segmentIter = Path.iterateSegments(path)
+				for (const curve of path.curves) {
+					let isFirstVertex = true
+					for (const {start, point, command, args} of Curve.segments(curve)) {
+						context.lineWidth = lineWidth
 
-				for (const {start, end, command, segmentIndex} of segmentIter) {
-					context.lineWidth = lineWidth
+						// Draw the first vertex
+						if (isFirstVertex) {
+							Path.drawToCanvas(Path.circle(start, vertexSize), context)
+							context.stroke()
+							isFirstVertex = false
+						}
 
-					// Draw the first vertex
-					if (segmentIndex === 0) {
-						Path.drawToCanvas(Path.circle(start, vertexSize), context)
+						if (command === 'L') {
+							Path.drawToCanvas(Path.line(start, point), context)
+						} else if (command === 'C') {
+							const [control1, control2] = args
+
+							// Draw handles
+							context.setLineDash([2, 1])
+							Path.drawToCanvas(Path.line(start, control1), context)
+							context.stroke()
+							Path.drawToCanvas(Path.line(point, control2), context)
+							context.stroke()
+							context.setLineDash([])
+
+							let bezier = Path.moveTo(Path.empty, start)
+							bezier = Path.cubicBezierTo(bezier, control1, control2, point)
+							Path.drawToCanvas(bezier, context)
+						} else if (command === 'A') {
+							let arc = Path.moveTo(Path.empty, start)
+							arc = Path.arcTo(arc, ...args, point)
+							Path.drawToCanvas(arc, context)
+						}
+						context.lineWidth = lineWidth
 						context.stroke()
+
+						context.lineWidth = vertexSize
+						Path.drawToCanvas(Path.dot(point), context)
+						context.stroke()
+
+						context.font = '7px "IBM Plex Mono"'
+						context.fillText(command[0], ...vec2.add(point, [2, -2]))
 					}
-
-					if (command[0] === 'L') {
-						Path.drawToCanvas(Path.line(start, end), context)
-					} else if (command[0] === 'C') {
-						const [, control1, control2] = command
-
-						// Draw handles
-						context.setLineDash([2, 1])
-						Path.drawToCanvas(Path.line(start, control1), context)
-						context.stroke()
-						Path.drawToCanvas(Path.line(end, control2), context)
-						context.stroke()
-						context.setLineDash([])
-
-						let bezier = Path.moveTo(Path.empty, start)
-						bezier = Path.cubicBezierTo(bezier, control1, control2, end)
-						Path.drawToCanvas(bezier, context)
-					} else if (command[0] === 'A') {
-						const [, ...args] = command
-						let arc = Path.moveTo(Path.empty, start)
-						arc = Path.arcTo(arc, ...args, end)
-						Path.drawToCanvas(arc, context)
-					}
-					context.lineWidth = lineWidth
-					context.stroke()
-
-					context.lineWidth = vertexSize
-					Path.drawToCanvas(Path.dot(end), context)
-					context.stroke()
-
-					context.font = '7px "IBM Plex Mono"'
-					context.fillText(command[0], ...vec2.add(end, [2, -2]))
 				}
 			}
 

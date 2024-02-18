@@ -1,8 +1,3 @@
-import {vec2} from 'linearly'
-
-import {Command} from './Path'
-import {Segment} from './Segment'
-
 export function toFixedSimple(a: number, fractionDigits = 2): string {
 	return a
 		.toFixed(fractionDigits)
@@ -29,30 +24,4 @@ export function memoize<Arg extends object, ReturnType>(
 	}
 }
 
-export function memoizeSegmentFunction<C extends Command, T>(
-	f: (segment: Segment<C>) => T
-) {
-	const cache = new WeakMap<vec2, WeakMap<Command, WeakMap<vec2, T>>>()
-
-	return (segment: Segment<C>): T => {
-		const {start, command, end} = segment
-
-		if (!cache.has(start)) {
-			cache.set(start, new WeakMap())
-		}
-
-		const cache1 = cache.get(start)!
-
-		if (!cache1.has(command)) {
-			cache1.set(command, new WeakMap())
-		}
-
-		const cache2 = cache1.get(command)!
-
-		if (!cache2.has(end)) {
-			cache2.set(end, f(segment))
-		}
-
-		return cache2.get(end)!
-	}
-}
+export type PartialBy<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>

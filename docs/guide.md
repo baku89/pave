@@ -82,8 +82,8 @@ Also, the path data structure has the following hierarchy, similar to how in 3D 
 <img class='diagram' src='./path_structure.svg' alt='Path Structure' />
 
 - [**Path**](./api/interfaces/Path): A single Curve or a compound path composed of multiple Curves. It is the most common type to represent shapes in Pave.
-- [**Curve**](./api/interfaces/Curve): Represents a single stroke. It also contains a `closed` property to specify whether the curve is open or closed.
-- [**Vertex**](./api/#vertex): Each vertex that makes up the stroke. Unlike in SVG, where the end point is included at the end of the command, Vertex stores the end point in the `point` property, and rest arguments in the `command` property separately.
+- [**Curve**](./api/interfaces/Curve): Represents a open or closed single stroke.
+- [**Vertex**](./api/#vertex): Each vertex that makes up the stroke, which consists of end point, command type, and argments for the interpolation.
 - [**Command**](./api#command): Arguments of interpolation commands excluding the end point.
 
 If you are familiar with TypeScript, it might be easier to understand by looking at the type definitions.
@@ -91,15 +91,22 @@ If you are familiar with TypeScript, it might be easier to understand by looking
 ```ts
 type Path = {paths: Curves[]; fillRule: 'nonzero' | 'evenodd'}
 type Curve = {vertices: Vertex[]; closed: boolean}
-type Vertex = {point: vec2; command: Command}
-type Command =
-	| ['L']
-	| ['C', control1: vec2, control2: vec2]
-	| ['A', radii: vec2, xRot: vec2, largeArc: boolean, sweep: boolean]
+
+type VertexL = {point: vec2; command: 'L'}
+type VertexC = {
+	point: vec2
+	command: 'C'
+	args: [control1: vec2, control2: vec2]
+}
+type VertexA = {
+	point: vec2
+	command: 'A'
+	args: [radii: vec2, xRot: vec2, largeArc: boolean, sweep: boolean]
+}
 ```
 
-In addition to the above hierarchy, there is also a type called **[Segment](./api/interfaces/Segment)**, which is a cut-out part of a Curve corresponding to a single command. Unlike Vertex, it includes information on both the starting and ending points.
+In addition to the above hierarchy, there is also a type called **[Segment](./api/interfaces/Segment)**, which is a cut-out part of a Curve corresponding to a single command. Unlike Vertex, it includes the start position of interpolation.
 
 ```ts
-type Segment = {start: vec2; end: vec2; command: Command}
+type Segment = Vertex & {start: vec2}
 ```

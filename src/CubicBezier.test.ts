@@ -1,18 +1,25 @@
 import '../jest.setup'
 
 import {CubicBezier} from './CubicBezier'
-import {CommandC} from './Path'
-import {Segment} from './Segment'
+import {SegmentC} from './Segment'
 
-const a: Segment<CommandC> = {
+const a: SegmentC = {
 	start: [0, 0],
-	command: ['C', [0, 1], [1, 1]],
-	end: [1, 0],
+	command: 'C',
+	args: [
+		[0, 1],
+		[1, 1],
+	],
+	point: [1, 0],
 }
-const b: Segment<CommandC> = {
+const b: SegmentC = {
 	start: [0, 0],
-	command: ['C', [2, 0], [1, 1]],
-	end: [1, 0],
+	command: 'C',
+	args: [
+		[2, 0],
+		[1, 1],
+	],
+	point: [1, 0],
 }
 
 test('length', () => {

@@ -14,9 +14,9 @@ describe('area', () => {
 			curves: [
 				{
 					vertices: [
-						{point: [0, 0], command: ['L']},
-						{point: [1, 1], command: ['L']},
-						{point: [2, 2], command: ['L']},
+						{point: [0, 0], command: 'L'},
+						{point: [1, 1], command: 'L'},
+						{point: [2, 2], command: 'L'},
 					],
 					closed: true,
 				},
@@ -30,10 +30,10 @@ describe('area', () => {
 			curves: [
 				{
 					vertices: [
-						{point: [0, 0], command: ['L']},
-						{point: [1, 0], command: ['L']},
-						{point: [1, 1], command: ['L']},
-						{point: [0, 1], command: ['L']},
+						{point: [0, 0], command: 'L'},
+						{point: [1, 0], command: 'L'},
+						{point: [1, 1], command: 'L'},
+						{point: [0, 1], command: 'L'},
 					],
 					closed: true,
 				},
@@ -52,9 +52,9 @@ describe('area', () => {
 			curves: [
 				{
 					vertices: [
-						{point: [0, 0], command: ['L']},
-						{point: [1, 1], command: ['L']},
-						{point: [2, 2], command: ['L']},
+						{point: [0, 0], command: 'L'},
+						{point: [1, 1], command: 'L'},
+						{point: [2, 2], command: 'L'},
 					],
 					closed: false,
 				},
@@ -75,8 +75,8 @@ describe('segmentCount', () => {
 			curves: [
 				{
 					vertices: [
-						{point: [0, 0], command: ['L']},
-						{point: [1, 1], command: ['L']},
+						{point: [0, 0], command: 'L'},
+						{point: [1, 1], command: 'L'},
 					],
 					closed: false,
 				},
@@ -90,8 +90,8 @@ describe('segmentCount', () => {
 			curves: [
 				{
 					vertices: [
-						{point: [0, 0], command: ['L']},
-						{point: [1, 1], command: ['L']},
+						{point: [0, 0], command: 'L'},
+						{point: [1, 1], command: 'L'},
 					],
 					closed: true,
 				},
@@ -105,15 +105,15 @@ describe('segmentCount', () => {
 			curves: [
 				{
 					vertices: [
-						{point: [0, 0], command: ['L']},
-						{point: [1, 1], command: ['L']},
+						{point: [0, 0], command: 'L'},
+						{point: [1, 1], command: 'L'},
 					],
 					closed: false,
 				},
 				{
 					vertices: [
-						{point: [2, 2], command: ['L']},
-						{point: [3, 3], command: ['L']},
+						{point: [2, 2], command: 'L'},
+						{point: [3, 3], command: 'L'},
 					],
 					closed: false,
 				},
@@ -127,15 +127,22 @@ describe('segmentCount', () => {
 			curves: [
 				{
 					vertices: [
-						{point: [0, 0], command: ['L']},
-						{point: [1, 1], command: ['L']},
+						{point: [0, 0], command: 'L'},
+						{point: [1, 1], command: 'L'},
 					],
 					closed: false,
 				},
 				{
 					vertices: [
-						{point: [4, 4], command: ['L']},
-						{point: [5, 5], command: ['C', [6, 6], [7, 7]]},
+						{point: [4, 4], command: 'L'},
+						{
+							point: [5, 5],
+							command: 'C',
+							args: [
+								[6, 6],
+								[7, 7],
+							],
+						},
 					],
 					closed: true,
 				},
@@ -150,28 +157,25 @@ describe('segment', () => {
 
 	it('should return the first segment of a path', () => {
 		expect(Path.segment(rect, 0, 0)).toEqual({
-			segmentIndex: 0,
 			start: [0, 0],
-			command: ['L'],
-			end: [1, 0],
+			command: 'L',
+			point: [1, 0],
 		})
 	})
 
 	it('should return the second segment of a path', () => {
 		expect(Path.segment(rect, 0, 1)).toEqual({
-			segmentIndex: 1,
 			start: [1, 0],
-			command: ['L'],
-			end: [1, 1],
+			command: 'L',
+			point: [1, 1],
 		})
 	})
 
 	it('should return the last segment of a path', () => {
 		expect(Path.segment(rect, 0, 3)).toEqual({
-			segmentIndex: 3,
 			start: [0, 1],
-			command: ['L'],
-			end: [0, 0],
+			command: 'L',
+			point: [0, 0],
 		})
 	})
 })
@@ -181,28 +185,25 @@ describe('linearSegment', () => {
 
 	it('should return the first segment of a path', () => {
 		expect(Path.linearSegment(rect, 0)).toEqual({
-			segmentIndex: 0,
 			start: [0, 0],
-			command: ['L'],
-			end: [1, 0],
+			command: 'L',
+			point: [1, 0],
 		})
 	})
 
 	it('should return the second segment of a path', () => {
 		expect(Path.linearSegment(rect, 1)).toEqual({
-			segmentIndex: 1,
 			start: [1, 0],
-			command: ['L'],
-			end: [1, 1],
+			command: 'L',
+			point: [1, 1],
 		})
 	})
 
 	it('should return the last segment of a path', () => {
 		expect(Path.linearSegment(rect, 3)).toEqual({
-			segmentIndex: 3,
 			start: [0, 1],
-			command: ['L'],
-			end: [0, 0],
+			command: 'L',
+			point: [0, 0],
 		})
 	})
 })
@@ -215,8 +216,8 @@ describe('fromSVG', () => {
 			curves: [
 				{
 					vertices: [
-						{point: [0, 1], command: ['L']},
-						{point: [2, 3], command: ['L']},
+						{point: [0, 1], command: 'L'},
+						{point: [2, 3], command: 'L'},
 					],
 					closed: false,
 				},
@@ -231,8 +232,15 @@ describe('fromSVG', () => {
 			curves: [
 				{
 					vertices: [
-						{point: [0, 1], command: ['L']},
-						{point: [6, 7], command: ['C', [2, 3], [4, 5]]},
+						{point: [0, 1], command: 'L'},
+						{
+							point: [6, 7],
+							command: 'C',
+							args: [
+								[2, 3],
+								[4, 5],
+							],
+						},
 					],
 					closed: false,
 				},
@@ -247,9 +255,9 @@ describe('fromSVG', () => {
 			curves: [
 				{
 					vertices: [
-						{point: [0, 1], command: ['L']},
-						{point: [2, 3], command: ['L']},
-						{point: [4, 5], command: ['L']},
+						{point: [0, 1], command: 'L'},
+						{point: [2, 3], command: 'L'},
+						{point: [4, 5], command: 'L'},
 					],
 					closed: true,
 				},
@@ -263,7 +271,16 @@ describe('fromSVG', () => {
 		expect(path).toEqual({
 			curves: [
 				{
-					vertices: [{point: [0, 1], command: ['C', [2, 3], [4, 5]]}],
+					vertices: [
+						{
+							point: [0, 1],
+							command: 'C',
+							args: [
+								[2, 3],
+								[4, 5],
+							],
+						},
+					],
 					closed: true,
 				},
 			],
@@ -277,8 +294,15 @@ describe('fromSVG', () => {
 			curves: [
 				{
 					vertices: [
-						{point: [0, 1], command: ['L']},
-						{point: [6, 7], command: ['C', [2, 3], [4, 5]]},
+						{point: [0, 1], command: 'L'},
+						{
+							point: [6, 7],
+							command: 'C',
+							args: [
+								[2, 3],
+								[4, 5],
+							],
+						},
 					],
 					closed: true,
 				},
@@ -302,8 +326,8 @@ describe('fromSVG', () => {
 			curves: [
 				{
 					vertices: [
-						{point: [0, 1], command: ['L']},
-						{point: [5, 6], command: ['A', [2, 3], 4, false, true]},
+						{point: [0, 1], command: 'L'},
+						{point: [5, 6], command: 'A', args: [[2, 3], 4, false, true]},
 					],
 					closed: false,
 				},
@@ -317,11 +341,18 @@ test('toSVGString', () => {
 		curves: [
 			{
 				vertices: [
-					{point: [0, 0], command: ['L']},
-					{point: [1, 1], command: ['L']},
-					{point: [2, 2], command: ['L']},
-					{point: [3, 3], command: ['C', [4, 4], [5, 5]]},
-					{point: [1, 1], command: ['A', [2, 2], 1, false, true]},
+					{point: [0, 0], command: 'L'},
+					{point: [1, 1], command: 'L'},
+					{point: [2, 2], command: 'L'},
+					{
+						point: [3, 3],
+						command: 'C',
+						args: [
+							[4, 4],
+							[5, 5],
+						],
+					},
+					{point: [1, 1], command: 'A', args: [[2, 2], 1, false, true]},
 				],
 				closed: true,
 			},
@@ -338,8 +369,8 @@ describe('toPaperPath', () => {
 			curves: [
 				{
 					vertices: [
-						{point: [0, 1], command: ['L']},
-						{point: [2, 3], command: ['L']},
+						{point: [0, 1], command: 'L'},
+						{point: [2, 3], command: 'L'},
 					],
 					closed: false,
 				},
@@ -360,8 +391,15 @@ describe('toPaperPath', () => {
 			curves: [
 				{
 					vertices: [
-						{point: [0, 1], command: ['L']},
-						{point: [2, 3], command: ['C', [4, 5], [6, 7]]},
+						{point: [0, 1], command: 'L'},
+						{
+							point: [2, 3],
+							command: 'C',
+							args: [
+								[4, 5],
+								[6, 7],
+							],
+						},
 					],
 					closed: false,
 				},
@@ -383,9 +421,9 @@ describe('toPaperPath', () => {
 			curves: [
 				{
 					vertices: [
-						{point: [0, 1], command: ['L']},
-						{point: [2, 3], command: ['L']},
-						{point: [4, 5], command: ['L']},
+						{point: [0, 1], command: 'L'},
+						{point: [2, 3], command: 'L'},
+						{point: [4, 5], command: 'L'},
 					],
 					closed: true,
 				},
@@ -416,9 +454,9 @@ describe('fromPaperPath', () => {
 			curves: [
 				{
 					vertices: [
-						{point: [0, 1], command: ['L']},
-						{point: [2, 3], command: ['L']},
-						{point: [4, 5], command: ['L']},
+						{point: [0, 1], command: 'L'},
+						{point: [2, 3], command: 'L'},
+						{point: [4, 5], command: 'L'},
 					],
 					closed: false,
 				},
@@ -439,9 +477,9 @@ describe('fromPaperPath', () => {
 			curves: [
 				{
 					vertices: [
-						{point: [0, 1], command: ['L']},
-						{point: [2, 3], command: ['L']},
-						{point: [4, 5], command: ['L']},
+						{point: [0, 1], command: 'L'},
+						{point: [2, 3], command: 'L'},
+						{point: [4, 5], command: 'L'},
 					],
 					closed: true,
 				},
