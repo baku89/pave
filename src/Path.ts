@@ -193,6 +193,14 @@ export namespace Path {
 		return ellipse(center, [radius, radius])
 	}
 
+	export function semicircle(start: vec2, end: vec2, closed = true): Path {
+		const r = vec2.dist(start, end) / 2
+
+		const p = arcTo(moveTo(empty, start), [r, r], 0, false, true, end)
+
+		return closed ? Path.close(p) : p
+	}
+
 	export interface CircleFromPointsOptions {
 		/**
 		 * If the given points are less than three and the circumcenter cannot be well-defined, the circle will be drawn in the direction of the sweep flag. (in Canvas API, it means clockwise).
