@@ -150,7 +150,7 @@ type Segment = Vertex & {start: vec2}
 
 ```ts
 type UnitLocation = number | {unit: number}
-type OffsetLocation = {offset: number; cyclic?: boolean}
+type OffsetLocation = {offset: number}
 type TimeLocation = {time: number}
 
 type SegmentLocation = UnitLocation | OffsetLocation | TimeLocation
@@ -171,7 +171,6 @@ type OffsetPathLocation = {
 	offset: number
 	vertexIndex?: number
 	curveIndex?: number
-	cyclic?: boolean
 }
 
 type TimePathLocation = {
@@ -184,7 +183,7 @@ type PathLocation = UnitPathLocation | OffsetPathLocation | TimePathLocation
 ```
 
 :::tip
-範囲外の値を指定した場合、自動的にクランプされます。ただし、offsetにおいて`cyclic`プロパティが`true`の場合、始点からループします。
+範囲外の値を指定した場合、自動的にクランプされます。ただし、unitやoffset、timeが`-最大値 <= x  < 0`の範囲で負の値を取る場合、該当するカーブの終点を基準に絶対値だけオフセットした位置について取得されます。これは[`Array.at()`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/at)の挙動とも似ています。
 :::
 
 また、位置表現があるセグメントの終点とも後続のセグメントの始点とも解釈されるような場合は、セグメントの始点の方が優先されます。例えば、2つの分離した直線から成るパスにおいて、`{time: 0.5}`は1番目の直線の終点と2番目の直線の始点の両方を指す可能性がありますが、このルールにより2番目の直線の始点が優先されます。もし1番目の直線の終点を指したい場合は、`{time: 1, curveIndex: 0}`のように明示する必要があります。
