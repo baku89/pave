@@ -37,6 +37,16 @@ if (code.value === '') {
 	code.value = DefaultCode
 }
 
+const query = Object.fromEntries(new URL(location.href).searchParams.entries())
+
+if ('src' in query) {
+	code.value = ''
+	;(async () => {
+		const res = await fetch(query.src)
+		code.value = await res.text()
+	})()
+}
+
 const time = ref(0)
 const playing = ref(false)
 
