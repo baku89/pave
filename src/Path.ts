@@ -390,6 +390,46 @@ export namespace Path {
 		}
 	}
 
+	export function arcFromPoints(start: vec2, through: vec2, end: vec2): Path {
+		const [center, radius] = Circle.circumcircle(start, through, end)
+
+		const CS = vec2.sub(start, center)
+		const CT = vec2.sub(through, center)
+		const CE = vec2.sub(end, center)
+
+		const angleSOE = vec2.angle(CS, CE)
+		const angleSOT = vec2.angle(CS, CT)
+		const angleEOT = vec2.angle(CE, CT)
+
+		let largeArc: boolean
+		let sweep: boolean
+
+		if (angleSOE < 0) {
+			if (angleSOT < 0 && angleEOT > 0) {
+				largeArc = false
+				sweep = false
+			} else {
+				largeArc = true
+				sweep = true
+			}
+		} else {
+			if (angleSOT > 0 && angleEOT < 0) {
+				largeArc = false
+				sweep = true
+			} else {
+				largeArc = true
+				sweep = false
+			}
+		}
+
+		return Path.fromSegment({
+			start,
+			command: 'A',
+			args: [[radius, radius], 0, largeArc, sweep],
+			point: end,
+		})
+	}
+
 	/**
 	 * Creates a fan path.
 	 * @param center The center of the fan
