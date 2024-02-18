@@ -95,7 +95,8 @@ export namespace Arc {
 	): VertexC[] {
 		angle = angle === 0 ? 90 : Math.abs(angle)
 
-		const {center, radii, angles, xAxisRotation} = toCenterParameterization(arc)
+		const {center, radii, angles, xAxisRotation, sweep} =
+			toCenterParameterization(arc)
 
 		const [startAngle, endAngle] = angles
 
@@ -121,13 +122,13 @@ export namespace Arc {
 			const control1 = vec2.scaleAndAdd(
 				start,
 				vec2.direction(a0 + 90 * dir),
-				handleLength
+				handleLength * (sweep ? 1 : -1)
 			)
 
 			const control2 = vec2.scaleAndAdd(
 				point,
 				vec2.direction(a1 - 90 * dir),
-				handleLength
+				handleLength * (sweep ? 1 : -1)
 			)
 
 			// Apply the transformation to the unit circle
