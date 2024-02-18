@@ -92,8 +92,12 @@ onMounted(async () => {
 						ctx.stroke()
 						ctx.setLineDash([])
 
-						let bezier = Path.moveTo(Path.empty, start)
-						bezier = Path.cubicBezierTo(bezier, control1, control2, point)
+						Path.drawToCanvas(Path.circle(control1, 1), ctx)
+						ctx.fill()
+						Path.drawToCanvas(Path.circle(control2, 1), ctx)
+						ctx.fill()
+
+						const bezier = Path.cubicBezier(start, control1, control2, point)
 						Path.drawToCanvas(bezier, ctx)
 					} else if (command === 'A') {
 						let arc = Path.moveTo(Path.empty, start)
