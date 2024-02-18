@@ -103,10 +103,7 @@ export namespace Arc {
 		const dir = Math.sign(endAngle - startAngle)
 		const delta = (endAngle - startAngle) / n
 
-		const xform = mat2d.scale(
-			mat2d.rotate(mat2d.fromTranslation(center), xAxisRotation),
-			radii
-		)
+		const xform = mat2d.trs(center, xAxisRotation, radii)
 
 		const beziers: VertexC[] = []
 
@@ -119,7 +116,7 @@ export namespace Arc {
 			const start = vec2.direction(a0)
 			const point = vec2.direction(a1)
 
-			const handleLength = (4 / 3) * Math.tan((a1 - a0) / 4)
+			const handleLength = (4 / 3) * scalar.tan((a1 - a0) / 4)
 
 			const control1 = vec2.scaleAndAdd(
 				start,
