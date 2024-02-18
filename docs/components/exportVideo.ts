@@ -39,7 +39,7 @@ export async function exportVideo(code: string) {
 	const frames: string[] = []
 
 	for (let i = 0; i < 100; i++) {
-		const time = i / (100 - 1)
+		const time = i / 100
 
 		evalFn(time)
 
@@ -50,7 +50,7 @@ export async function exportVideo(code: string) {
 
 		const codeImg = await renderCode(
 			code.replace(
-				/([^a-zA-Z0-9])time([^a-zA-Z0-9]?)/g,
+				/([^a-zA-Z0-9{])time([^a-zA-Z0-9]?)/g,
 				`$1${time.toFixed(2)}$2`
 			)
 		)
