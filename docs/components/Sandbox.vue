@@ -45,10 +45,9 @@ if ('src' in query) {
 	;(async () => {
 		const res = await fetch(query.src)
 		code.value = await res.text()
+		currentURL.searchParams.delete('src')
+		location.href = currentURL.toString()
 	})()
-
-	currentURL.searchParams.delete('src')
-	location.href = currentURL.toString()
 }
 
 const time = ref(0)
