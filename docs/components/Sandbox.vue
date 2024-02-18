@@ -37,7 +37,8 @@ if (code.value === '') {
 	code.value = DefaultCode
 }
 
-const query = Object.fromEntries(new URL(location.href).searchParams.entries())
+const currentURL = new URL(location.href)
+const query = Object.fromEntries(currentURL.searchParams.entries())
 
 if ('src' in query) {
 	code.value = ''
@@ -45,6 +46,9 @@ if ('src' in query) {
 		const res = await fetch(query.src)
 		code.value = await res.text()
 	})()
+
+	currentURL.searchParams.delete('src')
+	location.href = currentURL.toString()
 }
 
 const time = ref(0)
