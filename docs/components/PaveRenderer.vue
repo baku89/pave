@@ -173,7 +173,12 @@ onMounted(async () => {
 		([time, evalFn]) => {
 			if (!evalFn) return
 
-			evalFn(time)
+			try {
+				evalFn(time)
+			} catch (e) {
+				// eslint-disable-next-line no-console
+				console.error(e)
+			}
 		},
 		{immediate: true, flush: 'sync'}
 	)
