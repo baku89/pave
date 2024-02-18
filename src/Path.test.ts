@@ -8,6 +8,143 @@ import paper from 'paper'
 
 import {Path} from './Path'
 
+describe('area', () => {
+	it('compute the area of a simple path as 0', () => {
+		const path: Path = {
+			curves: [
+				{
+					vertices: [
+						{point: [0, 0], command: ['L']},
+						{point: [1, 1], command: ['L']},
+						{point: [2, 2], command: ['L']},
+					],
+					closed: true,
+				},
+			],
+		}
+		expect(Path.area(path)).toBe(0)
+	})
+
+	it('compute the area of unit square as 1', () => {
+		const path: Path = {
+			curves: [
+				{
+					vertices: [
+						{point: [0, 0], command: ['L']},
+						{point: [1, 0], command: ['L']},
+						{point: [1, 1], command: ['L']},
+						{point: [0, 1], command: ['L']},
+					],
+					closed: true,
+				},
+			],
+		}
+		expect(Path.area(path)).toBeCloseTo(1, 5)
+	})
+
+	it('compute the are of a unit circle as π', () => {
+		const path = Path.unarc(Path.circle([0, 0], 1), 0.1)
+		expect(Path.area(path)).toBeCloseTo(Math.PI, 2)
+	})
+
+	it('compute the area of open path as 0', () => {
+		const path: Path = {
+			curves: [
+				{
+					vertices: [
+						{point: [0, 0], command: ['L']},
+						{point: [1, 1], command: ['L']},
+						{point: [2, 2], command: ['L']},
+					],
+					closed: false,
+				},
+			],
+		}
+		expect(Path.area(path)).toBe(0)
+	})
+})
+
+describe('segmentCount', () => {
+	it('should return 0 for an empty path', () => {
+		const path: Path = Path.empty
+		expect(Path.segmentCount(path)).toBe(0)
+	})
+
+	it('should return 1 for a path with a single line', () => {
+		const path: Path = {
+			curves: [
+				{
+					vertices: [
+						{point: [0, 0], command: ['L']},
+						{point: [1, 1], command: ['L']},
+					],
+					closed: false,
+				},
+			],
+		}
+		expect(Path.segmentCount(path)).toBe(1)
+	})
+
+	it('should return 2 for a closed path with two lines', () => {
+		const path: Path = {
+			curves: [
+				{
+					vertices: [
+						{point: [0, 0], command: ['L']},
+						{point: [1, 1], command: ['L']},
+					],
+					closed: true,
+				},
+			],
+		}
+		expect(Path.segmentCount(path)).toBe(2)
+	})
+
+	it('should return 2 for a compound path with two lines', () => {
+		const path: Path = {
+			curves: [
+				{
+					vertices: [
+						{point: [0, 0], command: ['L']},
+						{point: [1, 1], command: ['L']},
+					],
+					closed: false,
+				},
+				{
+					vertices: [
+						{point: [2, 2], command: ['L']},
+						{point: [3, 3], command: ['L']},
+					],
+					closed: false,
+				},
+			],
+		}
+		expect(Path.segmentCount(path)).toBe(2)
+	})
+
+	it('should return 3 for a compound path with a line and a closed path with 2 vertices', () => {
+		const path: Path = {
+			curves: [
+				{
+					vertices: [
+						{point: [0, 0], command: ['L']},
+						{point: [1, 1], command: ['L']},
+					],
+					closed: false,
+				},
+				{
+					vertices: [
+						{point: [4, 4], command: ['L']},
+						{point: [5, 5], command: ['C', [6, 6], [7, 7]]},
+					],
+					closed: true,
+				},
+			],
+		}
+		expect(Path.segmentCount(path)).toBe(3)
+	})
+})
+
 describe('fromSVG', () => {
 	it('should convert a line', () => {
 		const path = Path.fromSVG(['M', [0, 1], 'L', [2, 3]])
