@@ -282,3 +282,11 @@ td code {
 	padding-right: 0;
 	color: var(--c-text);
 }
+
+.sandbox .page-meta {
+	display: none;
+}
+
+.sandbox .theme-default-content {
+	max-width: unset;
+}

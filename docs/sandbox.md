@@ -2,6 +2,7 @@
 lang: en-US
 title: Sandbox
 sidebar: false
+pageClass: sandbox
 ---
 
 # Sandbox
@@ -18,6 +19,9 @@ import {scalar, vec2, mat2d} from 'linearly'
 
 // The 2D context of the canvas
 context: CanvasRenderingContext2D
+
+// Current time ranging from 0 to 1
+time: number
 
 // Shorhands for drawing functions
 stroke: (path: Path, color = accentCoor, width = 1) => void

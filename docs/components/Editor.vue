@@ -1,14 +1,14 @@
 <template>
-	<MonacoEditor
-		ref="monaco"
-		class="Editor"
-		:theme="theme"
-		:value="code"
-		:options="options"
-		:style="{height: height + 'px'}"
-		@update:value="emit('update:code', $event)"
-		@editorWillMount="onEditorWillMount"
-	/>
+	<div class="Editor" :style="autoHeight ? {minHeight: height + 'px'} : {}">
+		<MonacoEditor
+			ref="monaco"
+			:theme="theme"
+			:value="code"
+			:options="options"
+			@update:value="emit('update:code', $event)"
+			@editorWillMount="onEditorWillMount"
+		/>
+	</div>
 </template>
 
 <script lang="ts" setup>
@@ -21,6 +21,7 @@ import {defineAsyncComponent, ref} from 'vue'
 
 defineProps<{
 	code: string
+	autoHeight?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -88,6 +89,14 @@ function onEditorWillMount(monaco: typeof import('monaco-editor')) {
 </script>
 
 <style lang="stylus">
+
+.Editor
+	position relative
+
+.monaco-editor-vue3
+	position absolute
+	inset 0
+
 .monaco-editor, .monaco-editor-background,
 .monaco-editor .inputarea.ime-input
 	background transparent !important
