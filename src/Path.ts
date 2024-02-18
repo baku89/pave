@@ -5,7 +5,9 @@ import {OffsetOptions as PaperOffsetOptions, PaperOffset} from 'paperjs-offset'
 import {Arc} from './Arc'
 import {Circle} from './Circle'
 import {CubicBezier} from './CubicBezier'
+import {Curve} from './Curve'
 import {Line} from './Line'
+import {PathLocation, SegmentLocation} from './Location'
 import {Rect} from './Rect'
 import {Segment, SegmentA, SegmentC, SegmentL} from './Segment'
 import {memoize, toFixedSimple} from './utils'
@@ -74,24 +76,6 @@ export type VertexC = Vertex<CommandC>
 
 /** @category Types */
 export type VertexA = Vertex<CommandA>
-
-/**
- * A single open or closed path represented as an array of . All of the points are represented as tuple of vector `[x: number, y: number]` and the commands are represented in absolute form.
- * @category Types
- */
-export type Curve<C extends Command = Command> = {
-	readonly vertices: Vertex<C>[]
-	readonly closed: boolean
-}
-
-/** @category Types */
-export type CurveL = Curve<CommandL>
-
-/** @category Types */
-export type CurveC = Curve<CommandC>
-
-/** @category Types */
-export type CurveA = Curve<CommandA>
 
 /**
  * A path that consists of multiple curves.
@@ -665,133 +649,203 @@ export namespace Path {
 	})
 
 	/**
-	 * Calculates the point on the path at the offset. If the path consists of multiple curves and the offset concides exactly with the endpoints of two curves, the start point of the later curve will be returned.
-	 * @param path The path to calculate
-	 * @param offset The offset on the path, where `0` is at the beginning of the path and `Path.length(path)` at the end. It will be clamped when it's out of range.
-	 * @returns The point at the given offset
+	 * Returns the count of segments in the given path.
+	 * @param path The path to measure
+	 * @returns The count of segments in the path
 	 * @category Properties
 	 */
-	export function pointAtOffset(path: Path, offset: number): vec2 {
-		return paperAttributeAtOffset(path, offset, (pp, o) =>
-			paperPointToVec2(pp.getPointAt(o))
-		)
+	export const segmentCount = memoize((path: Path) => {
+		return path.curves.reduce((acc, curve) => {
+			return curve.closed
+				? acc + curve.vertices.length
+				: acc + curve.vertices.length - 1
+		}, 0)
+	})
+
+	/**
+	 * Returns the segment of the path at the given linear index、それはパス
+	 * @param path
+	 * @param index
+	 * @returns Properties
+	 */
+	export function linearSegment(path: Path, index: number): Segment {
+		for (const curve of path.curves) {
+			const segCount = Curve.segmentCount(curve)
+
+			if (index < segCount) {
+				return [...Curve.iterateSegments(curve)][index]
+			}
+
+			index -= segCount
+		}
+
+		throw new Error(`Linear segment index out of range: ${index}`)
 	}
 
 	/**
-	 * The same as {@link pointAtOffset} but the offset ranges between [0, 1].
-	 * @param path The path to calculate
-	 * @param normalizedOffset The offset on the path, where `0` is at the beginning of the path and `1` at the end.
+	 *
+	 * @param path
+	 * @param curveIndex
+	 * @param segmentIndex
+	 * @returns
 	 * @category Properties
 	 */
-	export function pointAtNormalizedOffset(
+	export function segment(
 		path: Path,
-		normalizedOffset: number
-	): vec2 {
-		return pointAtOffset(path, normalizedOffset * length(path))
+		curveIndex: number,
+		segmentIndex: number
+	): Segment {
+		const curve = path.curves.at(curveIndex)
+
+		if (!curve) {
+			throw new Error(`Curve index out of range: ${curveIndex}`)
+		}
+
+		return Curve.segment(curve, segmentIndex)
+	}
+
+	export function toSegmentLocation(
+		path: Path,
+		loc: PathLocation
+	): [segment: Segment, loc: SegmentLocation] {
+		if (typeof loc === 'number') {
+			loc = {unit: loc}
+		}
+
+		const curveIndex = loc.curveIndex ?? null
+		const segmentIndex = loc.segmentIndex ?? null
+
+		if (curveIndex !== null && segmentIndex !== null) {
+			// Location in the specified segment
+			const seg = segment(path, curveIndex, segmentIndex)
+
+			return [seg, loc]
+		}
+
+		if (curveIndex !== null && segmentIndex === null) {
+			// Location in the specific curve
+			const curve = path.curves[curveIndex]
+
+			return Curve.segmentAndLocation(curve, loc)
+		}
+
+		if (curveIndex === null && segmentIndex === null) {
+			// Location in the whole path
+			if ('time' in loc) {
+				const extendedTime = loc.time * segmentCount(path)
+				const linearSegmentIndex = Math.floor(extendedTime)
+
+				const seg = linearSegment(path, linearSegmentIndex)
+				const time = extendedTime % 1
+
+				return [seg, {time}]
+			}
+
+			if ('unit' in loc) {
+				loc = {offset: loc.unit * length(path)}
+			}
+
+			let offset = loc.offset
+
+			for (const seg of iterateSegments(path)) {
+				const segLength = Segment.length(seg)
+				if (offset < segLength) {
+					return [seg, {offset}]
+				}
+				offset -= segLength
+			}
+		}
+
+		{
+			// curveIndex === null && segmentIndex !== null
+			// Location in the segment specified by linear index
+
+			if ('time' in loc) {
+				const extendedTime = loc.time * segmentCount(path)
+				const linearSegmentIndex = Math.floor(extendedTime)
+
+				const seg = linearSegment(path, linearSegmentIndex)
+				const time = extendedTime % 1
+
+				return [seg, {time}]
+			}
+
+			if ('unit' in loc) {
+				loc = {offset: loc.unit * length(path)}
+			}
+
+			let offset = loc.offset
+
+			for (const seg of iterateSegments(path)) {
+				const segLength = Segment.length(seg)
+				if (offset < segLength) {
+					return [seg, {offset}]
+				}
+				offset -= segLength
+			}
+		}
+
+		throw new Error('Location is out of bounds')
 	}
 
 	/**
-	 * Calculates the normalized tangent vector of the path at the given offset. If the path consists of multiple curves and the offset concides exactly with the endpoints of two curves, the tangent at start point of the later curve will be returned.
+	 * Calculates the position on the path at the given location.
+	 * @param path The path to calculate
+	 * @param loc The location on the path
+	 * @returns The position at the given offset
+	 * @category Properties
+	 */
+	export function point(path: Path, loc: PathLocation): vec2 {
+		const [seg, segLoc] = toSegmentLocation(path, loc)
+		return Segment.point(seg, segLoc)
+	}
+
+	/**
+	 * Calculates the normalized tangent vector of the path at the given location.
 	 * @param path The path to calcuate
-	 * @param offset The offset on the path, where `0` is at the beginning of the path and `Path.length(path)` at the end. It will be clamped when it's out of range.
-	 * @returns The normalized tangent vector at the given offset
+	 * @param lc The location on the path
+	 * @returns The tangent vector
 	 * @category Properties
 	 */
-	export function tangentAtOffset(path: Path, offset: number): vec2 {
-		return paperAttributeAtOffset(path, offset, (pp, o) =>
-			paperPointToVec2(pp.getTangentAt(o))
-		)
+	export function derivative(path: Path, loc: PathLocation): vec2 {
+		const [seg, segLoc] = toSegmentLocation(path, loc)
+		return Segment.derivative(seg, segLoc)
 	}
 
 	/**
-	 * The same as {@link tangentAtOffset} but the offset ranges between [0, 1].
-	 * @param path The path to calculate
-	 * @param normalizedOffset The offset on the path, where `0` is at the beginning of the path and `1` at the end.
-	 * @category Properties
-	 */
-	export function tangentAtNormalizedOffset(
-		path: Path,
-		normalizedOffset: number
-	): vec2 {
-		return tangentAtOffset(path, normalizedOffset * length(path))
-	}
-
-	/**
-	 * Calculates the normal vector (the perpendicular vector) of the path at the given offset. If the path consists of multiple curves and the offset concides exactly with the endpoints of two curves, the normal at start point of the later curve will be returned.
+	 * Calculates the normalized tangent vector of the path at the given location.
 	 * @param path The path to calcuate
-	 * @param offset The offset on the path, where `0` is at the beginning of the path and `Path.length(path)` at the end. It will be clamped when it's out of range.
-	 * @returns The normal vector at the given offset
+	 * @param lc The location on the path
+	 * @returns The tangent vector
 	 * @category Properties
 	 */
-	export function normalAtOffset(path: Path, offset: number): vec2 {
-		const tangent = tangentAtOffset(path, offset)
-		return vec2.rotate(tangent, 90)
+	export function tangent(path: Path, loc: PathLocation): vec2 {
+		const [seg, segLoc] = toSegmentLocation(path, loc)
+		return Segment.tangent(seg, segLoc)
 	}
 
 	/**
-	 * The same as {@link normalAtOffset} but the offset ranges between [0, 1].
-	 * @param path The path to calculate
-	 * @param normalizedOffset The offset on the path, where `0` is at the beginning of the path and `1` at the end.
-	 * @category Properties
-	 */
-	export function normalAtNormalizedOffset(
-		path: Path,
-		normalizedOffset: number
-	): vec2 {
-		return normalAtOffset(path, normalizedOffset * length(path))
-	}
-
-	/**
-	 * Calculates the curvature of the path at the given offset. Curvatures indicate how sharply a path changes direction. A straight line has zero curvature, where as a circle has a constant curvature. The path’s radius at the given offset is the reciprocal value of its curvature.  f the path consists of multiple curves and the offset concides exactly with the endpoints of two curves, the curvature at start point of the later curve will be returned.
-	 * @see http://paperjs.org/reference/path/#getcurvatureat-offset
+	 * Calculates the normalized tangent vector of the path at the given location.
 	 * @param path The path to calcuate
-	 * @param offset The offset on the path, where `0` is at the beginning of the path and `Path.length(path)` at the end. It will be clamped when it's out of range.
-	 * @returns The curvature at the given offset
+	 * @param lc The location on the path
+	 * @returns The tangent vector
 	 * @category Properties
 	 */
-	export function curvatureAtOffset(path: Path, offset: number): number {
-		return paperAttributeAtOffset(path, offset, (pp, o) => pp.getCurvatureAt(o))
+	export function normal(path: Path, loc: PathLocation): vec2 {
+		const [seg, segLoc] = toSegmentLocation(path, loc)
+		return Segment.normal(seg, segLoc)
 	}
 
 	/**
-	 * The same as {@link curvatureAtOffset} but the offset ranges between [0, 1].
+	 * Calculates the transformation matrix of the path at the given location. The x-axis of the matrix is the tangent vector and the y-axis is the normal vector, and the translation is the point on the path.
 	 * @param path The path to calculate
-	 * @param normalizedOffset The offset on the path, where `0` is at the beginning of the path and `1` at the end.
-	 * @category Properties
-	 */
-	export function curvatureAtNormalizedOffset(
-		path: Path,
-		normalizedOffset: number
-	): vec2 {
-		return tangentAtOffset(path, normalizedOffset * length(path))
-	}
-
-	/**
-	 * Calculates the transformation matrix of the path at the given offset. The x-axis of the matrix is the tangent vector and the y-axis is the normal vector, and the translation is the point on the path.
-	 * @param path The path to calculate
-	 * @param normalizedOffset The offset on the path, where `0` is at the beginning of the path and `Path.length(path)` at the end. It will be clamped when it's out of range.
+	 * @param location The locationon the path
 	 * @returns The transformation matrix at the given offset
 	 * @category Properties
 	 */
-	export function transformAtOffset(path: Path, offset: number): mat2d {
-		const point = pointAtOffset(path, offset)
-		const xAxis = tangentAtOffset(path, offset)
-		const yAxis = vec2.rotate(xAxis, 90)
-		return [...xAxis, ...yAxis, ...point]
-	}
-
-	/**
-	 * The same as {@link transformAtOffset} but the offset ranges between [0, 1].
-	 * @param path The path to calculate
-	 * @param normalizedOffset The offset on the path, where `0` is at the beginning of the path and `1` at the end.
-	 * @returns The transformation matrix at the given offset
-	 * @category Properties
-	 */
-	export function transformAtNormalizedOffset(
-		path: Path,
-		normalizedOffset: number
-	): mat2d {
-		return transformAtOffset(path, normalizedOffset * length(path))
+	export function orientation(path: Path, loc: PathLocation): mat2d {
+		const [seg, segLoc] = toSegmentLocation(path, loc)
+		return Segment.orientation(seg, segLoc)
 	}
 
 	/**
@@ -1224,31 +1278,8 @@ export namespace Path {
 		path: Path
 	): Generator<Segment & {curveIndex: number; segmentIndex: number}> {
 		for (const [curveIndex, curve] of path.curves.entries()) {
-			let prevPoint: vec2 | undefined
-			for (const [segmentIndex, {point, command}] of curve.vertices.entries()) {
-				if (prevPoint) {
-					yield {
-						start: prevPoint,
-						end: point,
-						command,
-						curveIndex,
-						segmentIndex: segmentIndex - 1,
-					}
-				}
-				prevPoint = point
-			}
-
-			if (curve.closed) {
-				const firstVertex = curve.vertices.at(0)
-				if (prevPoint && firstVertex) {
-					yield {
-						start: prevPoint,
-						end: firstVertex.point,
-						command: firstVertex.command,
-						curveIndex,
-						segmentIndex: curve.vertices.length - 1,
-					}
-				}
+			for (const seg of Curve.iterateSegments(curve)) {
+				yield {...seg, curveIndex}
 			}
 		}
 	}
@@ -1823,31 +1854,6 @@ export namespace Path {
 
 function paperPointToVec2(point: paper.Point): vec2 {
 	return [point.x, point.y]
-}
-
-function paperAttributeAtOffset<T>(
-	path: Path,
-	offset: number,
-	f: (pp: paper.Path, offset: number) => T
-): T {
-	const paperPath = Path.toPaperPath(path)
-
-	const paperPaths =
-		paperPath instanceof paper.Path
-			? [paperPath]
-			: (paperPath.children as paper.Path[])
-
-	offset = scalar.clamp(offset, 0, paperPath.length)
-
-	for (let i = 0; i < paperPaths.length; i++) {
-		const pp = paperPaths[i]
-		if (offset < pp.length || i === paperPaths.length - 1) {
-			return f(pp, offset)
-		}
-		offset -= pp.length
-	}
-
-	throw new Error('Cannot find a point at the given offset')
 }
 
 function drawToRenderingContext(
