@@ -602,8 +602,20 @@ export namespace Path {
 	 * @returns The length of the path
 	 * @category Properties
 	 */
-	export const length = memoize((path: Path) => {
-		return toPaperPath(path).length
+	export const length = memoize((path: Path): number => {
+		let length = 0
+
+		for (const seg of iterateSegments(path)) {
+			if (seg.command[0] === 'L') {
+				length += vec2.distance(seg.start, seg.end)
+			} else if (seg.command[0] === 'C') {
+				length += CubicBezier.length(seg as SegmentC)
+			} else {
+				length += Arc.length(seg as SegmentA)
+			}
+		}
+
+		return length
 	})
 
 	/**
