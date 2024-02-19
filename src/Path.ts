@@ -10,7 +10,7 @@ import {CurveGroup} from './CurveGroup'
 import {Line} from './Line'
 import {PathLocation, SegmentLocation} from './Location'
 import {Rect} from './Rect'
-import {Segment, SegmentA, SegmentC} from './Segment'
+import {Segment} from './Segment'
 import {memoize, toFixedSimple} from './utils'
 
 paper.setup(document.createElement('canvas'))
@@ -734,12 +734,12 @@ export namespace Path {
 			if (seg.command === 'L') {
 				min = vec2.min(min, seg.start, seg.point)
 				max = vec2.max(max, seg.start, seg.point)
-			} else if (seg.command[0] === 'C') {
-				const [sMin, sMax] = CubicBezier.bounds(seg as SegmentC)
+			} else if (seg.command === 'C') {
+				const [sMin, sMax] = CubicBezier.bounds(seg)
 				min = vec2.min(min, sMin)
 				max = vec2.max(max, sMax)
 			} else {
-				const [sMin, sMax] = Arc.bounds(seg as SegmentA)
+				const [sMin, sMax] = Arc.bounds(seg)
 				min = vec2.min(min, sMin)
 				max = vec2.max(max, sMax)
 			}

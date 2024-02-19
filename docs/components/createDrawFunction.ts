@@ -86,7 +86,7 @@ export async function setupEvalContextCreator(brandColor: Ref<string>) {
 					ctx.stroke()
 
 					ctx.font = '7px "IBM Plex Mono"'
-					ctx.fillText(command[0], ...vec2.add(point, [2, -2]))
+					ctx.fillText(command, ...vec2.add(point, [2, -2]))
 				}
 			}
 		}

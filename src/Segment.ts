@@ -5,6 +5,7 @@ import {CubicBezier} from './CubicBezier'
 import {Line} from './Line'
 import {SegmentLocation} from './Location'
 import {Vertex, VertexA, VertexC, VertexL} from './Path'
+import {Rect} from './Rect'
 import {memoize} from './utils'
 
 /**
@@ -31,11 +32,14 @@ export type SegmentA = VertexA & {start: vec2}
 
 export namespace Segment {
 	export const length = memoize((seg: Segment): number => {
-		if (seg.command[0] === 'L') {
+		if (seg.command === 'L') {
 			return vec2.distance(seg.start, seg.point)
-		} else if (seg.command[0] === 'C') {
-			return CubicBezier.length(seg as SegmentC)
+		} else if (seg.command === 'C') {
+			return CubicBezier.length(seg)
 		} else {
+			return Arc.length(seg)
+		}
+	})
 
 	export const bounds = memoize((seg: Segment): Rect => {
 		if (seg.command === 'L') {
@@ -48,22 +52,22 @@ export namespace Segment {
 	})
 
 	export function point(seg: Segment, loc: SegmentLocation): vec2 {
-		if (seg.command[0] === 'L') {
-			return Line.point(seg as SegmentL, loc)
-		} else if (seg.command[0] === 'C') {
-			return CubicBezier.point(seg as SegmentC, loc)
+		if (seg.command === 'L') {
+			return Line.point(seg, loc)
+		} else if (seg.command === 'C') {
+			return CubicBezier.point(seg, loc)
 		} else {
-			return Arc.point(seg as SegmentA, loc)
+			return Arc.point(seg, loc)
 		}
 	}
 
 	export function derivative(seg: Segment, loc: SegmentLocation): vec2 {
-		if (seg.command[0] === 'L') {
-			return Line.derivative(seg as SegmentL)
-		} else if (seg.command[0] === 'C') {
-			return CubicBezier.derivative(seg as SegmentC, loc)
+		if (seg.command === 'L') {
+			return Line.derivative(seg)
+		} else if (seg.command === 'C') {
+			return CubicBezier.derivative(seg, loc)
 		} else {
-			return Arc.derivative(seg as SegmentA, loc)
+			return Arc.derivative(seg, loc)
 		}
 	}
 
@@ -85,12 +89,12 @@ export namespace Segment {
 	}
 
 	export const toTime = (seg: Segment, loc: SegmentLocation): number => {
-		if (seg.command[0] === 'L') {
+		if (seg.command === 'L') {
 			return Line.toTime(seg as SegmentL, loc)
-		} else if (seg.command[0] === 'C') {
-			return CubicBezier.toTime(seg as SegmentC, loc)
+		} else if (seg.command === 'C') {
+			return CubicBezier.toTime(seg, loc)
 		} else {
-			return Arc.toTime(seg as SegmentA, loc)
+			return Arc.toTime(seg, loc)
 		}
 	}
 }
