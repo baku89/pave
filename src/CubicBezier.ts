@@ -10,7 +10,7 @@ import {memoize, PartialBy} from './utils'
 type SimpleSegmentC = PartialBy<SegmentC, 'command'>
 
 /**
- * A collection of functions to handle a cubic bezier represented with {@link CommandC}.
+ * A collection of functions to handle a cubic bezier represented with {@link SegmentC}.
  */
 export namespace CubicBezier {
 	export const toBezierJS = memoize((bezier: SimpleSegmentC): BezierJS => {

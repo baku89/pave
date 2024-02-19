@@ -14,7 +14,7 @@ type AngleRange = readonly [startAngle: number, endAngle: number]
 type SimpleSegmentA = PartialBy<SegmentA, 'command'>
 
 /**
- * A collection of functions to handle arcs represented with {@link CommandA}.
+ * A collection of functions to handle arcs represented with {@link SegmentA}.
  */
 export namespace Arc {
 	/**
