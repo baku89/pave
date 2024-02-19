@@ -37,8 +37,12 @@ export async function exportVideo(code: string) {
 
 	const frames: string[] = []
 
-	for (let i = 0; i < 100; i++) {
-		const time = i / 100
+	const duration = 2
+
+	const frameCount = 50 * duration
+
+	for (let i = 0; i < frameCount; i++) {
+		const time = i / frameCount
 
 		evalFn(time)
 
