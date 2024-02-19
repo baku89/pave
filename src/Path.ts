@@ -439,6 +439,39 @@ export namespace Path {
 	}
 
 	/**
+	 * Creates an arc path from start point, start tangent, and end point.
+	 * @param start The start point
+	 * @param startTangent The tangent at the start point
+	 * @param end The end point
+	 * @returns A newly created open arc path
+	 */
+	export function arcFromPointsAndTangent(
+		start: vec2,
+		startTangent: vec2,
+		end: vec2
+	): Path {
+		// https://gist.github.com/baku89/b6b92c352c14779c57ba9a61c426258b#file-arc-pen-L49-L59
+
+		const SE = vec2.sub(end, start)
+		const phi = vec2.angle(startTangent, SE) / 2
+		const cosPhi = scalar.cos(phi)
+
+		if (scalar.equals(cosPhi, 0)) {
+			return line(start, end)
+		}
+
+		const lenSE = vec2.len(SE)
+		const dirSE = vec2.normalize(SE)
+
+		const mDist = lenSE / 2 / cosPhi
+		const mDir = vec2.normalize(vec2.add(startTangent, dirSE))
+
+		const mid = vec2.scaleAndAdd(start, mDir, mDist)
+
+		return arcFromPoints(start, mid, end)
+	}
+
+	/**
 	 * Creates a fan path.
 	 * @param center The center of the fan
 	 * @param innerRadius The inner radius of the fan
