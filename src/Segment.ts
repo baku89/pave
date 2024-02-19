@@ -6,7 +6,6 @@ import {Line} from './Line'
 import {SegmentLocation} from './Location'
 import {Vertex, VertexA, VertexC, VertexL} from './Path'
 import {Rect} from './Rect'
-import {memoize} from './utils'
 
 /**
  * A segment of a path, which consists of a starting point, end point, and an interpolation command.
@@ -31,7 +30,7 @@ export type SegmentC = VertexC & {start: vec2}
 export type SegmentA = VertexA & {start: vec2}
 
 export namespace Segment {
-	export const length = memoize((seg: Segment): number => {
+	export const length = (seg: Segment): number => {
 		if (seg.command === 'L') {
 			return vec2.distance(seg.start, seg.point)
 		} else if (seg.command === 'C') {
@@ -39,9 +38,9 @@ export namespace Segment {
 		} else {
 			return Arc.length(seg)
 		}
-	})
+	}
 
-	export const bounds = memoize((seg: Segment): Rect => {
+	export const bounds = (seg: Segment): Rect => {
 		if (seg.command === 'L') {
 			return Line.bounds(seg)
 		} else if (seg.command === 'C') {
@@ -49,7 +48,7 @@ export namespace Segment {
 		} else {
 			return Arc.bounds(seg)
 		}
-	})
+	}
 
 	export function point(seg: Segment, loc: SegmentLocation): vec2 {
 		if (seg.command === 'L') {
