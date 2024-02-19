@@ -22,7 +22,7 @@ export namespace Arc {
 	 * https://observablehq.com/@awhitty/svg-2-elliptical-arc-to-canvas-path2d
 	 * @category Utilities
 	 * */
-	export function toCenterParameterization(arc: SimpleSegmentA) {
+	export const toCenterParameterization = memoize((arc: SimpleSegmentA) => {
 		const {
 			start,
 			point,
@@ -87,7 +87,7 @@ export namespace Arc {
 
 			return [rx, ry]
 		}
-	}
+	})
 
 	export function approximateByCubicBeziers(
 		arc: SimpleSegmentA,
