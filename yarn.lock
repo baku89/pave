@@ -3893,10 +3893,10 @@ lilconfig@^3.0.0:
   resolved "https://registry.yarnpkg.com/lilconfig/-/lilconfig-3.0.0.tgz#f8067feb033b5b74dab4602a5f5029420be749bc"
   integrity sha512-K2U4W2Ff5ibV7j7ydLr+zLAkIg5JJ4lPn1Ltsdt+Tz/IjQ8buJ55pZAxoP34lqIiwtF9iAvtLv3JGv7CAyAg+g==
 
-linearly@0.24.3:
-  version "0.24.3"
-  resolved "https://registry.yarnpkg.com/linearly/-/linearly-0.24.3.tgz#b090e59586e419f94c7cff8ac3f22d197a7bee6a"
-  integrity sha512-241uYCSEw5hlPvPAJZWcqGy64fDcqhVN80CJ4PCORhux9m+uA/LDGz6jmb03hyx4aqTuYWBVi/jVw61jsfnUNg==
+linearly@0.26.0:
+  version "0.26.0"
+  resolved "https://registry.yarnpkg.com/linearly/-/linearly-0.26.0.tgz#970f1cd5e787b4c12771690d156c5c0595cb8dc4"
+  integrity sha512-DF+1L5Hp3mQaypuTsqF1qr6fVtC7QrDB8oorh/W+LfGvigUNqcAEeeO/iE7kx+ESKZT60QuUlF8tIzMGYP/a+w==
 
 lines-and-columns@^1.1.6:
   version "1.2.4"
