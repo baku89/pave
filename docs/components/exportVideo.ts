@@ -78,10 +78,19 @@ export async function exportVideo(code: string) {
 		evalFn(time)
 		videoContext.drawImage(canvas, 40, 40, 1000, 1000)
 
-		const frame = videoCanvas.toDataURL('image/webp')
+		const frame = await new Promise<string>((resolve, reject) => {
+			videoCanvas.toBlob(blob => {
+				if (blob) {
+					resolve(URL.createObjectURL(blob))
+				} else {
+					reject('No blob')
+				}
+			}, 'image/png')
+		})
 		frames.push(frame)
 
-		console.log('Rendering...', i)
+		// eslint-disable-next-line no-console
+		console.info('Rendering...', i)
 	}
 
 	const capturer = new CCapture({
@@ -101,7 +110,9 @@ export async function exportVideo(code: string) {
 				resolve(null)
 			}
 		})
-		console.log('Encoding...', frames.indexOf(frame))
+
+		// eslint-disable-next-line no-console
+		console.info('Encoding...', frames.indexOf(frame))
 	}
 
 	capturer.stop()
@@ -112,18 +123,19 @@ export async function exportVideo(code: string) {
 		code: string,
 		time: number
 	): Promise<HTMLImageElement> {
-		code.replace(
+		code = code.replaceAll(
 			/([^a-zA-Z0-9{])time([^a-zA-Z0-9]?)/g,
 			`$1${time.toFixed(2)}$2`
 		)
 
-		for (const m of code.matchAll(/\/\*{\*\/(.*?)\/\*}\*\//g)) {
-			const expr = m[1]
+		for (const m of code.matchAll(/\/\*([0-9]?)\*\/(.*?)\/\*\*\//g)) {
+			const precision = parseInt(m[1] || '2')
+			const expr = m[2]
 			const evaluated = saferEval(`(() => ${expr})()`, {
 				...evalContext,
 				time,
 			}) as unknown as number
-			code = code.replace(m[0], evaluated.toFixed(2))
+			code = code.replace(m[0], evaluated.toFixed(precision))
 		}
 
 		codeEl.innerHTML = code
