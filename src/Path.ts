@@ -278,7 +278,13 @@ export namespace Path {
 			}
 		}
 
-		const [, radius] = Circle.circumcircle(p1, p2, p3)
+		const circumcircle = Circle.circumcircle(p1, p2, p3)
+
+		if (!circumcircle) {
+			throw new Error('Circumcircle is not defined')
+		}
+
+		const [, radius] = circumcircle
 		const radii: vec2 = [radius, radius]
 
 		const sweep = vec2.angle(vec2.sub(p2, p1), vec2.sub(p3, p1)) > 0
@@ -399,21 +405,27 @@ export namespace Path {
 	}
 
 	export function arcFromPoints(start: vec2, through: vec2, end: vec2): Path {
-		const [center, radius] = Circle.circumcircle(start, through, end)
+		const circumcircle = Circle.circumcircle(start, through, end)
+
+		if (!circumcircle) {
+			return line(start, end)
+		}
+
+		const [center, radius] = circumcircle
 
 		const CS = vec2.sub(start, center)
 		const CT = vec2.sub(through, center)
 		const CE = vec2.sub(end, center)
 
-		const angleSOE = vec2.angle(CS, CE)
-		const angleSOT = vec2.angle(CS, CT)
-		const angleEOT = vec2.angle(CE, CT)
+		const angleSCE = vec2.angle(CS, CE)
+		const angleSOC = vec2.angle(CS, CT)
+		const angleECT = vec2.angle(CE, CT)
 
 		let largeArc: boolean
 		let sweep: boolean
 
-		if (angleSOE < 0) {
-			if (angleSOT < 0 && angleEOT > 0) {
+		if (angleSCE < 0) {
+			if (angleSOC < 0 && angleECT > 0) {
 				largeArc = false
 				sweep = false
 			} else {
@@ -421,7 +433,7 @@ export namespace Path {
 				sweep = true
 			}
 		} else {
-			if (angleSOT > 0 && angleEOT < 0) {
+			if (angleSOC > 0 && angleECT < 0) {
 				largeArc = false
 				sweep = true
 			} else {

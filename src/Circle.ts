@@ -1,4 +1,4 @@
-import {vec2} from 'linearly'
+import {scalar, vec2} from 'linearly'
 
 /**
  * A circle represented as a tuple of a center and a radius.
@@ -17,9 +17,13 @@ export namespace Circle {
 	 * @param c The third point of the triangle
 	 * @returns The circumscribed circle of the given triangle
 	 */
-	export function circumcircle(a: vec2, b: vec2, c: vec2): Circle {
+	export function circumcircle(a: vec2, b: vec2, c: vec2): Circle | null {
 		const d =
 			2 * (a[0] * (b[1] - c[1]) + b[0] * (c[1] - a[1]) + c[0] * (a[1] - b[1]))
+
+		if (scalar.approx(d, 0)) {
+			return null
+		}
 
 		const A2 = vec2.sqrLen(a)
 		const B2 = vec2.sqrLen(b)
@@ -31,6 +35,7 @@ export namespace Circle {
 		]
 
 		const radius = vec2.dist(center, a)
+
 		return [center, radius]
 	}
 }
