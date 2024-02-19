@@ -8,7 +8,7 @@ npm i @baku89/pave
 
 ## Basic usage
 
-### Import
+### Simple Example
 
 As it supports ES modules, you can load it using the import statement. Symbols such as `Path` or `CubicBezier` can be used both as types and as modules (namespaces) consisting of functions related to those types.
 
@@ -28,7 +28,7 @@ context.stroke(path2d)
 
 ### Immutability
 
-What you need to be aware of is that Pave is functional programming-oriented and all data is plain and immutable. Information associated with a path, such as the length of the path or its bounding box, is obtained using functions instead of accessing it as a property of the path data itself.
+Pave is functional programming-oriented library and all data is plain and immutable. Information associated with a path, such as the length of the path or its bounding box, is obtained using functions instead of accessing it as a property of the path data itself.
 
 ```ts
 const length = Path.length(rect)
@@ -38,7 +38,7 @@ const normal = Path.normalAtTime(rect, 0.5)
 
 These functions are appropriately memoized, so even if called multiple times for the same path, not all calculations are re-executed. However, if you make destructive changes to the path data and then call these functions, you may not get the correct results.
 
-Therefore, when modifying path data, it is recommended to use utility functions that generate new path data (such as `moveTo` or `lineTo` similar to the Canvas API):
+Therefore, when modifying path data, it is recommended to use utility functions that always return new path data rather than modifying original path (such as [`moveTo`](api/modules/Path.html#moveto) or [`lineTo`](api/modules/Path.html#lineto) similar to the Canvas API):
 
 ```ts
 let p = Path.moveTo(Path.empty, [10, 10])
@@ -92,6 +92,7 @@ If you are familiar with TypeScript, it might be easier to understand by looking
 type Path = {paths: Curves[]; fillRule: 'nonzero' | 'evenodd'}
 type Curve = {vertices: Vertex[]; closed: boolean}
 
+type Vertex = VertexL | VertexC | VertexA
 type VertexL = {point: vec2; command: 'L'}
 type VertexC = {
 	point: vec2
