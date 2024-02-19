@@ -895,7 +895,6 @@ export namespace Path {
 	 */
 	export function point(path: Path, loc: PathLocation): vec2 {
 		const [seg, segLoc] = toSegmentLocation(path, loc)
-		console.log({seg, segLoc})
 		return Segment.point(seg, segLoc)
 	}
 
