@@ -10,7 +10,7 @@ import {CurveGroup} from './CurveGroup'
 import {Line} from './Line'
 import {PathLocation, SegmentLocation} from './Location'
 import {Rect} from './Rect'
-import {Segment, SegmentA, SegmentC, SegmentL} from './Segment'
+import {Segment, SegmentA, SegmentC} from './Segment'
 import {memoize, toFixedSimple} from './utils'
 
 paper.setup(document.createElement('canvas'))
@@ -1194,11 +1194,13 @@ export namespace Path {
 			.fill(0)
 			.map((_, i) => (i + 1) / division)
 
-		return spawnVertex(unarc(path), (segment): Vertex[] => {
-			if (segment.command === 'C') {
-				return CubicBezier.divideAtTimes(segment as SegmentC, times)
+		return spawnVertex(path, (segment): Vertex[] => {
+			if (segment.command === 'L') {
+				return Line.divideAtTimes(segment, times)
+			} else if (segment.command === 'C') {
+				return CubicBezier.divideAtTimes(segment, times)
 			} else {
-				return Line.divideAtTimes(segment as SegmentL, times)
+				return Arc.divideAtTimes(segment, times)
 			}
 		})
 	}

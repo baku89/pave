@@ -1,7 +1,7 @@
 import {mat2, mat2d, scalar, vec2} from 'linearly'
 
 import {SegmentLocation, UnitSegmentLocation} from './Location'
-import {VertexC} from './Path'
+import {VertexA, VertexC} from './Path'
 import {Rect} from './Rect'
 import {SegmentA} from './Segment'
 import {memoize, PartialBy} from './utils'
@@ -359,6 +359,40 @@ export namespace Arc {
 
 	export function normal(arc: SimpleSegmentA, loc: SegmentLocation): vec2 {
 		return vec2.rotate(tangent(arc, loc), 90)
+	}
+
+	export function divideAtTimes(
+		arc: SimpleSegmentA,
+		times: number[]
+	): VertexA[] {
+		const [, xAxisRotation, sweep] = arc.args
+		const {radii, center, angles} = toCenterParameterization(arc)
+
+		const vertices: VertexA[] = []
+
+		const xform = mat2d.trs(center, xAxisRotation, radii)
+
+		times = [0, ...times, 1]
+
+		for (let i = 1; i < times.length; i++) {
+			const from = times[i - 1]
+			const to = times[i]
+
+			const startAngle = scalar.lerp(...angles, from)
+			const endAngle = scalar.lerp(...angles, to)
+
+			const largeArc = Math.abs(endAngle - startAngle) > 180
+
+			const point = vec2.transformMat2d(vec2.dir(endAngle), xform)
+
+			vertices.push({
+				command: 'A',
+				args: [radii, xAxisRotation, largeArc, !sweep],
+				point,
+			})
+		}
+
+		return vertices
 	}
 
 	/**
