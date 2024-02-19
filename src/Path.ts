@@ -1204,6 +1204,16 @@ export namespace Path {
 	}
 
 	/**
+	 * Merges the given paths into a single path. Unlike {@link join} or {@link unite}, the vertices are not connected, and the resulting path consists of multiple sub-paths.
+	 * @category Modifiers
+	 */
+	export function merge(pathOrCurves: (Path | Curve)[]): Path {
+		return {
+			curves: pathOrCurves.flatMap(pc => ('curves' in pc ? pc.curves : [pc])),
+		}
+	}
+
+	/**
 	 * Flattens the curves in path to straight lines.
 	 * @see http://paperjs.org/reference/path/#flatten
 	 * @param path The path to flatten
