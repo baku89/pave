@@ -4,6 +4,7 @@ import {Arc} from './Arc'
 import {CubicBezier} from './CubicBezier'
 import {CurveLocation} from './Location'
 import {Vertex, VertexA, VertexC, VertexL} from './Path'
+import {Rect} from './Rect'
 import {Segment} from './Segment'
 import {memoize} from './utils'
 
@@ -39,6 +40,10 @@ export namespace Curve {
 		}
 
 		return length
+	})
+
+	export const bounds = memoize((curve: Curve): Rect => {
+		return Rect.unite(...segments(curve).map(seg => Segment.bounds(seg)))
 	})
 
 	export function segmentCount(curve: Curve): number {

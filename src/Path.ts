@@ -727,25 +727,7 @@ export namespace Path {
 	 * ```
 	 */
 	export const bounds = memoize((path: Path): Rect => {
-		let min: vec2 = [Infinity, Infinity]
-		let max: vec2 = [-Infinity, -Infinity]
-
-		for (const seg of segments(path)) {
-			if (seg.command === 'L') {
-				min = vec2.min(min, seg.start, seg.point)
-				max = vec2.max(max, seg.start, seg.point)
-			} else if (seg.command === 'C') {
-				const [sMin, sMax] = CubicBezier.bounds(seg)
-				min = vec2.min(min, sMin)
-				max = vec2.max(max, sMax)
-			} else {
-				const [sMin, sMax] = Arc.bounds(seg)
-				min = vec2.min(min, sMin)
-				max = vec2.max(max, sMax)
-			}
-		}
-
-		return [min, max]
+		return Rect.unite(...path.curves.map(Curve.bounds))
 	})
 
 	/**
