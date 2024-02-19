@@ -16,14 +16,14 @@ import {memoize, toFixedSimple} from './utils'
 paper.setup(document.createElement('canvas'))
 
 /**
- * Cubic Bézier curve command.
- * @category Types
+ * Arguments for cubic Bézier curve (C) command.
  * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Paths#curve_commands
+ * @category Types
  */
 export type CommandArgsC = readonly [control1: vec2, control2: vec2]
 
 /**
- * Arc command
+ * Arguments for arc (A) command
  * @category Types
  * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Paths#arcs
  */
@@ -46,10 +46,15 @@ export type CommandArgsA = readonly [
 	sweepFlag: boolean,
 ]
 
+/**
+ * A vertex of a path. It consists of a end point and an interpolation command from the previous vertex, which is either a line (L) command, a cubic Bézier curve (C) command, or an arc (A) command.
+ * @category Types
+ */
 export type Vertex = VertexL | VertexC | VertexA
 
 /**
- * A vertex of a path. It consists of a end point and a command.
+ * A vertex representing a line (L) command.
+ * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Paths#Line_commands
  * @category Types
  */
 export type VertexL = {
@@ -58,14 +63,21 @@ export type VertexL = {
 	readonly args?: undefined
 }
 
-/** @category Types */
+/**
+ * A vertex representing a cubic Bézier curve (C) command.
+ * @category Types
+ **/
 export type VertexC = {
 	readonly point: vec2
 	readonly command: 'C'
 	readonly args: CommandArgsC
 }
 
-/** @category Types */
+/**
+ * A vertex representing an arc (A) command.
+ * @category Types
+ * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Paths#arcs
+ **/
 export type VertexA = {
 	readonly point: vec2
 	readonly command: 'A'
@@ -80,15 +92,31 @@ export type Path<V extends Vertex = Vertex> = {
 	readonly curves: Curve<V>[]
 }
 
-/** @category Types */
+/**
+ * A path that only consists of line (L) commands, which is a simple polygon or polyline.
+ * @category Types
+ * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Paths#Line_commands
+ **/
 export type PathL = Path<VertexL>
 
-/** @category Types */
+/**
+ * A path that only consists of cubic Bézier curve (C) commands.
+ * @category Types
+ * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Paths#curve_commands
+ **/
 export type PathC = Path<VertexC>
 
-/** @category Types */
+/**
+ * A path that only consists of arc (A) commands.
+ * @category Types
+ * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Paths#curve_commands
+ **/
 export type PathA = Path<VertexA>
 
+/**
+ * A path that does not contain any {@link VertexA}. It can be obtained by {@link Path.unarc}, while approximating arcs to cubic Bézier curves. In some non-affine transformations such as {@link Path.distort} and {@link Path.offset}, all arcs are internally converted to this type of path.
+ * @category Types
+ */
 type UnarcPath = Path<VertexL | VertexC>
 
 type SVGCommand =
