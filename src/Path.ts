@@ -1249,6 +1249,12 @@ export namespace Path {
 		})
 	}
 
+	/**
+	 * Alias for {@link subdivide}
+	 * @category Aliases
+	 */
+	export const subdiv = subdivide
+
 	export interface DistortOptions {
 		/**
 		 * The angle step for approximating arc commands with cubic Béziers
