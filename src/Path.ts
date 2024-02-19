@@ -466,11 +466,12 @@ export namespace Path {
 
 		const SE = vec2.sub(end, start)
 		const phi = vec2.angle(startTangent, SE) / 2
-		const cosPhi = scalar.cos(phi)
 
-		if (scalar.equals(cosPhi, 0)) {
+		if (scalar.approx(phi, 0)) {
 			return line(start, end)
 		}
+
+		const cosPhi = scalar.cos(phi)
 
 		const lenSE = vec2.len(SE)
 		const dirSE = vec2.normalize(SE)
