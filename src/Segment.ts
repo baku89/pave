@@ -36,7 +36,14 @@ export namespace Segment {
 		} else if (seg.command[0] === 'C') {
 			return CubicBezier.length(seg as SegmentC)
 		} else {
-			return Arc.length(seg as SegmentA)
+
+	export const bounds = memoize((seg: Segment): Rect => {
+		if (seg.command === 'L') {
+			return Line.bounds(seg)
+		} else if (seg.command === 'C') {
+			return CubicBezier.bounds(seg)
+		} else {
+			return Arc.bounds(seg)
 		}
 	})
 
