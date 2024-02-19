@@ -361,6 +361,36 @@ export namespace Arc {
 		return vec2.rotate(tangent(arc, loc), 90)
 	}
 
+	export function trim(
+		arc: SimpleSegmentA,
+		start: SegmentLocation,
+		end: SegmentLocation
+	): SegmentA {
+		let startTime = toTime(arc, start)
+		let endTime = toTime(arc, end)
+
+		if (startTime > endTime) {
+			;[startTime, endTime] = [endTime, startTime]
+		}
+
+		const {radii, center, angles, xAxisRotation, sweep} =
+			toCenterParameterization(arc)
+
+		const xform = mat2d.trs(center, xAxisRotation, radii)
+
+		const startAngle = scalar.lerp(...angles, startTime)
+		const endAngle = scalar.lerp(...angles, endTime)
+
+		const largeArc = Math.abs(endAngle - startAngle) > 180
+
+		return {
+			command: 'A',
+			start: vec2.transformMat2d(vec2.dir(startAngle), xform),
+			args: [radii, xAxisRotation, largeArc, sweep],
+			point: vec2.transformMat2d(vec2.dir(endAngle), xform),
+		}
+	}
+
 	export function divideAtTimes(
 		arc: SimpleSegmentA,
 		times: number[]
