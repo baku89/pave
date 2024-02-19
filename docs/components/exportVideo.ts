@@ -8,7 +8,7 @@ export async function exportVideo(code: string) {
 	const monaco = await import('monaco-editor')
 	const {default: domtoimage} = await import('dom-to-image-more')
 
-	code.replaceAll('\n', '<br/>')
+	code = code.replaceAll('\n', '<br/>') + '<br/>'
 
 	const codeEl = document.createElement('pre')
 	codeEl.dataset.lang = 'typescript'
