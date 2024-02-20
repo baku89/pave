@@ -4,7 +4,7 @@ import saferEval from 'safer-eval'
 import {Ref} from 'vue'
 
 export async function setupEvalContextCreator(brandColor: Ref<string>) {
-	const {Path, Arc, CubicBezier, Curve} = await import('pave')
+	const {Path, Arc, CubicBezier, Curve, Distort} = await import('pave')
 
 	return (ctx: CanvasRenderingContext2D) => {
 		const stroke = (path: Path, color = '', lineWidth = 1) => {
@@ -30,9 +30,9 @@ export async function setupEvalContextCreator(brandColor: Ref<string>) {
 			ctx.fill()
 		}
 
-		const debug = (path: Path, color = '') => {
-			const lineWidth = 0.5
-			const vertexSize = 3
+		const debug = (path: Path, color = '', scale = 1) => {
+			const lineWidth = 1 * scale
+			const vertexSize = 3 * scale
 
 			ctx.fillStyle = color || brandColor.value
 
@@ -59,16 +59,16 @@ export async function setupEvalContextCreator(brandColor: Ref<string>) {
 						const [control1, control2] = args
 
 						// Draw handles
-						ctx.setLineDash([2, 1])
+						ctx.setLineDash([2, 1].map(x => x * scale))
 						Path.drawToCanvas(Path.line(start, control1), ctx)
 						ctx.stroke()
 						Path.drawToCanvas(Path.line(point, control2), ctx)
 						ctx.stroke()
 						ctx.setLineDash([])
 
-						Path.drawToCanvas(Path.circle(control1, 1), ctx)
+						Path.drawToCanvas(Path.circle(control1, 1 * scale), ctx)
 						ctx.fill()
-						Path.drawToCanvas(Path.circle(control2, 1), ctx)
+						Path.drawToCanvas(Path.circle(control2, 1 * scale), ctx)
 						ctx.fill()
 
 						const bezier = Path.cubicBezier(start, control1, control2, point)
@@ -85,7 +85,7 @@ export async function setupEvalContextCreator(brandColor: Ref<string>) {
 					Path.drawToCanvas(Path.dot(point), ctx)
 					ctx.stroke()
 
-					ctx.font = '7px "IBM Plex Mono"'
+					ctx.font = `${7 * scale}px "IBM Plex Mono"`
 					ctx.fillText(command, ...vec2.add(point, [2, -2]))
 				}
 			}
@@ -95,6 +95,7 @@ export async function setupEvalContextCreator(brandColor: Ref<string>) {
 			Path,
 			Arc,
 			CubicBezier,
+			Distort,
 			scalar,
 			vec2,
 			mat2d,

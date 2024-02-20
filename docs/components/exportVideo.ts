@@ -126,20 +126,26 @@ export async function exportVideo(code: string) {
 		code: string,
 		time: number
 	): Promise<HTMLImageElement> {
-		code = code.replaceAll(
-			/([^a-zA-Z0-9{])time([^a-zA-Z0-9]?)/g,
-			`$1${time.toFixed(2)}$2`
-		)
-
 		for (const m of code.matchAll(/\/\*([0-9]?)\*\/(.*?)\/\*\*\//g)) {
 			const precision = parseInt(m[1] || '2')
 			const expr = m[2]
 			const evaluated = saferEval(`(() => ${expr})()`, {
 				...evalContext,
 				time,
-			}) as unknown as number
-			code = code.replace(m[0], evaluated.toFixed(precision))
+			}) as unknown
+
+			const replaced =
+				typeof evaluated === 'number'
+					? evaluated.toFixed(precision)
+					: evaluated + ''
+
+			code = code.replace(m[0], replaced)
 		}
+
+		code = code.replaceAll(
+			/([^a-zA-Z0-9{])time([^a-zA-Z0-9]?)/g,
+			`$1${time.toFixed(2)}$2`
+		)
 
 		codeEl.innerHTML = code
 
