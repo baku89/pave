@@ -180,11 +180,11 @@ describe('segment', () => {
 	})
 })
 
-describe('linearSegment', () => {
+describe('segment', () => {
 	const rect: Path = Path.rect([0, 0], [1, 1])
 
 	it('should return the first segment of a path', () => {
-		expect(Path.linearSegment(rect, 0)).toEqual({
+		expect(Path.segment(rect, 0)).toEqual({
 			start: [0, 0],
 			command: 'L',
 			point: [1, 0],
@@ -192,7 +192,7 @@ describe('linearSegment', () => {
 	})
 
 	it('should return the second segment of a path', () => {
-		expect(Path.linearSegment(rect, 1)).toEqual({
+		expect(Path.segment(rect, 1)).toEqual({
 			start: [1, 0],
 			command: 'L',
 			point: [1, 1],
@@ -200,7 +200,7 @@ describe('linearSegment', () => {
 	})
 
 	it('should return the last segment of a path', () => {
-		expect(Path.linearSegment(rect, 3)).toEqual({
+		expect(Path.segment(rect, 3)).toEqual({
 			start: [0, 1],
 			command: 'L',
 			point: [0, 0],
