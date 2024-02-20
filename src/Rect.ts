@@ -14,6 +14,7 @@ export namespace Rect {
 	 * Creates a rect from the given DOMRect.
 	 * @param domRect The DOMRect to create a rect from
 	 * @returns The created rect
+	 * @category Generators
 	 */
 	export function fromDOMRect(domRect: DOMRect): Rect {
 		return [
@@ -26,6 +27,7 @@ export namespace Rect {
 	 * Creates a rect that contains all the given points.
 	 * @param points The points to create a rect from
 	 * @returns The created rect
+	 * @category Generators
 	 */
 	export function fromPoints(...points: vec2[]): Rect {
 		let minX = Infinity,
@@ -47,9 +49,33 @@ export namespace Rect {
 	}
 
 	/**
+	 * Creates a rect from the minimum point and the size.
+	 * @param min Top-left point of the rect, in Y-down coordinates such as SVG
+	 * @param size The size of the rect.
+	 * @returns The created rect
+	 * @category Generators
+	 */
+	export function bySize(min: vec2, size: vec2): Rect {
+		return fromPoints(min, vec2.add(min, size))
+	}
+
+	/**
+	 * Creates a rect from the center and the size.
+	 * @param center The center of the rect
+	 * @param size The size of the rect
+	 * @returns The created rect
+	 * @category Generators
+	 */
+	export function fromCenter(center: vec2, size: vec2): Rect {
+		const halfSize = vec2.scale(size, 0.5)
+		return fromPoints(vec2.sub(center, halfSize), vec2.scale(size, 2))
+	}
+
+	/**
 	 * Calculates the size of the given rect.
 	 * @param bbox The rect to calculate the size of
 	 * @returns The size of the rect
+	 * @category Properties
 	 */
 	export function size(bbox: Rect): vec2 {
 		const [min, max] = bbox
@@ -60,6 +86,7 @@ export namespace Rect {
 	 * Calculates the center of the given rect.
 	 * @param bbox The rect to calculate the center of
 	 * @returns The center of the rect
+	 * @category Properties
 	 */
 	export function center(bbox: Rect): vec2 {
 		const [min, max] = bbox
@@ -67,36 +94,40 @@ export namespace Rect {
 	}
 
 	/**
-	 * Returns the left coordinate of the given rect.
+	 * Returns the left coordinate of the given rect in Y-down coordinates such as SVG.
 	 * @param bbox The rect to get the left of
 	 * @returns The left coordinate of the rect
+	 * @category Properties
 	 */
 	export function left(bbox: Rect): number {
 		return bbox[0][0]
 	}
 
 	/**
-	 * Returns the top coordinate of the given rect.
+	 * Returns the top coordinate of the given rect in Y-down coordinates such as SVG.
 	 * @param bbox The rect to get the top of
 	 * @returns The top coordinate of the rect
+	 * @category Properties
 	 */
 	export function top(bbox: Rect): number {
 		return bbox[0][1]
 	}
 
 	/**
-	 * Returns the right coordinate of the given rect.
+	 * Returns the right coordinate of the given rect in Y-down coordinates such as SVG.
 	 * @param bbox The rect to get the right of
 	 * @returns The right coordinate of the rect
+	 * @category Properties
 	 */
 	export function right(bbox: Rect): number {
 		return bbox[1][0]
 	}
 
 	/**
-	 * Returns the bottom coordinate of the given rect.
+	 * Returns the bottom coordinate of the given rect in Y-down coordinates such as SVG.
 	 * @param bbox The rect to get the bottom of
 	 * @returns The bottom coordinate of the rect
+	 * @category Properties
 	 */
 	export function bottom(bbox: Rect): number {
 		return bbox[1][1]
