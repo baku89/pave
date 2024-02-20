@@ -14,8 +14,8 @@ The range of canvas is fixed to the size `[100, 100]`.
 The variables shown below are also available:
 
 ```ts
-import {Path, Arc, Bezier} from 'pave'
-import {scalar, vec2, mat2d} from 'linearly'
+import * from 'pave'
+import * from 'linearly'
 
 // The 2D context of the canvas
 context: CanvasRenderingContext2D

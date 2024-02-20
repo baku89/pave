@@ -1,9 +1,5 @@
-<template>
-	<canvas ref="canvas" class="PaveRenderer" />
-</template>
-
 <script lang="ts" setup>
-import {throttledWatch, useCssVar, useElementSize} from '@vueuse/core'
+import {throttledWatch, useElementSize} from '@vueuse/core'
 import {computed, onMounted, ref, watch} from 'vue'
 
 import {createDrawFunction, setupEvalContextCreator} from './createDrawFunction'
@@ -19,14 +15,12 @@ const props = withDefaults(
 const canvas = ref<null | HTMLCanvasElement>(null)
 const context = ref<null | CanvasRenderingContext2D>(null)
 
-const brandColor = useCssVar('--c-brand')
-
 const {width: canvasWidth, height: canvasHeight} = useElementSize(canvas)
 
 onMounted(async () => {
 	context.value = canvas.value?.getContext('2d') ?? null
 
-	const createDrawContext = await setupEvalContextCreator(brandColor)
+	const createDrawContext = await setupEvalContextCreator(ref('black'))
 
 	const evalContext = computed(() => {
 		if (!context.value) return {}
@@ -71,6 +65,10 @@ onMounted(async () => {
 	)
 })
 </script>
+
+<template>
+	<canvas ref="canvas" class="PaveRenderer" />
+</template>
 
 <style lang="stylus" scoped>
 .PaveRenderer

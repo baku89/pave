@@ -1,15 +1,20 @@
-import {mat2d, scalar, vec2} from 'linearly'
+import * as Linearly from 'linearly'
+import {mat2d, vec2} from 'linearly'
 import {type Path} from 'pave'
 import saferEval from 'safer-eval'
 import {Ref} from 'vue'
 
-export async function setupEvalContextCreator(brandColor: Ref<string>) {
-	const {Path, Arc, CubicBezier, Curve, Distort} = await import('pave')
+export async function setupEvalContextCreator(defaultColor: Ref<string>) {
+	const Pave = await import('pave')
+
+	// console.log(Linearly)
+
+	const {Path, Curve} = Pave
 
 	return (ctx: CanvasRenderingContext2D) => {
 		const stroke = (path: Path, color = '', lineWidth = 1) => {
 			ctx.fillStyle = 'none'
-			ctx.strokeStyle = color || brandColor.value
+			ctx.strokeStyle = color || defaultColor.value
 			ctx.lineCap = 'round'
 			ctx.lineWidth = lineWidth
 			Path.drawToCanvas(path, ctx)
@@ -18,14 +23,14 @@ export async function setupEvalContextCreator(brandColor: Ref<string>) {
 
 		const fill = (path: Path, color = '') => {
 			ctx.strokeStyle = 'none'
-			ctx.fillStyle = color || brandColor.value
+			ctx.fillStyle = color || defaultColor.value
 			Path.drawToCanvas(path, ctx)
 			ctx.fill()
 		}
 
 		const dot = (point: vec2, color = '', size = 3) => {
 			ctx.strokeStyle = 'none'
-			ctx.fillStyle = color || brandColor.value
+			ctx.fillStyle = color || defaultColor.value
 			Path.drawToCanvas(Path.circle(point, size / 2), ctx)
 			ctx.fill()
 		}
@@ -34,9 +39,9 @@ export async function setupEvalContextCreator(brandColor: Ref<string>) {
 			const lineWidth = 1 * scale
 			const vertexSize = 3 * scale
 
-			ctx.fillStyle = color || brandColor.value
+			ctx.fillStyle = color || defaultColor.value
 
-			ctx.strokeStyle = color || brandColor.value
+			ctx.strokeStyle = color || defaultColor.value
 			ctx.lineCap = 'round'
 			ctx.lineJoin = 'round'
 			ctx.lineWidth = lineWidth
@@ -59,7 +64,7 @@ export async function setupEvalContextCreator(brandColor: Ref<string>) {
 						const [control1, control2] = args
 
 						// Draw handles
-						ctx.setLineDash([2, 1].map(x => x * scale))
+						ctx.setLineDash([4, 2].map(x => x * scale))
 						Path.drawToCanvas(Path.line(start, control1), ctx)
 						ctx.stroke()
 						Path.drawToCanvas(Path.line(point, control2), ctx)
@@ -86,23 +91,30 @@ export async function setupEvalContextCreator(brandColor: Ref<string>) {
 					ctx.stroke()
 
 					ctx.font = `${7 * scale}px "IBM Plex Mono"`
-					ctx.fillText(command, ...vec2.add(point, [2, -2]))
+					ctx.fillText(command, ...vec2.add(point, [1, -1]))
 				}
 			}
 		}
 
+		const text = (
+			text: string,
+			position: vec2 = [0, 0],
+			color = '',
+			size = 4
+		) => {
+			ctx.fillStyle = color || defaultColor.value
+			ctx.font = `${size}px "IBM Plex Mono"`
+			ctx.fillText(text, ...position)
+		}
+
 		return {
-			Path,
-			Arc,
-			CubicBezier,
-			Distort,
-			scalar,
-			vec2,
-			mat2d,
+			...Pave,
+			...Linearly,
 			stroke,
 			fill,
 			dot,
 			debug,
+			text,
 		}
 	}
 }
