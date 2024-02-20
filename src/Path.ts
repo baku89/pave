@@ -2165,6 +2165,388 @@ export namespace Path {
 			),
 		}
 	}
+
+	export function pen(): Pen {
+		return new Pen()
+	}
+
+	export class Pen implements Path {
+		curves: Curve[] = []
+
+		current: {curve: Curve; point: vec2; lastHandle?: vec2} | undefined
+
+		moveTo(point: vec2) {
+			this.current = {
+				curve: {vertices: [{point, command: 'L'}], closed: false},
+				point,
+			}
+
+			this.curves.push(this.current.curve)
+
+			return this
+		}
+
+		M(point: vec2) {
+			return this.moveTo(point)
+		}
+
+		moveBy(delta: vec2) {
+			if (!this.current) {
+				throw new Error('The pen is not moved yet')
+			}
+
+			const point = vec2.add(this.current.point, delta)
+			this.moveTo(point)
+
+			return this
+		}
+
+		m(delta: vec2) {
+			return this.moveBy(delta)
+		}
+
+		lineTo(point: vec2) {
+			if (!this.current) {
+				throw new Error('The pen is not moved yet')
+			}
+
+			this.current.point = point
+			this.current.curve.vertices.push({command: 'L', point})
+
+			return this
+		}
+
+		L(point: vec2) {
+			return this.lineTo(point)
+		}
+
+		lineBy(delta: vec2) {
+			if (!this.current) {
+				throw new Error('The pen is not moved yet')
+			}
+
+			const point = vec2.add(this.current.point, delta)
+			this.lineTo(point)
+
+			return this
+		}
+
+		l(delta: vec2) {
+			return this.lineBy(delta)
+		}
+
+		horizTo(x: number) {
+			if (!this.current) {
+				throw new Error('The pen is not moved yet')
+			}
+
+			const point: vec2 = [x, this.current.point[1]]
+			this.lineTo(point)
+
+			return this
+		}
+
+		H(x: number) {
+			return this.horizTo(x)
+		}
+
+		horizBy(dx: number) {
+			if (!this.current) {
+				throw new Error('The pen is not moved yet')
+			}
+
+			const point: vec2 = [this.current.point[0] + dx, this.current.point[1]]
+			this.lineTo(point)
+
+			return this
+		}
+
+		h(dx: number) {
+			return this.horizBy(dx)
+		}
+
+		vertTo(y: number) {
+			if (!this.current) {
+				throw new Error('The pen is not moved yet')
+			}
+
+			const point: vec2 = [this.current.point[0], y]
+			this.lineTo(point)
+
+			return this
+		}
+
+		V(y: number) {
+			return this.vertTo(y)
+		}
+
+		vertBy(dy: number) {
+			if (!this.current) {
+				throw new Error('The pen is not moved yet')
+			}
+
+			const point: vec2 = [this.current.point[0], this.current.point[1] + dy]
+			this.lineTo(point)
+
+			return this
+		}
+
+		v(dy: number) {
+			return this.vertBy(dy)
+		}
+
+		quadraticCurveTo(control: vec2, point: vec2) {
+			if (!this.current) {
+				throw new Error('The pen is not moved yet')
+			}
+
+			const {point: start} = this.current
+			const control1 = vec2.lerp(start, control, 2 / 3)
+			const control2 = vec2.lerp(point, control, 2 / 3)
+
+			this.current.point = point
+			this.current.lastHandle = control
+			this.current.curve.vertices.push({
+				command: 'C',
+				point,
+				args: [control1, control2],
+			})
+
+			return this
+		}
+
+		Q(control: vec2, point: vec2) {
+			return this.quadraticCurveTo(control, point)
+		}
+
+		quadraticCurveBy(deltaControl: vec2, deltaPoint: vec2) {
+			if (!this.current) {
+				throw new Error('The pen is not moved yet')
+			}
+
+			const control = vec2.add(this.current.point, deltaControl)
+			const point = vec2.add(control, deltaPoint)
+
+			this.quadraticCurveTo(control, point)
+
+			return this
+		}
+
+		q(delta: vec2, delta2: vec2) {
+			return this.quadraticCurveBy(delta, delta2)
+		}
+
+		smoothQuadraticCurveTo(point: vec2) {
+			if (!this.current) {
+				throw new Error('The pen is not moved yet')
+			}
+
+			const control = this.current.lastHandle
+				? vec2.sub(this.current.point, this.current.lastHandle)
+				: this.current.point
+
+			this.quadraticCurveTo(control, point)
+
+			return this
+		}
+
+		T(point: vec2) {
+			return this.smoothQuadraticCurveTo(point)
+		}
+
+		smoothQuadraticCurveBy(delta: vec2) {
+			if (!this.current) {
+				throw new Error('The pen is not moved yet')
+			}
+
+			const control = this.current.lastHandle
+				? vec2.sub(this.current.point, this.current.lastHandle)
+				: this.current.point
+
+			const point = vec2.add(this.current.point, delta)
+
+			this.quadraticCurveTo(control, point)
+
+			return this
+		}
+
+		t(delta: vec2) {
+			return this.smoothQuadraticCurveBy(delta)
+		}
+
+		cubicBezierTo(control1: vec2, control2: vec2, point: vec2) {
+			if (!this.current) {
+				throw new Error('The pen is not moved yet')
+			}
+
+			this.current.point = point
+			this.current.lastHandle = control2
+			this.current.curve.vertices.push({
+				command: 'C',
+				point,
+				args: [control1, control2],
+			})
+
+			return this
+		}
+
+		C(control1: vec2, control2: vec2, point: vec2) {
+			return this.cubicBezierTo(control1, control2, point)
+		}
+
+		cubicBezierBy(deltaControl1: vec2, deltaControl2: vec2, deltaPoint: vec2) {
+			if (!this.current) {
+				throw new Error('The pen is not moved yet')
+			}
+
+			const control1 = vec2.add(this.current.point, deltaControl1)
+			const control2 = vec2.add(control1, deltaControl2)
+			const point = vec2.add(control2, deltaPoint)
+
+			this.cubicBezierTo(control1, control2, point)
+
+			return this
+		}
+
+		c(deltaControl1: vec2, deltaControl2: vec2, deltaPoint: vec2) {
+			return this.cubicBezierBy(deltaControl1, deltaControl2, deltaPoint)
+		}
+
+		smoothCubicBezierTo(control2: vec2, point: vec2) {
+			if (!this.current) {
+				throw new Error('The pen is not moved yet')
+			}
+
+			const control1 = this.current.lastHandle
+				? vec2.sub(this.current.point, this.current.lastHandle)
+				: this.current.point
+
+			this.cubicBezierTo(control1, control2, point)
+
+			return this
+		}
+
+		S(control2: vec2, point: vec2) {
+			return this.smoothCubicBezierTo(control2, point)
+		}
+
+		smoothCubicBezierBy(deltaControl2: vec2, deltaPoint: vec2) {
+			if (!this.current) {
+				throw new Error('The pen is not moved yet')
+			}
+
+			const control1 = this.current.lastHandle
+				? vec2.sub(this.current.point, this.current.lastHandle)
+				: this.current.point
+
+			const control2 = vec2.add(control1, deltaControl2)
+			const point = vec2.add(control2, deltaPoint)
+
+			this.cubicBezierTo(control1, control2, point)
+
+			return this
+		}
+
+		s(deltaControl2: vec2, deltaPoint: vec2) {
+			return this.smoothCubicBezierBy(deltaControl2, deltaPoint)
+		}
+
+		arcTo(
+			radii: vec2,
+			xAxisRotation: number,
+			largeArcFlag: boolean,
+			sweepFlag: boolean,
+			point: vec2
+		) {
+			if (!this.current) {
+				throw new Error('The pen is not moved yet')
+			}
+
+			this.current.point = point
+			this.current.curve.vertices.push({
+				command: 'A',
+				args: [radii, xAxisRotation, largeArcFlag, sweepFlag],
+				point,
+			})
+
+			return this
+		}
+
+		A(
+			radii: vec2,
+			xAxisRotation: number,
+			largeArcFlag: boolean,
+			sweepFlag: boolean,
+			point: vec2
+		) {
+			return this.arcTo(radii, xAxisRotation, largeArcFlag, sweepFlag, point)
+		}
+
+		arcBy(
+			radii: vec2,
+			xAxisRotation: number,
+			largeArcFlag: boolean,
+			sweepFlag: boolean,
+			deltaPoint: vec2
+		) {
+			if (!this.current) {
+				throw new Error('The pen is not moved yet')
+			}
+
+			const point = vec2.add(radii, deltaPoint)
+
+			this.arcTo(radii, xAxisRotation, largeArcFlag, sweepFlag, point)
+
+			return this
+		}
+
+		a(
+			radii: vec2,
+			xAxisRotation: number,
+			largeArcFlag: boolean,
+			sweepFlag: boolean,
+			deltaPoint: vec2
+		) {
+			return this.arcBy(
+				radii,
+				xAxisRotation,
+				largeArcFlag,
+				sweepFlag,
+				deltaPoint
+			)
+		}
+
+		close(removeOverwrapped = true) {
+			if (!this.current) {
+				throw new Error('The pen is not moved yet')
+			}
+
+			const {curve} = this.current
+
+			if (removeOverwrapped) {
+				const first = curve.vertices.at(0)
+				const last = curve.vertices.at(-1)
+
+				if (first && last && vec2.approx(first.point, last.point)) {
+					curve.vertices[0] = last
+					curve.vertices.pop()
+				}
+			}
+
+			;(curve as any).closed = true
+			this.current = undefined
+
+			return this
+		}
+
+		Z(removeOverwrapped = true) {
+			return this.close(removeOverwrapped)
+		}
+
+		end(): Path {
+			return {...this}
+		}
+	}
 }
 
 function paperPointToVec2(point: paper.Point): vec2 {
