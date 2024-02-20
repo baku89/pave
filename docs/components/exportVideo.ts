@@ -4,7 +4,33 @@ import saferEval from 'safer-eval'
 
 import {createDrawFunction, setupEvalContextCreator} from './createDrawFunction'
 
-export async function exportVideo(code: string) {
+export async function exportVideo(code: string, onlyCanvas = false) {
+	// eslint-disable-next-line no-console
+	console.info('Start rendering video onlyCanvas:', onlyCanvas)
+
+	const now = new Date()
+	const defaultBasename: string | null =
+		[now.getFullYear(), now.getMonth() + 1, now.getDate()]
+			.map(n => n.toString().padStart(2, '0'))
+			.join('-') +
+		'_' +
+		[now.getHours(), now.getMinutes()]
+			.map(n => n.toString().padStart(2, '0'))
+			.join('-')
+
+	const promptResult = prompt('Export settings', defaultBasename + ':2')
+
+	if (!promptResult) {
+		return
+	}
+
+	// Parse prompt result
+	const [basename, durationStr] = promptResult.split(':')
+	const filename = `Pave_${basename}.webm`
+	const duration = parseFloat(durationStr)
+	const frameCount = 50 * duration
+
+	// Load dependencies
 	const monaco = await import('monaco-editor')
 	const {default: domtoimage} = await import('dom-to-image-more')
 
@@ -16,8 +42,8 @@ export async function exportVideo(code: string) {
 	monaco.editor.defineTheme('LightTheme', LightTheme as any)
 
 	const canvas = document.createElement('canvas')
-	canvas.width = 1000 / window.devicePixelRatio
-	canvas.height = 1000 / window.devicePixelRatio
+	canvas.width = 1000
+	canvas.height = 1000
 	document.body.append(canvas)
 
 	const ctx = canvas.getContext('2d')!
@@ -37,52 +63,50 @@ export async function exportVideo(code: string) {
 
 	const frames: string[] = []
 
-	const duration = 2
-
-	const frameCount = 50 * duration
-
 	for (let i = 0; i < frameCount; i++) {
 		const time = i / frameCount
 
 		evalFn(time)
 
-		videoContext.clearRect(0, 0, 1920, 1080)
-		videoContext.fillStyle = 'white'
-		videoContext.fillRect(0, 0, 1920, 1080)
-		videoContext.fillStyle = 'black'
+		if (!onlyCanvas) {
+			videoContext.clearRect(0, 0, 1920, 1080)
+			videoContext.fillStyle = 'white'
+			videoContext.fillRect(0, 0, 1920, 1080)
+			videoContext.fillStyle = 'black'
 
-		const codeImg = await renderCode(code, time)
+			const codeImg = await renderCode(code, time)
 
-		const codeWidth = 1920 - 1080 - 40
-		const codeHeight = codeImg.height * (codeWidth / codeImg.width)
-		videoContext.drawImage(
-			codeImg,
-			1080,
-			(1080 - codeHeight) / 2,
-			codeWidth,
-			codeHeight
-		)
+			const codeWidth = 1920 - 1080 - 40
+			const codeHeight = codeImg.height * (codeWidth / codeImg.width)
+			videoContext.drawImage(
+				codeImg,
+				1080,
+				(1080 - codeHeight) / 2,
+				codeWidth,
+				codeHeight
+			)
 
-		const canvasTop = 40
-		const canvasBottom = 1080 - 40
-		const canvasLeft = 40
-		const canvasRight = 1040
+			const canvasTop = 40
+			const canvasBottom = 1080 - 40
+			const canvasLeft = 40
+			const canvasRight = 1040
 
-		videoContext.strokeStyle = '#ccc'
-		videoContext.beginPath()
-		for (let i = 0; i <= 10; i++) {
-			videoContext.moveTo(canvasLeft + i * 100, canvasTop)
-			videoContext.lineTo(canvasLeft + i * 100, canvasBottom)
-			videoContext.moveTo(canvasLeft, canvasTop + i * 100)
-			videoContext.lineTo(canvasRight, canvasTop + i * 100)
+			videoContext.strokeStyle = '#ccc'
+			videoContext.beginPath()
+			for (let i = 0; i <= 10; i++) {
+				videoContext.moveTo(canvasLeft + i * 100, canvasTop)
+				videoContext.lineTo(canvasLeft + i * 100, canvasBottom)
+				videoContext.moveTo(canvasLeft, canvasTop + i * 100)
+				videoContext.lineTo(canvasRight, canvasTop + i * 100)
+			}
+			videoContext.stroke()
+
+			videoContext.drawImage(canvas, 40, 40, 1000, 1000)
 		}
-		videoContext.stroke()
-
-		evalFn(time)
-		videoContext.drawImage(canvas, 40, 40, 1000, 1000)
 
 		const frame = await new Promise<string>((resolve, reject) => {
-			videoCanvas.toBlob(blob => {
+			const targetCanvas = onlyCanvas ? canvas : videoCanvas
+			targetCanvas.toBlob(blob => {
 				if (blob) {
 					resolve(URL.createObjectURL(blob))
 				} else {
@@ -108,6 +132,10 @@ export async function exportVideo(code: string) {
 		img.src = frame
 		await new Promise(resolve => {
 			img.onload = () => {
+				videoCanvas.width = img.width
+				videoCanvas.height = img.height
+				videoContext.fillStyle = 'white'
+				videoContext.fillRect(0, 0, img.width, img.height)
 				videoContext.drawImage(img, 0, 0)
 				capturer.capture(videoCanvas)
 				resolve(null)
@@ -120,7 +148,12 @@ export async function exportVideo(code: string) {
 
 	capturer.stop()
 
-	capturer.save()
+	capturer.save(blob => {
+		const a = document.createElement('a')
+		a.href = URL.createObjectURL(blob)
+		a.download = filename
+		a.click()
+	})
 
 	async function renderCode(
 		code: string,

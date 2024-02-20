@@ -84,10 +84,14 @@ watch(
 )
 
 const keys = useMagicKeys()
-const exportKey = keys.shift_cmd_e
-whenever(exportKey, async () => {
-	const {exportVideo} = await import('./exportVideo')
 
+whenever(keys.cmd_control_e, async () => {
+	const {exportVideo} = await import('./exportVideo')
+	exportVideo(code.value, true)
+})
+
+whenever(keys.shift_cmd_e, async () => {
+	const {exportVideo} = await import('./exportVideo')
 	exportVideo(code.value)
 })
 </script>
