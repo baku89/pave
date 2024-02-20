@@ -32,18 +32,28 @@ const normal = Path.normalAtTime(rect, 0.5)
 
 これらの戻り値は適切にキャッシュ（メモ化）するため、同じパスに対して何度も呼び出しても全ての計算が再実行されることはありません。しかし、パスデータに対して破壊的な変更を加えた後にこれらの関数を呼び出すと、正しい結果が得られないことがあります。
 
-このため、パスデータを変更する際には、常に新しいパスデータを生成するユーティリティ関数（Canvas APIと同様の[`Path.moveTo`](../api/modules/Path.html#moveto)や[`Path.lineTo`](../api/modules/Path.html#lineto)など）を使うか:
+このため、パスデータを変更したり、パスに新しい頂点を付け足すというような、手続き的な処理を行いたい場合、以下の3つの方法のいずれかをとることになります。
+
+1. 常に新しいパスデータを生成するユーティリティ関数（Canvas APIと同様の[`Path.moveTo`](../api/modules/Path.html#moveto)や[`Path.lineTo`](../api/modules/Path.html#lineto)など）を使う
+2. [Path.pen](../api/modules/Path.html#pen)を使って、パスデータを生成する
+3. [immer](https://immerjs.github.io/immer/)のようなイミュータブルなデータ構造を操作するためのライブラリを使う
 
 ```ts
+// 1. ユーティリティ関数を使う
 let p = Path.moveTo(Path.empty, [10, 10])
 p = Path.lineTo(p, [20, 20])
 p = Path.cubicBezierTo(p, [80, 30], [0, 40], [50, 50])
 p = Path.closePath(p)
-```
 
-あるいは、[immer](https://immerjs.github.io/immer/)のようなイミュータブルなデータ構造を操作するためのライブラリを使うことをお勧めします:
+// 2. Path.penを使う
+const p = Path.pen()
+	.moveTo([10, 10])
+	.lineTo([20, 20])
+	.cubicBezierTo([80, 30], [0, 40], [50, 50])
+	.close()
+	.get()
 
-```ts
+// 3. immerを使った例
 import {produce} from 'immer'
 
 const pathA = Path.arc([50, 50], 40, 0, 90)

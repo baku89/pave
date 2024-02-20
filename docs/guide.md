@@ -38,13 +38,34 @@ const normal = Path.normalAtTime(rect, 0.5)
 
 These functions are appropriately memoized, so even if called multiple times for the same path, not all calculations are re-executed. However, if you make destructive changes to the path data and then call these functions, you may not get the correct results.
 
-Therefore, when modifying path data, it is recommended to use utility functions that always return new path data rather than modifying original path (such as [`moveTo`](api/modules/Path.html#moveto) or [`lineTo`](api/modules/Path.html#lineto) similar to the Canvas API):
+Therefore, when you want to perform procedural operations such as modifying path data or adding new vertices to the path, you will take one of the following three methods:
+
+1. Use utility functions that always generate new path data (such as [`Path.moveTo`](./api/modules/Path.html#moveto) and [`Path.lineTo`](./api/modules/Path.html#lineto) similar to the Canvas API)
+2. Use [Path.pen](./api/modules/Path.html#pen) to draw path data in order of vertices
+3. Use a library for manipulating immutable data structures such as [immer](https://immerjs.github.io/immer/)
 
 ```ts
+// 1. Use utility functions
 let p = Path.moveTo(Path.empty, [10, 10])
 p = Path.lineTo(p, [20, 20])
 p = Path.cubicBezierTo(p, [80, 30], [0, 40], [50, 50])
 p = Path.closePath(p)
+
+// 2. Use Path.pen()
+const p = Path.pen()
+	.moveTo([10, 10])
+	.lineTo([20, 20])
+	.cubicBezierTo([80, 30], [0, 40], [50, 50])
+	.close()
+	.get()
+
+// 3. Example using immer
+import {produce} from 'immer'
+
+const pathA = Path.arc([50, 50], 40, 0, 90)
+const pathB = produce(pathA, draft => {
+	draft.curves[0].closed = true
+})
 ```
 
 Or use a library for manipulating immutable data structures such as [immer](https://immerjs.github.io/immer/):
