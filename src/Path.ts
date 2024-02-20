@@ -223,7 +223,7 @@ export namespace Path {
 					bottomRight: number,
 					bottomLeft: number,
 			  ]
-	) {
+	): Path {
 		let tl: number
 		let tr: number
 		let br: number
@@ -333,13 +333,13 @@ export namespace Path {
 		{preferredSweep = true}: CircleFromPointsOptions = {}
 	): Path {
 		// Remove duplicate points
-		if (p2 && p3 && vec2.equals(p2, p3)) {
+		if (p2 && p3 && vec2.approx(p2, p3)) {
 			p3 = undefined
 		}
-		if (p3 && vec2.equals(p3, p1)) {
+		if (p3 && vec2.approx(p3, p1)) {
 			p3 = undefined
 		}
-		if (p2 && vec2.equals(p1, p2)) {
+		if (p2 && vec2.approx(p1, p2)) {
 			p2 = p3
 			p3 = undefined
 		}
@@ -1827,7 +1827,7 @@ export namespace Path {
 				prevPoint = point
 				prevControl = undefined
 			} else if (code === 'Z') {
-				if (firstPoint && prevPoint && vec2.equals(firstPoint, prevPoint)) {
+				if (firstPoint && prevPoint && vec2.approx(firstPoint, prevPoint)) {
 					currentPath.vertices[0] = currentPath.vertices.at(-1)!
 					currentPath.vertices.pop()
 				}

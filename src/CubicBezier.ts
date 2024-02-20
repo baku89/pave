@@ -190,9 +190,9 @@ export namespace CubicBezier {
 			point,
 		} = bezier
 		return (
-			vec2.equals(start, point) &&
-			vec2.equals(start, c1) &&
-			vec2.equals(start, c2)
+			vec2.approx(start, point) &&
+			vec2.approx(start, c1) &&
+			vec2.approx(start, c2)
 		)
 	}
 }

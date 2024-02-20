@@ -87,7 +87,7 @@ export namespace Curve {
 			if (
 				firstVertex &&
 				lastVertex &&
-				vec2.equals(firstVertex.point, lastVertex.point)
+				vec2.approx(firstVertex.point, lastVertex.point)
 			) {
 				return {
 					vertices: [lastVertex, ...curve.vertices.slice(1)],

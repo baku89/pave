@@ -59,7 +59,7 @@ export namespace Line {
 	 * Returns true if the length of line segment is zero.
 	 */
 	export function isZero(line: SimpleSegmentL) {
-		return vec2.equals(line.start, line.point)
+		return vec2.approx(line.start, line.point)
 	}
 
 	export function toTime(line: SimpleSegmentL, loc: SegmentLocation): number {

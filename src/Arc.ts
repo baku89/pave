@@ -430,7 +430,7 @@ export namespace Arc {
 	 */
 	export const isZero = memoize((arc: SimpleSegmentA): boolean => {
 		const {start, point} = arc
-		return vec2.equals(start, point)
+		return vec2.approx(start, point)
 	})
 
 	export function ellipticArcLength(radii: vec2, angles: AngleRange): number {
@@ -515,7 +515,7 @@ function unitToTime(
 
 	// For a circle
 	const [rx, ry] = arc.args[0]
-	if (scalar.equals(rx, ry)) {
+	if (scalar.approx(rx, ry)) {
 		return targetUnit
 	}
 
@@ -543,7 +543,7 @@ function unitToTime(
 			upperTime = time
 		}
 
-		if (scalar.equals(unitAtTime, targetUnit)) {
+		if (scalar.approx(unitAtTime, targetUnit)) {
 			break
 		}
 	}
