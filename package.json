@@ -1,7 +1,7 @@
 {
 	"name": "@baku89/pave",
 	"version": "0.3.0",
-	"description": "A low level toolkit for manipulating SVG/Path2D paths.",
+	"description": "A environment-agnostic toolkit for manipulating SVG/Path2D curves.",
 	"main": "./lib/cjs/index.js",
 	"module": "./lib/esm/index.js",
 	"types": "./lib/esm/index.d.ts",

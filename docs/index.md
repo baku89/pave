@@ -33,7 +33,7 @@ const t = Path.regularPolygon([50, 50], 30, 5)
 stroke(t, 'MediumSlateBlue')
 ```
 
-Pave is a low-level toolkit for manipulating SVG/Path2D paths, which includes creating primitives, calculating positions/normals/tangents, offsetting, and resampling paths. All functions are provided in a functional programming manner, and the path data is represented as a plain object with immutability.
+Pave is a environment-agnostic toolkit specialized for manipulating SVG/Path2D curves, which includes creating primitives, calculating positions/normals/tangents, offsetting, and resampling paths. All of the API are provided in a functional programming manner, and the path data is represented as an immutable plain object.
 
 Currently, the library heavily depends on [Bazier.js](https://pomax.github.io/bezierjs) by [Pomax](https://github.com/Pomax) and [Paper.js](http://paperjs.org) by [Jürg Lehni
 ](https://github.com/lehni) -- or it might be said that this library is a thin wrapper for them to provide FP-oriented interfaces. Although I'm going to rewrite the whole library with zero dependencies for performance and file size, please consider sponsoring them if you think it'd be useful.
