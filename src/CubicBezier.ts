@@ -91,6 +91,12 @@ export namespace CubicBezier {
 			loc = {offset: loc.unit * paperBezier.length}
 		}
 
+		if (loc.offset < 0) {
+			return 0
+		} else if (loc.offset > paperBezier.length) {
+			return 1
+		}
+
 		return paperBezier.getTimeAt(loc.offset)
 	}
 
