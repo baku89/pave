@@ -22,7 +22,7 @@ export namespace CurveGroup {
 			group = [...group]
 		}
 
-		group = group.map(i => (i >= 0 ? i : path.curves.length - i))
+		group = group.map(i => (i >= 0 ? i : path.curves.length + i))
 		const indices = new Set(group)
 
 		return (_: Curve, index: number): boolean => {

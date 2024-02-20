@@ -2065,20 +2065,13 @@ export namespace Path {
 		path: Path,
 		{fuse = true, group = -1}: PathCloseOptions = {}
 	): Path {
-		const lastCurve = path.curves.at(-1)
-
 		const matcher = CurveGroup.getMatcher(group, path)
 
-		if (lastCurve) {
-			return {
-				curves: path.curves.map((curve, i) =>
-					matcher(curve, i) ? Curve.close(curve, fuse) : curve
-				),
-			}
+		return {
+			curves: path.curves.map((curve, i) =>
+				matcher(curve, i) ? Curve.close(curve, fuse) : curve
+			),
 		}
-
-		// Empty path
-		return path
 	}
 }
 
