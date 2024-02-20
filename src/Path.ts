@@ -206,6 +206,76 @@ export namespace Path {
 	}
 
 	/**
+	 *Creates a rounded rectangle. The arguments are almost the same as the CanvasRenderingContext2D's `roundRect` method.
+	 @see https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/roundRect
+	 */
+	export function roundRect(
+		start: vec2,
+		end: vec2,
+		radii:
+			| number
+			| [allCorner: number]
+			| [topLeftAndBottomRight: number, topRightAndBottomLeft: number]
+			| [topLeft: number, topRightAndBottomLeft: number, bottomRight: number]
+			| [
+					topLeft: number,
+					topRight: number,
+					bottomRight: number,
+					bottomLeft: number,
+			  ]
+	) {
+		let tl: number
+		let tr: number
+		let br: number
+		let bl: number
+
+		// Assigns the radii
+		if (typeof radii === 'number') {
+			tl = tr = br = bl = radii
+		} else if (radii.length === 1) {
+			tl = tr = br = bl = radii[0]
+		} else if (radii.length === 2) {
+			;[tl, tr] = radii
+			;[br, bl] = radii
+		} else if (radii.length === 3) {
+			;[tl, tr, br] = radii
+			bl = tr
+		} else {
+			;[tl, tr, br, bl] = radii
+		}
+
+		// Clamps the radii to the half of the width and height
+		// NOTE: might be possible to exceed the half of the width and height
+		const [width, height] = vec2.sub(end, start)
+		const halfWidth = Math.abs(width) / 2
+		const halfHeight = Math.abs(height) / 2
+
+		tl = Math.min(Math.abs(tl), halfWidth, halfHeight)
+		tr = Math.min(Math.abs(tr), halfWidth, halfHeight)
+		br = Math.min(Math.abs(br), halfWidth, halfHeight)
+		bl = Math.min(Math.abs(bl), halfWidth, halfHeight)
+
+		const sweep = width * height > 0
+
+		const xSign = Math.sign(width)
+		const ySign = Math.sign(height)
+
+		// Creates the path
+		let p = moveTo(empty, [start[0], start[1] + tl * ySign])
+		p = arcTo(p, [tl, tl], 0, false, sweep, [start[0] + tl * xSign, start[1]])
+		p = lineTo(p, [end[0] - tr * xSign, start[1]])
+		p = arcTo(p, [tr, tr], 0, false, sweep, [end[0], start[1] + tr * ySign])
+		p = lineTo(p, [end[0], end[1] - br * ySign])
+		p = arcTo(p, [br, br], 0, false, sweep, [end[0] - br * xSign, end[1]])
+		p = lineTo(p, [start[0] + bl * xSign, end[1]])
+		p = arcTo(p, [bl, bl], 0, false, sweep, [start[0], end[1] - bl * ySign])
+		p = lineTo(p, [start[0], start[1] + tl * ySign])
+		p = close(p)
+
+		return p
+	}
+
+	/**
 	 * Creates a circle path from the given center and radius.
 	 * @param center The center of the circle
 	 * @param radius The radius of the circle
