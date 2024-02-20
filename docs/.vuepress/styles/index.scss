@@ -9,7 +9,8 @@
 	--c-border-dark: var(--c-border);
 	--code-bg-color: black;
 	--code-ln-color: white;
-	--font-family: 'Work Sans', sans-serif;
+	--font-family: 'Work Sans', '游ゴシック体', YuGothic, '游ゴシック',
+		'Yu Gothic', sans-serif;
 	--font-family-code: 'IBM Plex Mono', monospace;
 
 	--border-radius: 6px;
@@ -177,6 +178,7 @@ main {
 	// List
 	li {
 		list-style: none;
+		margin-bottom: 0.5em;
 
 		&:before {
 			content: '❊';
@@ -295,4 +297,8 @@ td code {
 	font-size: 40px;
 	font-family: var(--font-family-code);
 	width: min-content;
+}
+
+p {
+	line-height: 1.8;
 }
