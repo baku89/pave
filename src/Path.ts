@@ -271,6 +271,7 @@ export namespace Path {
 			.H(start[0] + bl * xSign)
 			.A([bl, bl], 0, false, sweep, [start[0], end[1] - bl * ySign])
 			.Z()
+			.get()
 	}
 
 	/**
@@ -2174,8 +2175,8 @@ export namespace Path {
 		return new Pen()
 	}
 
-	export class Pen implements Path {
-		curves: Curve[] = []
+	export class Pen {
+		#curves: Curve[] = []
 
 		current: {curve: Curve; point: vec2; lastHandle?: vec2} | undefined
 
@@ -2185,7 +2186,7 @@ export namespace Path {
 				point,
 			}
 
-			this.curves.push(this.current.curve)
+			this.#curves.push(this.current.curve)
 
 			return this
 		}
@@ -2547,8 +2548,16 @@ export namespace Path {
 			return this.close(removeOverwrapped)
 		}
 
-		end(): Path {
-			return {...this}
+		/**
+		 * Returns the path drawn by the pen so far.
+		 */
+		get(): Path {
+			return {
+				curves: [
+					...this.#curves.slice(0, -1),
+					...(this.current ? [this.current.curve] : []),
+				],
+			}
 		}
 	}
 }
