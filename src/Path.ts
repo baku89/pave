@@ -668,6 +668,40 @@ export namespace Path {
 	export const ngon = regularPolygon
 
 	/**
+	 * @category Primitives
+	 */
+	export function grid(rect: Rect, divs: vec2): Path {
+		const [xdiv, ydiv] = divs
+		const [start, end] = rect
+
+		const curves: Curve[] = []
+
+		for (let t = 0; t <= xdiv; t++) {
+			const x = scalar.lerp(start[0], end[0], t / xdiv)
+			curves.push({
+				vertices: [
+					{command: 'L', point: [x, start[1]]},
+					{command: 'L', point: [x, end[1]]},
+				],
+				closed: false,
+			})
+		}
+
+		for (let t = 0; t <= ydiv; t++) {
+			const y = scalar.lerp(start[1], end[1], t / ydiv)
+			curves.push({
+				vertices: [
+					{command: 'L', point: [start[0], y]},
+					{command: 'L', point: [end[0], y]},
+				],
+				closed: false,
+			})
+		}
+
+		return {curves}
+	}
+
+	/**
 	 * Creates a path consisting of a single C command.
 	 * @param start The start point
 	 * @param control1  The first control point
