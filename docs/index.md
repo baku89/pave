@@ -41,7 +41,7 @@ Currently, the library heavily depends on [Bazier.js](https://pomax.github.io/be
 To try out the library, visit the **[Sandbox](./sandbox)**.
 
 ::: tip
-All code blocks in this documentation are editable and you can try out with Pave.
+All code blocks with viewer on the right are editable so you can try out the Pave library right here in the documentation.
 :::
 
 ## API
@@ -56,7 +56,7 @@ See the full documentation on [API](./api)
 - Geometries
   - [Circle](./api/modules/Circle): The functions for handling circles.
   - [Rect](./api/modules/Rect): The functions for handling rects.
-- [Distort](./api/modules/): The functions for handling distortions.
+- [Distort](./api/modules/Distort): The functions for handling distortions.
 - [Type Aliases](./api#types)
 
 ## Getting Started
