@@ -1052,16 +1052,33 @@ export namespace Path {
 	): Path<V2> {
 		return {
 			curves: path.curves.map(curve => {
+				const vertices: V2[] = []
+
+				if (!curve.closed) {
+					// For open path, add the first vertex
+					const lastToFirstSeg = {
+						command: curve.vertices[0].command,
+						start: curve.vertices.at(-1)!.point,
+						point: curve.vertices[0].point,
+						args: curve.vertices[0].args,
+					} as Segment<V1>
+
+					const lastToFirstVertices = fn(lastToFirstSeg, -1, curve)
+					const firstVertex = Array.isArray(lastToFirstVertices)
+						? lastToFirstVertices.at(-1)!
+						: lastToFirstVertices
+
+					vertices.push(firstVertex)
+				}
+
+				vertices.push(
+					...Curve.segments(curve).flatMap((seg, i) =>
+						fn(seg as Segment<V1>, i, curve)
+					)
+				)
+
 				return {
-					vertices: curve.vertices.flatMap((vertex, i, vertices) => {
-						const segment = {
-							start: vertices.at(i - 1)!.point,
-							point: vertex.point,
-							command: vertex.command,
-							args: vertex.args,
-						} as Segment<V1>
-						return fn(segment, i, curve)
-					}),
+					vertices,
 					closed: curve.closed,
 				}
 			}),
