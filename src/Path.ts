@@ -261,18 +261,16 @@ export namespace Path {
 		const ySign = Math.sign(height)
 
 		// Creates the path
-		let p = moveTo(empty, [start[0], start[1] + tl * ySign])
-		p = arcTo(p, [tl, tl], 0, false, sweep, [start[0] + tl * xSign, start[1]])
-		p = lineTo(p, [end[0] - tr * xSign, start[1]])
-		p = arcTo(p, [tr, tr], 0, false, sweep, [end[0], start[1] + tr * ySign])
-		p = lineTo(p, [end[0], end[1] - br * ySign])
-		p = arcTo(p, [br, br], 0, false, sweep, [end[0] - br * xSign, end[1]])
-		p = lineTo(p, [start[0] + bl * xSign, end[1]])
-		p = arcTo(p, [bl, bl], 0, false, sweep, [start[0], end[1] - bl * ySign])
-		p = lineTo(p, [start[0], start[1] + tl * ySign])
-		p = close(p)
-
-		return p
+		return pen()
+			.M([start[0], start[1] + tl * ySign])
+			.A([tl, tl], 0, false, sweep, [start[0] + tl * xSign, start[1]])
+			.H(end[0] - tr * xSign)
+			.A([tr, tr], 0, false, sweep, [end[0], start[1] + tr * ySign])
+			.V(end[1] - br * ySign)
+			.A([br, br], 0, false, sweep, [end[0] - br * xSign, end[1]])
+			.H(start[0] + bl * xSign)
+			.A([bl, bl], 0, false, sweep, [start[0], end[1] - bl * ySign])
+			.Z()
 	}
 
 	/**
