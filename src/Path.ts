@@ -380,6 +380,19 @@ export namespace Path {
 		}
 	}
 
+	export interface ArcOptions {
+		/**
+		 * The angle step in degrees
+		 * @default 90
+		 */
+		angleStep?: number
+		/**
+		 * The alignment of the vertices
+		 * @default 'uniform'
+		 */
+		align?: 'uniform' | 'start' | 'end'
+	}
+
 	/**
 	 * Creates an arc path.
 	 * @param center The center of the arc
@@ -398,7 +411,8 @@ export namespace Path {
 		center: vec2,
 		radius: number,
 		startAngle: number,
-		endAngle: number
+		endAngle: number,
+		{angleStep = 90, align = 'uniform'}: ArcOptions = {}
 	): Path {
 		const start = vec2.add(center, vec2.direction(startAngle, radius))
 
@@ -407,8 +421,14 @@ export namespace Path {
 
 		const points: Vertex[] = [{point: start, command: 'L'}]
 
-		while (Math.abs(endAngle - startAngle) > 180) {
-			startAngle += 180 * (sweepFlag ? 1 : -1)
+		if (align === 'uniform') {
+			const diffAngle = Math.abs(endAngle - startAngle)
+			const numArcs = Math.ceil(diffAngle / angleStep)
+			angleStep = diffAngle / numArcs
+		}
+
+		while (Math.abs(endAngle - startAngle) > angleStep) {
+			startAngle += angleStep * (sweepFlag ? 1 : -1)
 			const through = vec2.add(center, vec2.direction(startAngle, radius))
 
 			points.push({
@@ -418,9 +438,11 @@ export namespace Path {
 			})
 		}
 
-		const point = vec2.add(center, vec2.direction(endAngle, radius))
+		if (!scalar.approx(startAngle, endAngle)) {
+			const point = vec2.add(center, vec2.direction(endAngle, radius))
 
-		points.push({point, command: 'A', args: [radii, 0, false, sweepFlag]})
+			points.push({point, command: 'A', args: [radii, 0, false, sweepFlag]})
+		}
 
 		return {
 			curves: [
