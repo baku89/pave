@@ -449,17 +449,21 @@ export namespace Path {
 		}
 	}
 
-	export interface ArcOptions {
+	export type ArcOptions = {
 		/**
-		 * The angle step in degrees
-		 * @default 90
+		 * The maximum angle step in degrees
+		 * @default 180
 		 */
-		angleStep?: number
+		step?: number
 		/**
 		 * The alignment of the vertices
-		 * @default 'uniform'
+		 * @default 'start'
 		 */
 		align?: 'uniform' | 'start' | 'end'
+		/**
+		 * The total count of the segments in the arc. If this is specified, the `step` will be ignored and the arc will be deviced into the specified number of segments uniformly.
+		 */
+		count?: number
 	}
 
 	/**
@@ -481,46 +485,72 @@ export namespace Path {
 		radius: number,
 		startAngle: number,
 		endAngle: number,
-		{angleStep = 90, align = 'uniform'}: ArcOptions = {}
+		{step = 180, align = 'start', count}: ArcOptions = {}
 	): Path {
-		const start = vec2.add(center, vec2.direction(startAngle, radius))
+		const maxAngleStep = 360 - 1e-4
+		// Clamp the angle step not to be zero or negative
+		step = scalar.clamp(Math.abs(step), 0.1, maxAngleStep)
+
+		const diffAngle = endAngle - startAngle
+
+		const vertices = beginVertex(vec2.add(center, vec2.dir(startAngle, radius)))
+
+		// Calculate the signed angle step and number of segments
+		if (count) {
+			if (Math.abs(diffAngle) / count > maxAngleStep) {
+				count = Math.ceil(Math.abs(diffAngle) / maxAngleStep)
+			} else {
+				count = Math.floor(Math.max(1, count))
+			}
+			step = diffAngle / count
+		} else if (align === 'uniform') {
+			count = Math.ceil(Math.abs(diffAngle) / step)
+			step = diffAngle / count
+		} else {
+			// align === 'start' | 'end'
+			count = Math.floor(Math.abs(diffAngle) / step)
+			step *= Math.sign(diffAngle)
+		}
 
 		const radii: vec2 = [radius, radius]
 		const sweepFlag = endAngle > startAngle
+		const largeArc = Math.abs(step) > 180
 
-		const points: Vertex[] = [{point: start, command: 'L'}]
-
-		if (align === 'uniform') {
-			const diffAngle = Math.abs(endAngle - startAngle)
-			const numArcs = Math.ceil(diffAngle / angleStep)
-			angleStep = diffAngle / numArcs
+		// Add the additional start vertex if necessary
+		if (align === 'end') {
+			const throughAngle = endAngle - step * count
+			if (throughAngle !== endAngle) {
+				vertices.push({
+					point: vec2.add(center, vec2.dir(throughAngle, radius)),
+					command: 'A',
+					args: [radii, 0, largeArc, sweepFlag],
+				})
+			}
+			startAngle = throughAngle
 		}
 
-		while (Math.abs(endAngle - startAngle) > angleStep) {
-			startAngle += angleStep * (sweepFlag ? 1 : -1)
-			const through = vec2.add(center, vec2.direction(startAngle, radius))
-
-			points.push({
-				point: through,
+		// Add intermediate vertices
+		for (let i = 1; i <= count; i++) {
+			const throughAngle = startAngle + step * i
+			vertices.push({
+				point: vec2.add(center, vec2.dir(throughAngle, radius)),
 				command: 'A',
-				args: [radii, 0, false, sweepFlag],
+				args: [radii, 0, largeArc, sweepFlag],
 			})
 		}
 
-		if (!scalar.approx(startAngle, endAngle)) {
-			const point = vec2.add(center, vec2.direction(endAngle, radius))
-
-			points.push({point, command: 'A', args: [radii, 0, false, sweepFlag]})
+		// Add the end vertex if necessary
+		if (align === 'start') {
+			if (startAngle + step * count !== endAngle) {
+				vertices.push({
+					point: vec2.add(center, vec2.dir(endAngle, radius)),
+					command: 'A',
+					args: [radii, 0, largeArc, sweepFlag],
+				})
+			}
 		}
 
-		return {
-			curves: [
-				{
-					vertices: points,
-					closed: false,
-				},
-			],
-		}
+		return {curves: [{vertices, closed: false}]}
 	}
 
 	export function arcFromPoints(start: vec2, through: vec2, end: vec2): Path {
@@ -2635,4 +2665,8 @@ function drawToRenderingContext(
 			!ret.sweep
 		)
 	}
+}
+
+function beginVertex(point: vec2): Vertex[] {
+	return [{command: 'L', point}]
 }
