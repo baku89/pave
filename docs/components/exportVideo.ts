@@ -48,7 +48,7 @@ export async function exportVideo(code: string, onlyCanvas = false) {
 
 	const ctx = canvas.getContext('2d')!
 
-	const setupEvalContext = await setupEvalContextCreator(useCssVar('--c-brand'))
+	const setupEvalContext = await setupEvalContextCreator(useCssVar('--c-text'))
 	const evalContext = setupEvalContext(ctx)
 
 	const evalFn = createDrawFunction(ctx, evalContext, code)!
@@ -159,7 +159,7 @@ export async function exportVideo(code: string, onlyCanvas = false) {
 		code: string,
 		time: number
 	): Promise<HTMLImageElement> {
-		for (const m of code.matchAll(/\/\*([0-9]?)\*\/(.*?)\/\*\*\//g)) {
+		for (const m of code.matchAll(/\/\*([0-9]?)\*\/(.*?)\/\*\*\//gm)) {
 			const precision = parseInt(m[1] || '2')
 			const expr = m[2]
 			const evaluated = saferEval(`(() => ${expr})()`, {
@@ -167,10 +167,27 @@ export async function exportVideo(code: string, onlyCanvas = false) {
 				time,
 			}) as unknown
 
-			const replaced =
-				typeof evaluated === 'number'
-					? evaluated.toFixed(precision)
-					: evaluated + ''
+			let replaced: string = ''
+
+			if (typeof evaluated === 'number') {
+				replaced = evaluated.toFixed(precision)
+			} else if (typeof evaluated === 'object' && evaluated !== null) {
+				replaced =
+					'{' +
+					Object.entries(evaluated)
+						.map(([k, v]) => {
+							if (typeof v === 'number') {
+								v = v.toFixed(precision)
+							} else {
+								v = JSON.stringify(v)
+							}
+							return `${k}: ${v}`
+						})
+						.join(', ') +
+					'}'
+			} else {
+				replaced = evaluated + ''
+			}
 
 			code = code.replace(m[0], replaced)
 		}
