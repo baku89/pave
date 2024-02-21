@@ -2,7 +2,7 @@ import {vec2} from 'linearly'
 
 import {Arc} from './Arc'
 import {CubicBezier} from './CubicBezier'
-import {CurveLocation} from './Location'
+import {CurveLocation, SegmentLocation} from './Location'
 import {Vertex, VertexA, VertexC, VertexL} from './Path'
 import {Rect} from './Rect'
 import {Segment} from './Segment'
@@ -105,7 +105,7 @@ export namespace Curve {
 	export function toSegmentLocation(
 		curve: Curve,
 		loc: CurveLocation
-	): [segment: Segment, time: number] {
+	): [segment: Segment, loc: SegmentLocation] {
 		if (typeof loc === 'number') {
 			loc = {unit: loc}
 		}
@@ -125,7 +125,7 @@ export namespace Curve {
 
 			const seg = Curve.segment(curve, segmentIndex)
 			const time = extendedTime - segmentIndex
-			return [seg, time]
+			return [seg, {time}]
 		}
 
 		if ('unit' in loc) {
@@ -138,7 +138,8 @@ export namespace Curve {
 		for (const segment of segments(curve)) {
 			const segLength = Segment.length(segment)
 			if (offset < segLength) {
-				return [segment, offset / segLength]
+				const time = offset / segLength
+				return [segment, {time}]
 			}
 			offset -= segLength
 		}
