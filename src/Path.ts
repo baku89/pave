@@ -12,7 +12,7 @@ import {Line} from './Line'
 import {PathLocation, SegmentLocation} from './Location'
 import {Rect} from './Rect'
 import {Segment} from './Segment'
-import {memoize, toFixedSimple} from './utils'
+import {iterateRange, memoize, toFixedSimple} from './utils'
 
 paper.setup(document.createElement('canvas'))
 
@@ -855,6 +855,7 @@ export namespace Path {
 	 * Creates an open path consist of only a single command.
 	 * @param segment The segment to create
 	 * @returns The newly created path
+	 * @category Primitives
 	 */
 	export function fromSegment(segment: Segment): Path {
 		return {
@@ -872,6 +873,54 @@ export namespace Path {
 				},
 			],
 		}
+	}
+
+	export interface FormulaOptions {
+		/**
+		 * The step to evaluate the formula
+		 * @default 0.1
+		 */
+		step?: number
+		/**
+		 * The delta value for calculating the derivative of the formula
+		 * @default 10e-6
+		 */
+		delta?: number
+		/**
+		 * The maximum count of the vertices
+		 */
+		maxVertices?: number
+	}
+
+	export function formula(
+		f: (t: number) => vec2,
+		start = 0,
+		end = 1,
+		{step = 0.1, delta = 10e-6, maxVertices}: FormulaOptions = {}
+	): Path {
+		const vertices: Vertex[] = []
+
+		let control1: vec2 | null = null
+
+		for (const t of iterateRange(start, end, step, maxVertices)) {
+			const point = f(t)
+
+			const handleIn = vec2.scale(
+				vec2.sub(f(t + delta), point),
+				step / delta / 3
+			)
+			const control2 = vec2.sub(point, handleIn)
+
+			if (control1) {
+				vertices.push({point, command: 'C', args: [control1, control2]})
+			} else {
+				vertices.push({point, command: 'L'})
+			}
+
+			control1 = vec2.add(point, handleIn)
+		}
+
+		return {curves: [{vertices, closed: false}]}
 	}
 
 	/**
