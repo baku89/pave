@@ -104,15 +104,15 @@ export namespace Curve {
 
 	export function toSegmentLocation(
 		curve: Curve,
-		loc: CurveLocation
-	): [segment: Segment, loc: SegmentLocation] {
-		if (typeof loc === 'number') {
-			loc = {unit: loc}
+		location: CurveLocation
+	): {segment: Segment; location: SegmentLocation; segmentIndex: number} {
+		if (typeof location === 'number') {
+			location = {unit: location}
 		}
 
-		if ('time' in loc) {
+		if ('time' in location) {
 			const segCount = segmentCount(curve)
-			let extendedTime = loc.time * segCount
+			let extendedTime = location.time * segCount
 			let segmentIndex = Math.floor(extendedTime)
 
 			if (segmentIndex < 0) {
@@ -123,23 +123,23 @@ export namespace Curve {
 				extendedTime = segCount
 			}
 
-			const seg = Curve.segment(curve, segmentIndex)
+			const segment = Curve.segment(curve, segmentIndex)
 			const time = extendedTime - segmentIndex
-			return [seg, {time}]
+			return {segment, location: {time}, segmentIndex}
 		}
 
-		if ('unit' in loc) {
+		if ('unit' in location) {
 			const segLength = length(curve)
-			loc = {offset: loc.unit * segLength}
+			location = {offset: location.unit * segLength}
 		}
 
-		let offset = loc.offset
+		let offset = location.offset
 
-		for (const segment of segments(curve)) {
+		for (const [segmentIndex, segment] of segments(curve).entries()) {
 			const segLength = Segment.length(segment)
 			if (offset < segLength) {
 				const time = offset / segLength
-				return [segment, {time}]
+				return {segment, location: {time}, segmentIndex}
 			}
 			offset -= segLength
 		}

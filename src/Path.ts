@@ -930,11 +930,10 @@ export namespace Path {
 	 * @category Properties
 	 */
 	export const segmentCount = memoize((path: Path) => {
-		return path.curves.reduce((acc, curve) => {
-			return curve.closed
-				? acc + curve.vertices.length
-				: acc + curve.vertices.length - 1
-		}, 0)
+		return path.curves.reduce(
+			(acc, curve) => acc + Curve.segmentCount(curve),
+			0
+		)
 	})
 
 	/**
@@ -987,120 +986,165 @@ export namespace Path {
 
 	export function toSegmentLocation(
 		path: Path,
-		loc: PathLocation
-	): [segment: Segment, loc: SegmentLocation] {
+		location: PathLocation
+	): {
+		segment: Segment
+		location: SegmentLocation
+		segmentIndex: number
+		curveIndex: number
+	} {
 		// TODO: Fix this
 
-		if (typeof loc === 'number') {
-			loc = {unit: loc}
+		if (typeof location === 'number') {
+			location = {unit: location}
 		}
 
-		const segs = segments(path)
+		const segmentCount = Path.segmentCount(path)
 
-		let curveIndex = loc.curveIndex ?? null
+		let curveIndex = location.curveIndex ?? null
 		if (typeof curveIndex === 'number') {
 			if (curveIndex < 0) {
 				curveIndex = 0
 			} else if (curveIndex > path.curves.length - 1) {
 				curveIndex = path.curves.length - 1
-				loc = {time: 1}
+				location = {time: 1}
 			}
 		}
 
-		let segmentIndex = loc.segmentIndex ?? null
+		let segmentIndex = location.segmentIndex ?? null
 		if (typeof segmentIndex === 'number') {
 			if (segmentIndex < 0) {
 				segmentIndex = 0
-			} else if (segmentIndex > segs.length - 1) {
-				segmentIndex = segs.length - 1
-				loc = {time: 1}
+			} else if (segmentIndex > segmentCount - 1) {
+				segmentIndex = segmentCount - 1
+				location = {time: 1}
 			}
 		}
 
 		if (curveIndex !== null && segmentIndex !== null) {
-			// Location in the specified segment
-			const seg = segment(path, curveIndex, segmentIndex)
+			// Location in the specified curve and segment
+			const segment = Path.segment(path, curveIndex, segmentIndex)
 
-			return [seg, loc]
+			return {segment, location, curveIndex, segmentIndex}
 		}
 
 		if (curveIndex !== null && segmentIndex === null) {
 			// Location in the specific curve
 			const curve = path.curves[curveIndex]
 
-			return Curve.toSegmentLocation(curve, loc)
+			return {...Curve.toSegmentLocation(curve, location), curveIndex}
 		}
 
-		if (curveIndex === null && segmentIndex === null) {
-			// Location in the whole path
+		const segs = Path.segments(path)
 
-			if ('time' in loc) {
-				const extendedTime = loc.time * segs.length
-				const linearSegmentIndex = scalar.clamp(
-					Math.floor(extendedTime),
-					0,
-					segs.length - 1
-				)
-
-				const seg = segs[linearSegmentIndex]
-				const time = extendedTime - linearSegmentIndex
-
-				return [seg, {time}]
-			} else {
-				const pathLen = length(path)
-
-				if ('unit' in loc) {
-					loc = {offset: loc.unit * pathLen}
-				}
-
-				let offset = scalar.clamp(loc.offset, 0, pathLen)
-
-				for (const seg of segs) {
-					const segLength = Segment.length(seg)
-					if (offset < segLength) {
-						return [seg, {offset}]
-					}
-					offset -= segLength
-				}
-
-				const lastSeg = segs.at(-1)
-				if (lastSeg) {
-					offset = Segment.length(lastSeg)
-					return [lastSeg, {offset}]
-				}
-			}
-		} else if (curveIndex === null && segmentIndex !== null) {
+		if (curveIndex === null && segmentIndex !== null) {
 			// Location in the segment specified by linear index
 
-			if ('time' in loc) {
-				const seg = segs[segmentIndex]
-				return [seg, loc]
+			if ('time' in location) {
+				const segment = segs[segmentIndex]
+				return {segment, location, ...unlinearSegmentIndex(path, segmentIndex)}
 			}
 
 			const pathLen = length(path)
 
-			if ('unit' in loc) {
-				loc = {offset: loc.unit * pathLen}
+			if ('unit' in location) {
+				location = {offset: location.unit * pathLen}
 			}
 
-			let offset = scalar.clamp(loc.offset, 0, pathLen)
+			let offset = scalar.clamp(location.offset, 0, pathLen)
 
-			for (const seg of segs) {
-				const segLength = Segment.length(seg)
-				if (offset < segLength) {
-					return [seg, {offset}]
+			for (const [linearSegmentIndex, segment] of segs.entries()) {
+				const segLength = Segment.length(segment)
+				if (offset < segLength || linearSegmentIndex === segs.length - 1) {
+					return {
+						segment,
+						location: {offset},
+						...unlinearSegmentIndex(path, linearSegmentIndex),
+					}
 				}
 				offset -= segLength
 			}
+		} else if (curveIndex === null && segmentIndex === null) {
+			// Location in the whole path
 
-			const lastSeg = segs.at(-1)
-			if (lastSeg) {
-				offset = Segment.length(lastSeg)
-				return [lastSeg, {offset}]
+			if ('time' in location) {
+				const extendedTime = location.time * segmentCount
+				const linearSegmentIndex = scalar.clamp(
+					Math.floor(extendedTime),
+					0,
+					segmentCount - 1
+				)
+
+				const segment = segs[linearSegmentIndex]
+				const time = extendedTime - linearSegmentIndex
+
+				const {curveIndex, segmentIndex} = unlinearSegmentIndex(
+					path,
+					linearSegmentIndex
+				)
+
+				return {segment, location: {time}, curveIndex, segmentIndex}
+			} else {
+				const pathLen = length(path)
+
+				if ('unit' in location) {
+					location = {offset: location.unit * pathLen}
+				}
+
+				// Offset-based serach from the beginning of the path
+				let offset = scalar.clamp(location.offset, 0, pathLen)
+
+				if (offset < pathLen) {
+					for (const [curveIndex, curve] of path.curves.entries()) {
+						const curveLen = Curve.length(curve)
+						if (offset < curveLen) {
+							return {
+								...Curve.toSegmentLocation(curve, {offset}),
+								curveIndex,
+							}
+						}
+						offset -= curveLen
+					}
+				} else {
+					const segment = segs.at(-1)
+					if (segment) {
+						return {
+							segment,
+							location: {time: 1},
+							curveIndex: path.curves.length - 1,
+							segmentIndex: segs.length - 1,
+						}
+					}
+				}
 			}
 		}
 
-		throw new Error('Location is out of bounds')
+		throw new Error(
+			'Location is out of bounds. It’s likely a bug in the library.'
+		)
+	}
+
+	/**
+	 * Converts a linear segment index to a pair of curve and segment indices.
+	 */
+	export function unlinearSegmentIndex(
+		path: Path,
+		linearSegmentIndex: number
+	): {curveIndex: number; segmentIndex: number} {
+		let segmentIndex = linearSegmentIndex
+		let curveIndex = 0
+
+		// TODO: Refactor this to avoid O(n) search
+		for (const curve of path.curves) {
+			const segmentCount = Curve.segmentCount(curve)
+			if (segmentIndex < segmentCount) {
+				break
+			}
+			curveIndex++
+			segmentIndex -= segmentCount
+		}
+
+		return {curveIndex, segmentIndex}
 	}
 
 	/**
@@ -1111,8 +1155,8 @@ export namespace Path {
 	 * @category Properties
 	 */
 	export function point(path: Path, loc: PathLocation): vec2 {
-		const [seg, segLoc] = toSegmentLocation(path, loc)
-		return Segment.point(seg, segLoc)
+		const segLoc = toSegmentLocation(path, loc)
+		return Segment.point(segLoc.segment, segLoc.location)
 	}
 
 	/**
@@ -1123,8 +1167,8 @@ export namespace Path {
 	 * @category Properties
 	 */
 	export function derivative(path: Path, loc: PathLocation): vec2 {
-		const [seg, segLoc] = toSegmentLocation(path, loc)
-		return Segment.derivative(seg, segLoc)
+		const segLoc = toSegmentLocation(path, loc)
+		return Segment.derivative(segLoc.segment, segLoc.location)
 	}
 
 	/**
@@ -1135,8 +1179,8 @@ export namespace Path {
 	 * @category Properties
 	 */
 	export function tangent(path: Path, loc: PathLocation): vec2 {
-		const [seg, segLoc] = toSegmentLocation(path, loc)
-		return Segment.tangent(seg, segLoc)
+		const segLoc = toSegmentLocation(path, loc)
+		return Segment.tangent(segLoc.segment, segLoc.location)
 	}
 
 	/**
@@ -1147,8 +1191,8 @@ export namespace Path {
 	 * @category Properties
 	 */
 	export function normal(path: Path, loc: PathLocation): vec2 {
-		const [seg, segLoc] = toSegmentLocation(path, loc)
-		return Segment.normal(seg, segLoc)
+		const segLoc = toSegmentLocation(path, loc)
+		return Segment.normal(segLoc.segment, segLoc.location)
 	}
 
 	/**
@@ -1159,10 +1203,9 @@ export namespace Path {
 	 * @category Properties
 	 */
 	export function orientation(path: Path, loc: PathLocation): mat2d {
-		const [seg, segLoc] = toSegmentLocation(path, loc)
-		return Segment.orientation(seg, segLoc)
+		const segLoc = toSegmentLocation(path, loc)
+		return Segment.orientation(segLoc.segment, segLoc.location)
 	}
-
 	/**
 	 * Maps each segment in the path to a single or array of vertices and creates a new path concatinating those vertices. you can change the type of commands, and change the number of them in the path, but you cannot change the topology of the path. The segments that were originally continuous remains connected, and vice versa.
 	 * @param path The path to map
