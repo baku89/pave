@@ -1207,6 +1207,7 @@ export namespace Path {
 		const segLoc = toSegmentLocation(path, loc)
 		return Segment.orientation(segLoc.segment, segLoc.location)
 	}
+
 	/**
 	 * Maps each segment in the path to a single or array of vertices and creates a new path concatinating those vertices. you can change the type of commands, and change the number of them in the path, but you cannot change the topology of the path. The segments that were originally continuous remains connected, and vice versa.
 	 * @param path The path to map
@@ -1254,6 +1255,18 @@ export namespace Path {
 					closed: curve.closed,
 				}
 			}),
+		}
+	}
+
+	export function spawnCurve<
+		V1 extends Vertex = Vertex,
+		V2 extends Vertex = Vertex,
+	>(
+		path: Path<V1>,
+		fn: (curve: Curve<V1>, curveIndex: number) => Curve<V2> | Curve<V2>[]
+	): Path<V2> {
+		return {
+			curves: path.curves.flatMap(fn),
 		}
 	}
 
@@ -2699,11 +2712,18 @@ export namespace Path {
 		 * Returns the path drawn by the pen so far.
 		 */
 		get(): Path {
-			return {
-				curves: [
-					...this.#curves.slice(0, -1),
-					...(this.current ? [this.current.curve] : []),
-				],
+			if (this.current) {
+				return {
+					curves: [
+						...this.#curves.slice(0, -1),
+						{
+							vertices: [...this.current.curve.vertices],
+							closed: this.current.curve.closed,
+						},
+					],
+				}
+			} else {
+				return {curves: [...this.#curves]}
 			}
 		}
 	}
