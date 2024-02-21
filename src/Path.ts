@@ -1,6 +1,7 @@
 import {mat2d, scalar, vec2} from 'linearly'
 import paper from 'paper'
 import {OffsetOptions as PaperOffsetOptions, PaperOffset} from 'paperjs-offset'
+import svgpath from 'svgpath'
 
 import {Arc} from './Arc'
 import {Circle} from './Circle'
@@ -1597,6 +1598,54 @@ export namespace Path {
 	}
 
 	/**
+	 * Parses the given d attribute of an SVG path and creates a new path. Internally uses [svgpath](https://github.com/fontello/svgpath) library. ![](https://baku89.com/wp-content/uploads/2020/08/monaca_C-0-00-00-00-1-1080x1440.jpg)
+	 * @param d The d attribute of an SVG path
+	 * @returns The newly created path
+	 * @category Converters
+	 */
+	export function fromSVGString(d: string): Path {
+		const pen = new Pen()
+
+		svgpath(d)
+			.unshort()
+			.abs()
+			.iterate(seg => {
+				switch (seg[0]) {
+					case 'M':
+						pen.M([seg[1], seg[2]])
+						break
+					case 'L':
+						pen.L([seg[1], seg[2]])
+						break
+					case 'C':
+						pen.C([seg[1], seg[2]], [seg[3], seg[4]], [seg[5], seg[6]])
+						break
+					case 'Q':
+						pen.Q([seg[1], seg[2]], [seg[3], seg[4]])
+						break
+					case 'A': {
+						const [, rx, ry, xAxisRotation, largeArcFlag, sweepFlag, x, y] = seg
+						pen.A([rx, ry], xAxisRotation, !!largeArcFlag, !!sweepFlag, [x, y])
+						break
+					}
+					case 'Z':
+						pen.Z()
+						break
+					default:
+						throw new Error(`Unexpected command: ${seg[0]}`)
+				}
+			})
+
+		return pen.get()
+	}
+
+	/**
+	 * Alias for {@link fromSVGString}
+	 * @category Aliases
+	 */
+	export const fromD = fromSVGString
+
+	/**
 	 * Converts the given path to a string that can be used as the d attribute of an SVG path element.
 	 * @param path The path to convert
 	 * @returns The string for the d attribute of the SVG path element
@@ -1655,6 +1704,11 @@ export namespace Path {
 			return `A ${radii} ${xAxisRotation} ${largeArc} ${sweep} ${p}`
 		}
 	}
+
+	/**
+	 * Alias for {@link toSVGString}
+	 */
+	export const toD = toSVGString
 
 	/**
 	 * Returns all segmentse
