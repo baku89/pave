@@ -7,8 +7,6 @@ import {Ref} from 'vue'
 export async function setupEvalContextCreator(defaultColor: Ref<string>) {
 	const Pave = await import('pave')
 
-	// console.log(Linearly)
-
 	const {Path, Curve} = Pave
 
 	return (ctx: CanvasRenderingContext2D) => {
