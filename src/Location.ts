@@ -1,3 +1,6 @@
+/**
+ * Represents a location on a single segment
+ */
 export type SegmentLocation =
 	| UnitSegmentLocation
 	| OffsetSegmentLocation
@@ -7,6 +10,9 @@ export type UnitSegmentLocation = number | {unit: number}
 export type OffsetSegmentLocation = {offset: number}
 export type TimeSegmentLocation = {time: number}
 
+/**
+ * Represents a location on a single curve
+ */
 export type CurveLocation =
 	| UnitCurveLocation
 	| OffsetCurveLocation
@@ -25,6 +31,9 @@ type PathLocationIndices = {
 	segmentIndex?: number
 }
 
+/**
+ * Represents a location on a path
+ */
 export type PathLocation =
 	| UnitPathLocation
 	| OffsetPathLocation
