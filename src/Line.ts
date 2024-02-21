@@ -46,6 +46,20 @@ export namespace Line {
 		return [...xAxis, ...yAxis, ...p]
 	}
 
+	export function trim(
+		line: SimpleSegmentL,
+		start: SegmentLocation,
+		end: SegmentLocation
+	): SegmentL {
+		const startTime = toTime(line, start)
+		const endTime = toTime(line, end)
+
+		const newStart = point(line, startTime)
+		const newEnd = point(line, endTime)
+
+		return {start: newStart, point: newEnd, command: 'L'}
+	}
+
 	export function divideAtTimes(
 		line: SimpleSegmentL,
 		times: number[]
