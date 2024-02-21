@@ -13,23 +13,9 @@ type SimpleSegmentC = PartialBy<SegmentC, 'command'>
  * A collection of functions to handle a cubic bezier represented with {@link SegmentC}.
  */
 export namespace CubicBezier {
-	export const toBezierJS = memoize((bezier: SimpleSegmentC): BezierJS => {
-		const {
-			start,
-			args: [control1, control2],
-			point,
-		} = bezier
-		return new BezierJS(
-			start[0],
-			start[1],
-			control1[0],
-			control1[1],
-			control2[0],
-			control2[1],
-			point[0],
-			point[1]
-		)
-	})
+	export function of(start: vec2, control1: vec2, control2: vec2, point: vec2) {
+		return {command: 'C', start, args: [control1, control2], point}
+	}
 
 	export const toPaperBezier = memoize((beizer: SegmentC) => {
 		const {
@@ -154,12 +140,62 @@ export namespace CubicBezier {
 	 * Finds the on-curve point closest to the specific off-curve point
 	 */
 	export function project(
-		bezier: SegmentC,
+		bezier: SimpleSegmentC,
 		origin: vec2
 	): {position: vec2; t?: number; distance?: number} {
 		const bezierJS = toBezierJS(bezier)
 		const {x, y, t, d} = bezierJS.project(toPoint(origin))
 		return {position: [x, y], t, distance: d}
+	}
+
+	export function trim(
+		bezier: SegmentC,
+		start: SegmentLocation,
+		end: SegmentLocation
+	): SegmentC {
+		let startTime = toTime(bezier, start)
+		let endTime = toTime(bezier, end)
+
+		if (startTime === 0 && endTime === 1) {
+			return bezier
+		}
+
+		// Make sure that startTime < endTime
+		const shouldFlip = startTime > endTime
+		if (shouldFlip) {
+			;[startTime, endTime] = [endTime, startTime]
+		}
+
+		// Trim to [0, 1] -> [startTime, 1]
+		let newStart: vec2, midC1: vec2, midC2: vec2
+
+		if (startTime === 0) {
+			newStart = bezier.start
+			;[midC1, midC2] = bezier.args
+		} else {
+			;[, , newStart, midC1, midC2] = splitCubicBezierAtTime(bezier, startTime)
+		}
+
+		// Trim to [startTime, 1] -> [startTime, endTime]
+		let newC1: vec2, newC2: vec2, newEnd: vec2
+
+		if (endTime === 1) {
+			newEnd = bezier.point
+			;[newC1, newC2] = [midC1, midC2]
+		} else {
+			;[newC1, newC2, newEnd] = splitCubicBezierAtTime(
+				{start: newStart, args: [midC1, midC2], point: bezier.point},
+				scalar.invlerp(startTime, 1, endTime)
+			)
+		}
+
+		// Flip back if necessary
+		if (shouldFlip) {
+			;[newStart, newEnd] = [newEnd, newStart]
+			;[newC1, newC2] = [newC2, newC1]
+		}
+
+		return {command: 'C', start: newStart, args: [newC1, newC2], point: newEnd}
 	}
 
 	export function divideAtTimes(segment: SegmentC, times: number[]): VertexC[] {
@@ -224,4 +260,50 @@ const getDerivativeFn = memoize((bezier: SimpleSegmentC) => {
 			dy = (ay * time + by) * time + cy
 		return [dx, dy]
 	}
+})
+
+function splitCubicBezierAtTime(
+	bezier: SimpleSegmentC,
+	time: number
+): [
+	newControl1: vec2,
+	inControl: vec2,
+	midPoint: vec2,
+	outControl: vec2,
+	newControl2: vec2,
+] {
+	// Use de Casteljau's algorithm
+	// https://pomax.github.io/bezierinfo/#splitting
+
+	const [c1, c2] = bezier.args
+
+	// Find the start point and c1
+	const newControl1 = vec2.lerp(bezier.start, c1, time)
+	const p12 = vec2.lerp(c1, c2, time)
+	const newControl2 = vec2.lerp(c2, bezier.point, time)
+
+	const inControl = vec2.lerp(newControl1, p12, time)
+	const outControl = vec2.lerp(p12, newControl2, time)
+
+	const midPoint = vec2.lerp(inControl, outControl, time)
+
+	return [newControl1, inControl, midPoint, outControl, newControl2]
+}
+
+const toBezierJS = memoize((bezier: SimpleSegmentC): BezierJS => {
+	const {
+		start,
+		args: [control1, control2],
+		point,
+	} = bezier
+	return new BezierJS(
+		start[0],
+		start[1],
+		control1[0],
+		control1[1],
+		control2[0],
+		control2[1],
+		point[0],
+		point[1]
+	)
 })
