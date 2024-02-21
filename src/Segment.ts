@@ -87,6 +87,20 @@ export namespace Segment {
 		return [...xAxis, ...yAxis, ...p]
 	}
 
+	export function trim(
+		seg: Segment,
+		from: SegmentLocation,
+		to: SegmentLocation
+	): Segment {
+		if (seg.command === 'L') {
+			return Line.trim(seg, from, to)
+		} else if (seg.command === 'C') {
+			return CubicBezier.trim(seg, from, to)
+		} else {
+			return Arc.trim(seg, from, to)
+		}
+	}
+
 	export const toTime = (seg: Segment, loc: SegmentLocation): number => {
 		if (seg.command === 'L') {
 			return Line.toTime(seg as SegmentL, loc)
