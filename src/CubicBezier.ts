@@ -163,6 +163,7 @@ export namespace CubicBezier {
 		let endTime = toTime(bezier, end)
 
 		if (startTime === 0 && endTime === 1) {
+			// Early return if the curve is not trimmed
 			return (
 				'command' in bezier ? bezier : {...bezier, command: 'C'}
 			) as SegmentC
@@ -174,36 +175,23 @@ export namespace CubicBezier {
 			;[startTime, endTime] = [endTime, startTime]
 		}
 
-		// Trim to [0, 1] -> [startTime, 1]
-		let newStart: vec2, midC1: vec2, midC2: vec2
-
-		if (startTime === 0) {
-			newStart = bezier.start
-			;[midC1, midC2] = bezier.args
-		} else {
-			;[, , newStart, midC1, midC2] = splitCubicBezierAtTime(bezier, startTime)
-		}
-
-		// Trim to [startTime, 1] -> [startTime, endTime]
-		let newC1: vec2, newC2: vec2, newEnd: vec2
-
-		if (endTime === 1) {
-			newEnd = bezier.point
-			;[newC1, newC2] = [midC1, midC2]
-		} else {
-			;[newC1, newC2, newEnd] = splitCubicBezierAtTime(
-				{start: newStart, args: [midC1, midC2], point: bezier.point},
-				scalar.invlerp(startTime, 1, endTime)
-			)
-		}
+		let [newStart, newC1, newC2, newEnd] = trimBetweenTimes(
+			bezier,
+			startTime,
+			endTime
+		)
 
 		// Flip back if necessary
 		if (shouldFlip) {
-			;[newStart, newEnd] = [newEnd, newStart]
-			;[newC1, newC2] = [newC2, newC1]
+			;[newStart, newC1, newC2, newEnd] = [newEnd, newC2, newC1, newStart]
 		}
 
-		return {command: 'C', start: newStart, args: [newC1, newC2], point: newEnd}
+		return {
+			command: 'C',
+			start: newStart,
+			args: [newC1, newC2],
+			point: newEnd,
+		}
 	}
 
 	export function divideAtTimes(
@@ -218,7 +206,9 @@ export namespace CubicBezier {
 			const from = times[i - 1]
 			const to = times[i]
 
-			vertices.push(trim(segment, from, to))
+			const [, c1, c2, point] = trimBetweenTimes(segment, from, to)
+
+			vertices.push({command: 'C', args: [c1, c2], point})
 		}
 
 		return vertices
@@ -312,3 +302,37 @@ const toBezierJS = memoize((bezier: SimpleSegmentC): BezierJS => {
 		point[1]
 	)
 })
+
+/**
+ * Internal function to trim a bezier curve between given times range. It must be guaranteed that `0 <= from <= to <= 1`.
+ */
+function trimBetweenTimes(
+	bezier: SimpleSegmentC,
+	from: number,
+	to: number
+): [start: vec2, c1: vec2, c2: vec2, point: vec2] {
+	// Trim to [0, 1] -> [startTime, 1]
+	let newStart: vec2, midC1: vec2, midC2: vec2
+
+	if (from === 0) {
+		newStart = bezier.start
+		;[midC1, midC2] = bezier.args
+	} else {
+		;[, , newStart, midC1, midC2] = splitCubicBezierAtTime(bezier, from)
+	}
+
+	// Trim to [startTime, 1] -> [startTime, endTime]
+	let newC1: vec2, newC2: vec2, newEnd: vec2
+
+	if (to === 1) {
+		newEnd = bezier.point
+		;[newC1, newC2] = [midC1, midC2]
+	} else {
+		;[newC1, newC2, newEnd] = splitCubicBezierAtTime(
+			{start: newStart, args: [midC1, midC2], point: bezier.point},
+			scalar.invlerp(from, 1, to)
+		)
+	}
+
+	return [newStart, newC1, newC2, newEnd]
+}
