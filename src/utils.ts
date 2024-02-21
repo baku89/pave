@@ -25,3 +25,32 @@ export function memoize<Arg extends object, ReturnType>(
 }
 
 export type PartialBy<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>
+
+/**
+ * Iterates over a range between `from` and `to` with a given `step`, while avoiding infinite loops.
+ */
+export function* iterateRange(
+	from: number,
+	to: number,
+	step: number,
+	maxCount = 100_000_000
+): Generator<number> {
+	if (from === to) {
+		// If the range is empty
+		yield from
+		return
+	}
+
+	// Check if the iteration is too large, and if so, clamp the step
+
+	const count =
+		step === 0
+			? maxCount
+			: Math.min(Math.ceil(Math.abs(to - from) / step), maxCount)
+
+	step = (to - from) / count
+
+	for (let i = 0; i <= count; i++) {
+		yield from + i * step
+	}
+}
