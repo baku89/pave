@@ -1225,7 +1225,7 @@ export namespace Path {
 			curves: path.curves.map(curve => {
 				const vertices: V2[] = []
 
-				if (!curve.closed) {
+				if (!curve.closed && curve.vertices.length > 1) {
 					// For open path, add the first vertex
 					const lastToFirstSeg = {
 						command: curve.vertices[0].command,
@@ -1235,11 +1235,12 @@ export namespace Path {
 					} as Segment<V1>
 
 					const lastToFirstVertices = fn(lastToFirstSeg, -1, curve)
-					const firstVertex = Array.isArray(lastToFirstVertices)
-						? lastToFirstVertices.at(-1)!
-						: lastToFirstVertices
 
-					vertices.push(firstVertex)
+					if (Array.isArray(lastToFirstVertices)) {
+						vertices.push(...lastToFirstVertices.slice(-1))
+					} else {
+						vertices.push(lastToFirstVertices)
+					}
 				}
 
 				vertices.push(
