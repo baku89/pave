@@ -1431,6 +1431,8 @@ export namespace Path {
 	 * @category Modifiers
 	 */
 	export function subdivide(path: Path, division: number): Path {
+		division = Math.floor(division)
+
 		if (division <= 1) return path
 
 		const times = Array(division - 1)
