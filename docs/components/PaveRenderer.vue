@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import {throttledWatch, useElementSize} from '@vueuse/core'
+import {throttledWatch, useCssVar, useElementSize} from '@vueuse/core'
 import {computed, onMounted, ref, watch} from 'vue'
 
 import {createDrawFunction, setupEvalContextCreator} from './createDrawFunction'
@@ -20,7 +20,7 @@ const {width: canvasWidth, height: canvasHeight} = useElementSize(canvas)
 onMounted(async () => {
 	context.value = canvas.value?.getContext('2d') ?? null
 
-	const createDrawContext = await setupEvalContextCreator(ref('black'))
+	const createDrawContext = await setupEvalContextCreator(useCssVar('--c-text'))
 
 	const evalContext = computed(() => {
 		if (!context.value) return {}
