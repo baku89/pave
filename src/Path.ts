@@ -1282,6 +1282,23 @@ export namespace Path {
 		})
 	}
 
+	export interface ReverseOptions {
+		/**
+		 * The unit to reverse the path.
+		 * @defaultValue 'path'
+		 */
+		per?: 'path' | 'curve'
+	}
+
+	export function reverse(
+		path: Path,
+		{per = 'path'}: ReverseOptions = {}
+	): Path {
+		const curves = per === 'path' ? path.curves.slice().reverse() : path.curves
+
+		return {curves: curves.flatMap(Curve.reverse)}
+	}
+
 	/**
 	 *
 	 * @param path

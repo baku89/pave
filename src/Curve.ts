@@ -79,6 +79,45 @@ export namespace Curve {
 		return segs
 	})
 
+	export function reverse(curve: Curve): Curve {
+		const vertices: Vertex[] = []
+
+		const numVertex = curve.vertices.length
+		const iStart = curve.closed ? numVertex : numVertex - 1
+
+		for (let i = iStart; i >= 0; i--) {
+			if (!curve.closed && i === numVertex - 1) {
+				vertices.push({
+					command: 'L',
+					point: curve.vertices[i].point,
+				})
+				continue
+			}
+
+			const point = curve.vertices[i % numVertex].point
+			const {command, args} = curve.vertices[(i + 1) % numVertex]
+
+			if (command === 'L') {
+				vertices.push({command: 'L', point})
+			} else if (command === 'C') {
+				vertices.push({
+					command: 'C',
+					point,
+					args: [args[1], args[0]],
+				})
+			} else {
+				const [radii, xAxisRotation, largeArc, sweep] = args
+				vertices.push({
+					command: 'A',
+					point,
+					args: [radii, xAxisRotation, largeArc, !sweep],
+				})
+			}
+		}
+
+		return {vertices, closed: curve.closed}
+	}
+
 	export function close(curve: Curve, fuse = true): Curve {
 		if (fuse) {
 			const firstVertex = curve.vertices.at(0)
