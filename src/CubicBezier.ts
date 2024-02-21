@@ -7,17 +7,20 @@ import {VertexC} from './Path'
 import {SegmentC} from './Segment'
 import {memoize, PartialBy} from './utils'
 
+/**
+ * Almost equivalent to {@link SegmentC}, but the redundant `command` field can be ommited. Used for the argument of CubicBezier functions.
+ */
 type SimpleSegmentC = PartialBy<SegmentC, 'command'>
 
 /**
- * A collection of functions to handle a cubic bezier represented with {@link SegmentC}.
+ * A collection of functions to handle a cubic bezier represented with {@link SimpleSegment}.
  */
 export namespace CubicBezier {
 	export function of(start: vec2, control1: vec2, control2: vec2, point: vec2) {
 		return {command: 'C', start, args: [control1, control2], point}
 	}
 
-	export const toPaperBezier = memoize((beizer: SegmentC) => {
+	export const toPaperBezier = memoize((beizer: SimpleSegmentC) => {
 		const {
 			start: [x0, y0],
 			args: [[x1, y1], [x2, y2]],
@@ -64,7 +67,7 @@ export namespace CubicBezier {
 		]
 	})
 
-	export function toTime(bezier: SegmentC, loc: SegmentLocation): number {
+	export function toTime(bezier: SimpleSegmentC, loc: SegmentLocation): number {
 		if (typeof loc === 'number') {
 			return scalar.clamp(loc, 0, 1)
 		} else if ('time' in loc) {
@@ -89,7 +92,7 @@ export namespace CubicBezier {
 	/**
 	 * Calculates the point on the curve at the specified `t` value.
 	 */
-	export function point(bezier: SegmentC, loc: SegmentLocation): vec2 {
+	export function point(bezier: SimpleSegmentC, loc: SegmentLocation): vec2 {
 		const t = toTime(bezier, loc)
 
 		const {
@@ -114,7 +117,10 @@ export namespace CubicBezier {
 	/**
 	 * Calculates the curve tangent at the specified `t` value. Note that this yields a not-normalized vector.
 	 */
-	export function derivative(bezier: SegmentC, loc: SegmentLocation): vec2 {
+	export function derivative(
+		bezier: SimpleSegmentC,
+		loc: SegmentLocation
+	): vec2 {
 		const time = toTime(bezier, loc)
 
 		const derivativeFn = getDerivativeFn(bezier)
@@ -125,14 +131,14 @@ export namespace CubicBezier {
 	/**
 	 * Calculates the curve tangent at the specified `t` value. Unlike {@link derivative}, this yields a normalized vector.
 	 */
-	export function tangent(bezier: SegmentC, loc: SegmentLocation): vec2 {
+	export function tangent(bezier: SimpleSegmentC, loc: SegmentLocation): vec2 {
 		return vec2.normalize(derivative(bezier, loc))
 	}
 
 	/**
 	 * Calculates the curve normal at the specified `t` value. Note that this yields a normalized vector.
 	 */
-	export function normal(bezier: SegmentC, loc: SegmentLocation): vec2 {
+	export function normal(bezier: SimpleSegmentC, loc: SegmentLocation): vec2 {
 		return vec2.rotate(tangent(bezier, loc), 90)
 	}
 
@@ -149,7 +155,7 @@ export namespace CubicBezier {
 	}
 
 	export function trim(
-		bezier: SegmentC,
+		bezier: SimpleSegmentC,
 		start: SegmentLocation,
 		end: SegmentLocation
 	): SegmentC {
@@ -157,7 +163,9 @@ export namespace CubicBezier {
 		let endTime = toTime(bezier, end)
 
 		if (startTime === 0 && endTime === 1) {
-			return bezier
+			return (
+				'command' in bezier ? bezier : {...bezier, command: 'C'}
+			) as SegmentC
 		}
 
 		// Make sure that startTime < endTime
@@ -198,22 +206,19 @@ export namespace CubicBezier {
 		return {command: 'C', start: newStart, args: [newC1, newC2], point: newEnd}
 	}
 
-	export function divideAtTimes(segment: SegmentC, times: number[]): VertexC[] {
-		const bezier = toBezierJS(segment)
+	export function divideAtTimes(
+		segment: SimpleSegmentC,
+		times: number[]
+	): VertexC[] {
+		times = [0, ...times, 1]
 
 		const vertices: VertexC[] = []
-
-		times = [0, ...times, 1]
 
 		for (let i = 1; i < times.length; i++) {
 			const from = times[i - 1]
 			const to = times[i]
 
-			const points = bezier.split(from, to).points
-
-			const [c1, c2, point] = points.slice(1).map(({x, y}) => [x, y] as vec2)
-
-			vertices.push({command: 'C', args: [c1, c2], point})
+			vertices.push(trim(segment, from, to))
 		}
 
 		return vertices
