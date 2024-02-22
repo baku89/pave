@@ -299,6 +299,23 @@ export namespace Path {
 		return closed ? Path.close(p) : p
 	}
 
+	export function infiniteLine(
+		point0: vec2,
+		point1: vec2,
+		distance = 1e8
+	): Path {
+		const dir = vec2.normalize(vec2.sub(point1, point0))
+		const pointAtInfinity0 = vec2.scaleAndAdd(point0, dir, distance)
+		const pointAtInfinity1 = vec2.scaleAndAdd(point0, dir, -distance)
+		return line(pointAtInfinity0, pointAtInfinity1)
+	}
+
+	export function halfLine(point: vec2, through: vec2, distance = 1e8): Path {
+		const dir = vec2.normalize(vec2.sub(through, point))
+		const pointAtInfinity = vec2.scaleAndAdd(point, dir, distance)
+		return line(point, pointAtInfinity)
+	}
+
 	export interface CircleFromPointsOptions {
 		/**
 		 * If the given points are less than three and the circumcenter cannot be well-defined, the circle will be drawn in the direction of the sweep flag. (in Canvas API, it means clockwise).
@@ -558,7 +575,24 @@ export namespace Path {
 		const circumcircle = Circle.circumcircle(start, through, end)
 
 		if (!circumcircle) {
-			return line(start, end)
+			const vStart = vec2.sub(through, start)
+			const vEnd = vec2.sub(through, end)
+
+			if (vec2.dot(vStart, vEnd) <= 0) {
+				// o-----o-------o
+				// start through end
+				return line(start, end)
+			} else if (vec2.len(vStart) < vec2.len(vEnd)) {
+				// o-------o-----o
+				// through start end
+				const endTo = vec2.add(end, vec2.sub(start, through))
+				return Path.merge([halfLine(start, through), halfLine(end, endTo)])
+			} else {
+				// o-----o-------o
+				// start end through
+				const startTo = vec2.add(start, vec2.sub(end, through))
+				return Path.merge([halfLine(start, startTo), halfLine(end, through)])
+			}
 		}
 
 		const [center, radius] = circumcircle
