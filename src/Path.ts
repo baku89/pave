@@ -633,6 +633,57 @@ export namespace Path {
 	}
 
 	/**
+	 * Creates an arc path from two points and an angle.
+	 * @param start The start point
+	 * @param end The end point
+	 * @param angle The angle of arc in degrees. If the angle is positive, the arc will be drawn in the sweep direction (clockwise in Y-down coordinate system).
+	 * @returns The newly created path
+	 * @category Primitives
+	 */
+	export function arcFromPointsAndAngle(start: vec2, end: vec2, angle: number) {
+		if (angle === 0) {
+			return line(start, end)
+		}
+		if (Math.abs(angle) >= 360) {
+			const dir = vec2.sub(end, start)
+			return Path.merge([
+				halfLine(start, vec2.sub(start, dir)),
+				halfLine(end, vec2.add(end, dir)),
+			])
+		}
+
+		const sign = Math.sign(angle)
+		angle = Math.abs(angle)
+
+		const SE = vec2.sub(end, start)
+
+		const phi = 90 - angle / 2
+
+		const d = vec2.len(SE)
+		const r = d / (2 * scalar.cos(phi))
+
+		const center = vec2.scaleAndAdd(
+			start,
+			vec2.rotate(vec2.normalize(SE), phi * sign),
+			r
+		)
+
+		const CS = vec2.sub(start, center)
+		const CE = vec2.sub(end, center)
+
+		const angleStart = vec2.angle(CS)
+		let deltaAngle = vec2.angle(CS, CE)
+
+		if (phi < 0) {
+			deltaAngle += 360 * sign
+		}
+
+		const angleEnd = angleStart + deltaAngle
+
+		return arc(center, r, angleStart, angleEnd)
+	}
+
+	/**
 	 * Creates a fan path.
 	 * @param center The center of the fan
 	 * @param innerRadius The inner radius of the fan
