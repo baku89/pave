@@ -32,6 +32,23 @@ export namespace Iter {
 		}
 	}
 
+	/**
+	 * Yields tuples of values from the input generator, where each tuple contains the current and previous values.
+	 * @param iter The input generator.
+	 * @returns A generator that yields tuples of values.
+	 */
+	export function* tuple<T>(iter: Generator<T>): Generator<[T, T]> {
+		let prev: T | undefined = undefined
+
+		for (const value of iter) {
+			if (prev !== undefined) {
+				yield [prev, value]
+			}
+
+			prev = value
+		}
+	}
+
 	export interface ResampleOptions {
 		/**
 		 * The step size to use for resampling. If not provided, the step size will be calculated based on the `count` and `align` options.
