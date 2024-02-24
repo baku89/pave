@@ -471,14 +471,14 @@ export namespace Path {
 	export type ArcOptions = {
 		/**
 		 * The maximum angle step in degrees
-		 * @default 180
+		 * @default `360 - 1e-4`
 		 */
 		step?: number
 		/**
 		 * The alignment of the vertices
-		 * @default 'start'
+		 * @default 'uniform'
 		 */
-		align?: 'uniform' | 'start' | 'end'
+		align?: Iter.ResampleOptions['align']
 		/**
 		 * The total count of the segments in the arc. If this is specified, the `step` will be ignored and the arc will be deviced into the specified number of segments uniformly.
 		 */
@@ -506,9 +506,9 @@ export namespace Path {
 		endAngle: number,
 		options: ArcOptions = {}
 	): Path {
+		// Clamp the angle step not to be zero or negative, or exceed 360 degrees
 		const maxAngleStep = 360 - 1e-4
-		// Clamp the angle step not to be zero or negative
-		let step = options.step ?? 180
+		let step = options.step ?? maxAngleStep
 		step = scalar.clamp(Math.abs(step), 0.1, maxAngleStep)
 
 		const radii: vec2 = [radius, radius]
@@ -517,19 +517,20 @@ export namespace Path {
 		const vertices = beginVertex(vec2.add(center, vec2.dir(startAngle, radius)))
 
 		// Add intermediate vertices
-		const angles = Iter.resample(startAngle, endAngle, {step, ...options})
+		const angles = Iter.resample(startAngle, endAngle, {
+			align: 'uniform',
+			step,
+			...options,
+		})
 
-		let prevAngle = startAngle
-
-		for (const throughAngle of angles) {
+		for (const [prevAngle, throughAngle] of Iter.tuple(angles)) {
 			const largeArc = Math.abs(throughAngle - prevAngle) >= 180 - 1e-4
+
 			vertices.push({
 				point: vec2.add(center, vec2.dir(throughAngle, radius)),
 				command: 'A',
 				args: [radii, 0, largeArc, sweepFlag],
 			})
-
-			prevAngle = throughAngle
 		}
 
 		return {curves: [{vertices, closed: false}]}
