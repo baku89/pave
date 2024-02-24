@@ -12,7 +12,7 @@ import {Line} from './Line'
 import {PathLocation, SegmentLocation} from './Location'
 import {Rect} from './Rect'
 import {Segment} from './Segment'
-import {iterateRange, memoize, toFixedSimple} from './utils'
+import {iterateRange, memoize, resample, toFixedSimple} from './utils'
 
 paper.setup(document.createElement('canvas'))
 
@@ -503,69 +503,32 @@ export namespace Path {
 		radius: number,
 		startAngle: number,
 		endAngle: number,
-		{step = 180, align = 'start', count}: ArcOptions = {}
+		options: ArcOptions = {}
 	): Path {
 		const maxAngleStep = 360 - 1e-4
 		// Clamp the angle step not to be zero or negative
+		let step = options.step ?? 180
 		step = scalar.clamp(Math.abs(step), 0.1, maxAngleStep)
-
-		const diffAngle = endAngle - startAngle
-
-		const vertices = beginVertex(vec2.add(center, vec2.dir(startAngle, radius)))
-
-		// Calculate the signed angle step and number of segments
-		if (count) {
-			if (Math.abs(diffAngle) / count > maxAngleStep) {
-				count = Math.ceil(Math.abs(diffAngle) / maxAngleStep)
-			} else {
-				count = Math.floor(Math.max(1, count))
-			}
-			step = diffAngle / count
-		} else if (align === 'uniform') {
-			count = Math.ceil(Math.abs(diffAngle) / step)
-			step = diffAngle / count
-		} else {
-			// align === 'start' | 'end'
-			count = Math.floor(Math.abs(diffAngle) / step)
-			step *= Math.sign(diffAngle)
-		}
 
 		const radii: vec2 = [radius, radius]
 		const sweepFlag = endAngle > startAngle
-		const largeArc = Math.abs(step) > 180
 
-		// Add the additional start vertex if necessary
-		if (align === 'end') {
-			const throughAngle = endAngle - step * count
-			if (throughAngle !== endAngle) {
-				vertices.push({
-					point: vec2.add(center, vec2.dir(throughAngle, radius)),
-					command: 'A',
-					args: [radii, 0, largeArc, sweepFlag],
-				})
-			}
-			startAngle = throughAngle
-		}
+		const vertices = beginVertex(vec2.add(center, vec2.dir(startAngle, radius)))
 
 		// Add intermediate vertices
-		for (let i = 1; i <= count; i++) {
-			const throughAngle = startAngle + step * i
+		const angles = resample(startAngle, endAngle, {step, ...options})
+
+		let prevAngle = startAngle
+
+		for (const throughAngle of angles) {
+			const largeArc = Math.abs(throughAngle - prevAngle) >= 180 - 1e-4
 			vertices.push({
 				point: vec2.add(center, vec2.dir(throughAngle, radius)),
 				command: 'A',
 				args: [radii, 0, largeArc, sweepFlag],
 			})
-		}
 
-		// Add the end vertex if necessary
-		if (align === 'start') {
-			if (startAngle + step * count !== endAngle) {
-				vertices.push({
-					point: vec2.add(center, vec2.dir(endAngle, radius)),
-					command: 'A',
-					args: [radii, 0, largeArc, sweepFlag],
-				})
-			}
+			prevAngle = throughAngle
 		}
 
 		return {curves: [{vertices, closed: false}]}
