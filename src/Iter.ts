@@ -126,7 +126,7 @@ export namespace Iter {
 			yield fromOffset + i * step
 		}
 
-		if (from === to || fromOffset + count * step !== to || emitTo) {
+		if (emitTo && !scalar.approx(fromOffset + count * step, to)) {
 			yield to
 		}
 	}
