@@ -31,7 +31,7 @@ export namespace Line {
 	}
 
 	export function normal(line: SimpleSegmentL): vec2 {
-		return vec2.rotate(tangent(line), 90)
+		return vec2.rotate90(tangent(line))
 	}
 
 	export const curvature = 0
@@ -42,7 +42,7 @@ export namespace Line {
 	): mat2d {
 		const p = point(line, loc)
 		const xAxis = tangent(line)
-		const yAxis = vec2.rotate(xAxis, 90)
+		const yAxis = vec2.rotate90(xAxis)
 		return [...xAxis, ...yAxis, ...p]
 	}
 

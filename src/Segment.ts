@@ -77,13 +77,13 @@ export namespace Segment {
 
 	export function normal(seg: Segment, loc: SegmentLocation): vec2 {
 		const tangent = Segment.tangent(seg, loc)
-		return vec2.rotate(tangent, 90)
+		return vec2.rotate90(tangent)
 	}
 
 	export function orientation(seg: Segment, loc: SegmentLocation): mat2d {
 		const p = point(seg, loc)
 		const xAxis = tangent(seg, loc)
-		const yAxis = vec2.rotate(xAxis, 90)
+		const yAxis = vec2.rotate90(xAxis)
 		return [...xAxis, ...yAxis, ...p]
 	}
 
