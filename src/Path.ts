@@ -8,11 +8,12 @@ import {Circle} from './Circle'
 import {CubicBezier} from './CubicBezier'
 import {Curve} from './Curve'
 import {CurveGroup} from './CurveGroup'
+import {Iter} from './Iter'
 import {Line} from './Line'
 import {PathLocation, SegmentLocation} from './Location'
 import {Rect} from './Rect'
 import {Segment} from './Segment'
-import {iterateRange, memoize, resample, toFixedSimple} from './utils'
+import {memoize, toFixedSimple} from './utils'
 
 paper.setup(document.createElement('canvas'))
 
@@ -516,7 +517,7 @@ export namespace Path {
 		const vertices = beginVertex(vec2.add(center, vec2.dir(startAngle, radius)))
 
 		// Add intermediate vertices
-		const angles = resample(startAngle, endAngle, {step, ...options})
+		const angles = Iter.resample(startAngle, endAngle, {step, ...options})
 
 		let prevAngle = startAngle
 
@@ -899,7 +900,7 @@ export namespace Path {
 
 		let control1: vec2 | null = null
 
-		for (const t of iterateRange(start, end, step, maxVertices)) {
+		for (const t of Iter.range(start, end, step, maxVertices)) {
 			const point = f(t)
 
 			const handleIn = vec2.scale(
