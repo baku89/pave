@@ -35,33 +35,32 @@ export namespace Arc {
 		)
 
 		const [rx, ry] = correctRadii(radii, [x1p, y1p])
+		const rx2 = rx ** 2
+		const ry2 = ry ** 2
+
+		const n = rx2 * ry2 - rx2 * y1p ** 2 - ry2 * x1p ** 2
+		const d = rx2 * y1p ** 2 + ry2 * x1p ** 2
 
 		const sign = largeArcFlag !== sweepFlag ? 1 : -1
-		const n = rx ** 2 * ry ** 2 - rx ** 2 * y1p ** 2 - ry ** 2 * x1p ** 2
-		const d = rx ** 2 * y1p ** 2 + ry ** 2 * x1p ** 2
-
-		const [cxp, cyp] = vec2.scale(
+		const cp = vec2.scale(
 			[(rx * y1p) / ry, (-ry * x1p) / rx],
 			sign * Math.sqrt(Math.abs(n / d))
 		)
 
 		const center = vec2.add(
-			vec2.rotate([cxp, cyp], -xAxisRotation),
+			vec2.rotate(cp, -xAxisRotation),
 			vec2.lerp(start, point, 0.5)
 		)
 
-		const a = vec2.div(vec2.sub([x1p, y1p], [cxp, cyp]), [rx, ry])
-		const b = vec2.div(vec2.sub(vec2.zero, [x1p, y1p], [cxp, cyp]), [rx, ry])
+		const a = vec2.div(vec2.sub([x1p, y1p], cp), [rx, ry])
+		const b = vec2.div(vec2.sub(vec2.zero, [x1p, y1p], cp), [rx, ry])
 		const startAngle = vec2.angle(a)
-		const deltaAngle0 = vec2.angle(a, b) % 360
+		let deltaAngle = vec2.angle(a, b) % 360
 
-		let deltaAngle: number
-		if (!sweepFlag && deltaAngle0 > 0) {
-			deltaAngle = deltaAngle0 - 360
-		} else if (sweepFlag && deltaAngle0 < 0) {
-			deltaAngle = deltaAngle0 + 360
-		} else {
-			deltaAngle = deltaAngle0
+		if (!sweepFlag && deltaAngle > 0) {
+			deltaAngle = deltaAngle - 360
+		} else if (sweepFlag && deltaAngle < 0) {
+			deltaAngle = deltaAngle + 360
 		}
 
 		const endAngle = startAngle + deltaAngle
