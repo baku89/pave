@@ -33,15 +33,43 @@ export namespace Iter {
 	}
 
 	export interface ResampleOptions {
+		/**
+		 * The step size to use for resampling. If not provided, the step size will be calculated based on the `count` and `align` options.
+		 * @default `to - from`
+		 */
 		step?: number
+		/**
+		 * How to align the resampled values.
+		 * @default `'uniform'`
+		 */
 		align?: 'uniform' | 'start' | 'center' | 'end'
+		/**
+		 * The number of samples to generate.  If this is specified, the `step` will be ignored and the number will be distributed uniformly across the range.
+		 * @default `undefined`
+		 */
 		count?: number
+		/**
+		 * Whether to emit the `from` value.
+		 * @default `true`
+		 */
+		emitFrom?: boolean
+		/**
+		 * Whether to emit the `to` value.
+		 * @default `true`
+		 */
+		emitTo?: boolean
 	}
 
 	export function* resample(
 		from: number,
 		to: number,
-		{step, align = 'start', count}: ResampleOptions = {}
+		{
+			step,
+			align = 'uniform',
+			count,
+			emitFrom = true,
+			emitTo = true,
+		}: ResampleOptions = {}
 	) {
 		const diff = to - from
 
@@ -69,6 +97,10 @@ export namespace Iter {
 			step = diff / count
 		}
 
+		if (emitFrom) {
+			yield from
+		}
+
 		if (from !== fromOffset) {
 			yield fromOffset
 		}
@@ -77,7 +109,7 @@ export namespace Iter {
 			yield fromOffset + i * step
 		}
 
-		if (from === to || fromOffset + count * step !== to) {
+		if (from === to || fromOffset + count * step !== to || emitTo) {
 			yield to
 		}
 	}
