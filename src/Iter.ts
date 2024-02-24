@@ -4,13 +4,18 @@ export type Iter = Generator<number>
 
 export namespace Iter {
 	/**
-	 * Iterates over a range between `from` and `to` with a given `step`, while avoiding infinite loops.
+	 * Iterates over a range between [from, to) with a given `step`, while avoiding infinite loops.
+	 * @param from The start of the range.
+	 * @param to The end of the range.
+	 * @param step The step size.
+	 * @param maxCount The maximum number of values to yield.
+	 * @returns A generator that yields values in the range.
 	 */
 	export function* range(
 		from: number,
 		to: number,
 		step: number,
-		maxCount = 100_000_000
+		maxCount = 1_000_000
 	): Iter {
 		if (from === to) {
 			// If the range is empty
@@ -19,16 +24,51 @@ export namespace Iter {
 		}
 
 		// Check if the iteration is too large, and if so, clamp the step
+		if (step === 0) {
+			step = Math.sign(to - from)
+		}
 
-		const count =
-			step === 0
-				? maxCount
-				: Math.min(Math.ceil(Math.abs(to - from) / step), maxCount)
+		step = Math.sign(to - from) * Math.abs(step)
 
-		step = (to - from) / count
+		let count = Math.abs((to - from) / step)
+
+		if (count > maxCount) {
+			step *= count / maxCount
+			count = maxCount
+		}
 
 		for (let i = 0; i <= count; i++) {
 			yield from + i * step
+		}
+	}
+
+	/**
+	 * Yield `from`, `to`, and values between them with a given `step` and `offset`. It avoids infinite loops by clamping the number of iterations.
+	 * @param from The start of the range.
+	 * @param to The end of the range.
+	 * @param step The step size.
+	 * @param offset The offset to apply to the range.
+	 * @param maxCount The maximum number of values to yield.
+	 */
+	export function* rangeWithOffset(
+		from: number,
+		to: number,
+		step: number,
+		offset: number,
+		maxCount?: number
+	): Iter {
+		offset = ((offset % step) + step) % step
+
+		if (offset !== 0) {
+			yield from
+		}
+
+		for (const value of range(from + offset, to, step, maxCount)) {
+			yield value
+		}
+
+		if (offset !== 0) {
+			yield to
 		}
 	}
 
@@ -37,7 +77,7 @@ export namespace Iter {
 	 * @param iter The input generator.
 	 * @returns A generator that yields tuples of values.
 	 */
-	export function* tuple<T>(iter: Generator<T>): Generator<[T, T]> {
+	export function* tuple<T>(iter: Iterable<T>): Generator<[T, T]> {
 		let prev: T | undefined = undefined
 
 		for (const value of iter) {
@@ -46,6 +86,15 @@ export namespace Iter {
 			}
 
 			prev = value
+		}
+	}
+
+	export function* enumerate<T>(iter: Iterable<T>): Generator<[number, T]> {
+		let i = 0
+
+		for (const value of iter) {
+			yield [i, value]
+			i++
 		}
 	}
 

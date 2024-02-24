@@ -927,11 +927,6 @@ export namespace Path {
 
 	export interface FormulaOptions {
 		/**
-		 * The step to evaluate the formula
-		 * @default 0.1
-		 */
-		step?: number
-		/**
 		 * The delta value for calculating the derivative of the formula
 		 * @default 10e-6
 		 */
@@ -944,30 +939,33 @@ export namespace Path {
 
 	export function formula(
 		f: (t: number) => vec2,
-		start = 0,
-		end = 1,
-		{step = 0.1, delta = 10e-6, maxVertices}: FormulaOptions = {}
+		iter: Iterable<number>,
+		{delta = 10e-6}: FormulaOptions = {}
 	): Path {
-		const vertices: Vertex[] = []
+		const ts = Array.isArray(iter) ? iter : [...iter]
 
-		let control1: vec2 | null = null
+		const points = ts.map(f)
 
-		for (const t of Iter.range(start, end, step, maxVertices)) {
-			const point = f(t)
+		const vertices: Vertex[] = [{point: points[0], command: 'L'}]
 
-			const handleIn = vec2.scale(
-				vec2.sub(f(t + delta), point),
-				step / delta / 3
+		for (const [i, [prevT, t]] of Iter.enumerate(Iter.tuple(ts))) {
+			const prevPoint = points[i]
+			const point = points[i + 1]
+			const handleMultiplier = (t - prevT) / delta / 3
+
+			const control1 = vec2.scaleAndAdd(
+				prevPoint,
+				vec2.sub(f(prevT + delta), prevPoint),
+				handleMultiplier
 			)
-			const control2 = vec2.sub(point, handleIn)
 
-			if (control1) {
-				vertices.push({point, command: 'C', args: [control1, control2]})
-			} else {
-				vertices.push({point, command: 'L'})
-			}
+			const control2 = vec2.scaleAndAdd(
+				point,
+				vec2.sub(f(t - delta), point),
+				handleMultiplier
+			)
 
-			control1 = vec2.add(point, handleIn)
+			vertices.push({point, command: 'C', args: [control1, control2]})
 		}
 
 		return {curves: [{vertices, closed: false}]}
