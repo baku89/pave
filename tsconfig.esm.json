@@ -5,7 +5,9 @@
 		"moduleResolution": "Node",
 		"outDir": "./lib/esm",
 		"allowImportingTsExtensions": false,
-		"noEmit": false
+		"noEmit": false,
+		"rootDir": "./src"
 	},
-	"include": ["src/**/*.ts"]
+	"include": ["src/**/*.ts"],
+	"exclude": ["node_modules", "**/*.test.ts"]
 }
