@@ -113,7 +113,23 @@ describe('toCenterParameterization', () => {
 		})
 	})
 
-	test('should work in the angle case [170°, 190°]', () => {
+	it('should work in an ellipse', () => {
+		const ret = Arc.toCenterParameterization({
+			start: [50, 0],
+			point: [0, 25],
+			args: [[50, 25], 0, false, true],
+		})
+
+		expect(ret).toEqual({
+			center: [0, 0],
+			radii: [50, 25],
+			angles: [0, 90],
+			xAxisRotation: 0,
+			sweep: true,
+		})
+	})
+
+	it('should work in the angle case [170°, 190°]', () => {
 		const startAngle = 170
 		const endAngle = 190
 		const r = 1
