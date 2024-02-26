@@ -208,8 +208,9 @@ export namespace Path {
 	}
 
 	/**
-	 *Creates a rounded rectangle. The arguments are almost the same as the CanvasRenderingContext2D's `roundRect` method.
-	 @see https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/roundRect
+	 * Creates a rounded rectangle. The arguments are almost the same as the CanvasRenderingContext2D's `roundRect` method.
+	 * @see https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/roundRect
+	 * @category Primitives
 	 */
 	export function roundRect(
 		start: vec2,
@@ -292,6 +293,10 @@ export namespace Path {
 		return ellipse(center, [radius, radius])
 	}
 
+	/**
+	 * Creates a semicircle path from the given start and end points.
+	 * @category Primitives
+	 */
 	export function semicircle(start: vec2, end: vec2, closed = true): Path {
 		const r = vec2.dist(start, end) / 2
 
@@ -300,6 +305,14 @@ export namespace Path {
 		return closed ? Path.close(p) : p
 	}
 
+	/**
+	 * Creates an infinite line path from the given two points. Unlike {@link line}, the line will be drawn nearly infinitely in both directions.
+	 * @param point0 The first point
+	 * @param point1 The second point
+	 * @param distance  The length of the infinite line for each direction
+	 * @returns The infinite line path
+	 * @category Primitives
+	 */
 	export function infiniteLine(
 		point0: vec2,
 		point1: vec2,
@@ -311,6 +324,14 @@ export namespace Path {
 		return line(pointAtInfinity0, pointAtInfinity1)
 	}
 
+	/**
+	 * Creates a [half-line](https://en.wikipedia.org/wiki/Line_(geometry)#Ray), infinite line in one direction from a starting point and a point that the line passes through. It is not actually an inifinite, but one with a very large length.
+	 * @param point The starting point
+	 * @param through The point that the line passes through
+	 * @param distance The length of the half-line
+	 * @returns The half-line path
+	 * @category Primitives
+	 */
 	export function halfLine(point: vec2, through: vec2, distance = 1e8): Path {
 		const dir = vec2.normalize(vec2.sub(through, point))
 		const pointAtInfinity = vec2.scaleAndAdd(point, dir, distance)
@@ -468,6 +489,10 @@ export namespace Path {
 		}
 	}
 
+	/**
+	 * An options for {@link arc}
+	 * @category Options
+	 */
 	export type ArcOptions = {
 		/**
 		 * The maximum angle step in degrees
@@ -536,6 +561,14 @@ export namespace Path {
 		return {curves: [{vertices, closed: false}]}
 	}
 
+	/**
+	 * Creates an arc path from the given three points. If the points are collinear, it will create a straight line path.
+	 * @param start The start point
+	 * @param through The point that the arc passes through
+	 * @param end The end point
+	 * @returns The newly created path
+	 * @category Primitives
+	 */
 	export function arcFromPoints(start: vec2, through: vec2, end: vec2): Path {
 		const circumcircle = Circle.circumcircle(start, through, end)
 
@@ -605,6 +638,7 @@ export namespace Path {
 	 * @param startTangent The tangent at the start point
 	 * @param end The end point
 	 * @returns A newly created open arc path
+	 * @category Primitives
 	 */
 	export function arcFromPointsAndTangent(
 		start: vec2,
@@ -925,6 +959,10 @@ export namespace Path {
 		}
 	}
 
+	/**
+	 * The options for {@link formula}
+	 * @category Options
+	 */
 	export interface FormulaOptions {
 		/**
 		 * The delta value for calculating the derivative of the formula
@@ -937,6 +975,15 @@ export namespace Path {
 		maxVertices?: number
 	}
 
+	/**
+	 * Creates a path from the given formula, which maps a parameter `t` to a point. The tangent will be automatically calculated by the derivative function, which is computed using Euler's method with given delta. If the formula has cusps, you need to appropriately specify the range to put `t` at the cusp.
+	 * @param f The formula to create the path
+	 * @param start The start value of `t`
+	 * @param end The end value of `t`
+	 * @param options The options
+	 * @returns The newly created path
+	 * @category Primitives
+	 */
 	export function formula(
 		f: (t: number) => vec2,
 		iter: Iterable<number>,
@@ -1039,7 +1086,8 @@ export namespace Path {
 	 * @param path The path that contains the segment
 	 * @param curveIndex The index of the curve.
 	 * @param segmentIndex The index of the segment in the curve.
-	 * @returns Properties
+	 * @returns The segment
+	 * @category Properties
 	 */
 	export function segment(
 		path: Path,
@@ -1082,6 +1130,13 @@ export namespace Path {
 		}
 	}
 
+	/**
+	 * Retrieves the segment location information from the given path and path-based location.
+	 * @param path The path to retrieve the segment location
+	 * @param location The path-based location
+	 * @returns The information of the segment location
+	 * @category Utilities
+	 */
 	export function toSegmentLocation(
 		path: Path,
 		location: PathLocation
@@ -1223,7 +1278,8 @@ export namespace Path {
 	}
 
 	/**
-	 * Converts a linear segment index to a pair of curve and segment indices.
+	 * Converts a linear segment index to a pair of curve and segment index.
+	 * @category Utilities
 	 */
 	export function unlinearSegmentIndex(
 		path: Path,
@@ -1355,6 +1411,13 @@ export namespace Path {
 		}
 	}
 
+	/**
+	 * Maps each curves in the path to a single or array of curves and creates a new path concatinating those curves. Unlike {@link spawnVertex}, you can also change the number of curves, or open/close state of the curves.
+	 * @param path The path to map
+	 * @param fn The curve mapping function.
+	 * @returns The newly created path
+	 * @category Modifiers
+	 */
 	export function spawnCurve<
 		V1 extends Vertex = Vertex,
 		V2 extends Vertex = Vertex,
@@ -1392,6 +1455,10 @@ export namespace Path {
 		})
 	}
 
+	/**
+	 * An options for {@link reverse}
+	 * @category Options
+	 */
 	export interface ReverseOptions {
 		/**
 		 * The unit to reverse the path.
@@ -1400,6 +1467,13 @@ export namespace Path {
 		per?: 'path' | 'curve'
 	}
 
+	/**
+	 * Reverses the given path.
+	 * @param path The path to reverse
+	 * @param options: The options
+	 * @returns The reversed path
+	 * @category Modifiers
+	 */
 	export function reverse(
 		path: Path,
 		{per = 'path'}: ReverseOptions = {}
@@ -1835,6 +1909,7 @@ export namespace Path {
 
 	/**
 	 * Alias for {@link toSVGString}
+	 * @category Aliases
 	 */
 	export const toD = toSVGString
 
@@ -2396,6 +2471,10 @@ export namespace Path {
 		})
 	}
 
+	/**
+	 * An options for {@link close}
+	 * @category Options
+	 */
 	export type PathCloseOptions = {
 		/**
 		 * If true, deletes overwrapped first and last vertices.
@@ -2428,10 +2507,18 @@ export namespace Path {
 		}
 	}
 
+	/**
+	 * Creates a new {@link Path} instance to begin drawing a path.
+	 * @category Draw Functions
+	 */
 	export function pen(): Pen {
 		return new Pen()
 	}
 
+	/**
+	 * A class for creating a path by calling draw functions, like Canvas API.
+	 * @category Draw Functions
+	 */
 	export class Pen {
 		#curves: Curve[] = []
 
