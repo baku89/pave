@@ -2,6 +2,7 @@ import {mat2d, vec2} from 'linearly'
 import {describe, expect, it, test} from 'vitest'
 
 import {Arc} from './Arc'
+import {SegmentA} from './Segment'
 
 describe('toCenterParameterization', () => {
 	it('should work in right angle case', () => {
@@ -298,5 +299,36 @@ describe('ellipticArcLength', () => {
 		const ret = Arc.ellipticArcLength([1, 2], [0, 30])
 
 		expect(ret).toEqual(1.01218)
+	})
+})
+
+describe('transform', () => {
+	const arc: SegmentA = {
+		command: 'A',
+		start: [50, 0],
+		point: [0, 25],
+		args: [[50, 25], 0, false, true],
+	}
+
+	it('should rotate 90°', () => {
+		const ret = Arc.transform(arc, mat2d.rotation(90))
+
+		expect(ret).toEqual({
+			command: 'A',
+			start: [0, 50],
+			point: [-25, 0],
+			args: [[50, 25], 90, false, true],
+		})
+	})
+
+	it('should rotate 180', () => {
+		const ret = Arc.transform(arc, mat2d.rotation(180))
+
+		expect(ret).toEqual({
+			command: 'A',
+			start: [-50, 0],
+			point: [0, -25],
+			args: [[50, 25], 0, false, true],
+		})
 	})
 })

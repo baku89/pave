@@ -275,7 +275,7 @@ export namespace Arc {
 
 				A2 = 0.5 * (A + C + K * ac)
 				C2 = 0.5 * (A + C - K * ac)
-				offsetRot = 0.5 * scalar.atan(B, ac)
+				offsetRot = scalar.deg(0.5 * Math.atan2(B, ac))
 			}
 		}
 
@@ -286,8 +286,8 @@ export namespace Arc {
 
 		// now A2 and C2 are half-axis:
 		if (ac <= 0) {
-			rv = C2
-			rh = A2
+			rv = A2
+			rh = C2
 		} else {
 			rv = C2
 			rh = A2
