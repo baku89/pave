@@ -1,4 +1,4 @@
-import {expect} from '@jest/globals'
+import {expect} from 'vitest'
 
 const EPSILON = 1e-4
 
@@ -10,3 +10,10 @@ function nearlyEqual(a: number, b: number) {
 }
 
 expect.addEqualityTesters([nearlyEqual])
+
+// Mocking canvas for Paper.js
+HTMLCanvasElement.prototype.getContext = () =>
+	({
+		save: () => undefined,
+		restore: () => undefined,
+	}) as unknown as any

@@ -1,3 +1,5 @@
+import {describe, expect, it} from 'vitest'
+
 import {toFixedSimple} from './utils'
 
 describe('toFixedSimple', () => {

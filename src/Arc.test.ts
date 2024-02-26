@@ -1,10 +1,5 @@
-/**
- * @jest-environment jsdom
- */
-import 'jest-canvas-mock'
-import '../jest.setup'
-
 import {mat2d, vec2} from 'linearly'
+import {describe, expect, it, test} from 'vitest'
 
 import {Arc} from './Arc'
 

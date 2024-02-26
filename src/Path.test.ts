@@ -1,10 +1,5 @@
-/**
- * @jest-environment jsdom
- */
-import 'jest-canvas-mock'
-import '../jest.setup'
-
 import paper from 'paper'
+import {describe, expect, it, test} from 'vitest'
 
 import {Path} from './Path'
 

@@ -1,4 +1,4 @@
-import '../jest.setup'
+import {describe, expect, it, test} from 'vitest'
 
 import {CubicBezier} from './CubicBezier'
 import {SegmentC} from './Segment'
