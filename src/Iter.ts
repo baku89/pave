@@ -1,7 +1,8 @@
 import {scalar} from 'linearly'
 
-export type Iter = Generator<number>
-
+/**
+ * A collection of utility functions for working with iterables.
+ */
 export namespace Iter {
 	/**
 	 * Iterates over a range between [from, to) with a given `step`, while avoiding infinite loops.
@@ -16,7 +17,7 @@ export namespace Iter {
 		to: number,
 		step: number,
 		maxCount = 1_000_000
-	): Iter {
+	): Generator<number> {
 		if (from === to) {
 			// If the range is empty
 			yield from
@@ -56,7 +57,7 @@ export namespace Iter {
 		step: number,
 		offset: number,
 		maxCount?: number
-	): Iter {
+	): Generator<number> {
 		offset = ((offset % step) + step) % step
 
 		if (offset !== 0) {
