@@ -14,6 +14,7 @@ export async function setupEvalContextCreator(defaultColor: Ref<string>) {
 			ctx.fillStyle = 'none'
 			ctx.strokeStyle = color || defaultColor.value
 			ctx.lineCap = 'round'
+			ctx.lineJoin = 'round'
 			ctx.lineWidth = lineWidth
 			Path.drawToCanvas(path, ctx)
 			ctx.stroke()
