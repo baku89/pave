@@ -537,7 +537,7 @@ export namespace Path {
 		step = scalar.clamp(Math.abs(step), 0.1, maxAngleStep)
 
 		const radii: vec2 = [radius, radius]
-		const sweepFlag = endAngle > startAngle
+		const sweep = endAngle > startAngle
 
 		const vertices = beginVertex(vec2.add(center, vec2.dir(startAngle, radius)))
 
@@ -549,12 +549,12 @@ export namespace Path {
 		})
 
 		for (const [prevAngle, throughAngle] of Iter.tuple(angles)) {
-			const largeArc = Math.abs(throughAngle - prevAngle) >= 180 - 1e-4
+			const largeArc = Math.abs(throughAngle - prevAngle) > 180
 
 			vertices.push({
 				point: vec2.add(center, vec2.dir(throughAngle, radius)),
 				command: 'A',
-				args: [radii, 0, largeArc, sweepFlag],
+				args: [radii, 0, largeArc, sweep],
 			})
 		}
 
