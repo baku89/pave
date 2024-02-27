@@ -107,7 +107,9 @@ export async function setupEvalContextCreator(defaultColor: Ref<string>) {
 		}
 
 		return {
+			...Pave.Path,
 			...Pave,
+			...Linearly.scalar,
 			...Linearly,
 			stroke,
 			fill,

@@ -14,7 +14,10 @@ The range of canvas is fixed to the size `[100, 100]`.
 The variables shown below are also available:
 
 ```ts
-import * from 'pave'
+import * from '@baku89/pave/Path'
+import * from 'linearly/scalar'
+
+import * from '@baku89/pave'
 import * from 'linearly'
 
 // The 2D context of the canvas
