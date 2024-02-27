@@ -6,6 +6,7 @@ import {SegmentLocation} from './Location'
 import {VertexC} from './Path'
 import {SegmentC} from './Segment'
 import {memoize, PartialBy} from './utils'
+import {Iter} from './Iter'
 
 /**
  * Almost equivalent to {@link SegmentC}, but the redundant `command` field can be ommited. Used for the argument of CubicBezier functions.
@@ -196,16 +197,13 @@ export namespace CubicBezier {
 
 	export function divideAtTimes(
 		segment: SimpleSegmentC,
-		times: number[]
+		times: Iterable<number>
 	): VertexC[] {
 		times = [0, ...times, 1]
 
 		const vertices: VertexC[] = []
 
-		for (let i = 1; i < times.length; i++) {
-			const from = times[i - 1]
-			const to = times[i]
-
+		for (const [from, to] of Iter.tuple(times)) {
 			const [, c1, c2, point] = trimBetweenTimes(segment, from, to)
 
 			vertices.push({command: 'C', args: [c1, c2], point})

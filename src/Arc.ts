@@ -393,7 +393,7 @@ export namespace Arc {
 
 	export function divideAtTimes(
 		arc: SimpleSegmentA,
-		times: number[]
+		times: Iterable<number>
 	): VertexA[] {
 		const [, xAxisRotation, , sweep] = arc.args
 		const {radii, center, angles} = toCenterParameterization(arc)

@@ -62,7 +62,7 @@ export namespace Line {
 
 	export function divideAtTimes(
 		line: SimpleSegmentL,
-		times: number[]
+		times: Iterable<number>
 	): VertexL[] {
 		return [...times, 1].map(t => {
 			return {point: vec2.lerp(line.start, line.point, t), command: 'L'}
