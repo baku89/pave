@@ -1,4 +1,4 @@
-import {vec2} from 'linearly'
+import {scalar, vec2} from 'linearly'
 
 import {Arc} from './Arc'
 import {CubicBezier} from './CubicBezier'
@@ -116,6 +116,75 @@ export namespace Curve {
 		}
 
 		return {vertices, closed: curve.closed}
+	}
+
+	export function trim(
+		curve: Curve,
+		from: CurveLocation,
+		to: CurveLocation
+	): Curve {
+		const fromLoc = toSegmentLocation(curve, from)
+		const toLoc = toSegmentLocation(curve, to)
+
+		if (fromLoc.segmentIndex === toLoc.segmentIndex) {
+			const seg = Segment.trim(
+				fromLoc.segment,
+				fromLoc.location,
+				toLoc.location
+			)
+			const firstVertex: Vertex = {
+				command: 'L',
+				point: seg.start,
+			}
+
+			delete (seg as any)['start']
+
+			return {
+				vertices: [firstVertex, seg],
+				closed: false,
+			}
+		} else if (fromLoc.segmentIndex < toLoc.segmentIndex) {
+			const firstSeg = Segment.trim(fromLoc.segment, fromLoc.location, 1)
+			const firstVertex: Vertex = {
+				command: 'L',
+				point: firstSeg.start,
+			}
+			const lastSeg = Segment.trim(toLoc.segment, 0, toLoc.location)
+
+			const inbetweenVertices = curve.vertices.slice(
+				fromLoc.segmentIndex + 2,
+				toLoc.segmentIndex + 1
+			)
+
+			delete (firstSeg as any)['start']
+			delete (lastSeg as any)['start']
+
+			return {
+				vertices: [firstVertex, firstSeg, ...inbetweenVertices, lastSeg],
+				closed: false,
+			}
+		} else {
+			// fromLoc.segmentIndex > toLoc.segmentIndex (reverse order)
+			const firstSeg = Segment.trim(fromLoc.segment, fromLoc.location, 0)
+
+			const firstVertex: Vertex = {
+				command: 'L',
+				point: firstSeg.start,
+			}
+			const lastSeg = Segment.trim(toLoc.segment, 1, toLoc.location)
+
+			const inbetweenVertices = curve.vertices
+				.slice(toLoc.segmentIndex + 1, fromLoc.segmentIndex)
+				.reverse()
+
+			delete (firstSeg as any)['start']
+			delete (lastSeg as any)['start']
+
+			return {
+				vertices: [firstVertex, firstSeg, ...inbetweenVertices, lastSeg],
+				closed: false,
+			}
+		}
 	}
 
 	export function close(curve: Curve, fuse = true): Curve {
