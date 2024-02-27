@@ -1402,6 +1402,11 @@ export namespace Path {
 					)
 				)
 
+				if (curve.closed && vertices.length >= 1) {
+					const lastVertex = vertices.at(-1)!
+					vertices.unshift(lastVertex)
+				}
+
 				return {
 					vertices,
 					closed: curve.closed,
