@@ -5,6 +5,7 @@ import {VertexA, VertexC} from './Path'
 import {Rect} from './Rect'
 import {SegmentA} from './Segment'
 import {memoize, PartialBy} from './utils'
+import {Iter} from './Iter'
 
 /**
  * The angle range to check. `startAngle` is always in the range of [-π, π], and the `endAngle` is relative angle considering the rotation direction, with start angle as a reference.
@@ -394,7 +395,7 @@ export namespace Arc {
 		arc: SimpleSegmentA,
 		times: number[]
 	): VertexA[] {
-		const [, xAxisRotation, sweep] = arc.args
+		const [, xAxisRotation, , sweep] = arc.args
 		const {radii, center, angles} = toCenterParameterization(arc)
 
 		const vertices: VertexA[] = []
@@ -403,10 +404,7 @@ export namespace Arc {
 
 		times = [0, ...times, 1]
 
-		for (let i = 1; i < times.length; i++) {
-			const from = times[i - 1]
-			const to = times[i]
-
+		for (const [from, to] of Iter.tuple(times)) {
 			const startAngle = scalar.lerp(...angles, from)
 			const endAngle = scalar.lerp(...angles, to)
 
@@ -416,7 +414,7 @@ export namespace Arc {
 
 			vertices.push({
 				command: 'A',
-				args: [radii, xAxisRotation, largeArc, !sweep],
+				args: [radii, xAxisRotation, largeArc, sweep],
 				point,
 			})
 		}
