@@ -1537,10 +1537,14 @@ export namespace Path {
 
 	export interface OffsetOptions {
 		/**
+		 * The cap style of offset path
+		 */
+		cap?: PaperOffsetOptions['cap']
+		/**
 		 * The join style of offset path
 		 * @defaultValue 'miter'
 		 */
-		lineJoin?: CanvasLineJoin
+		join?: CanvasLineJoin
 		/**
 		 * The limit for miter style
 		 * @see https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/miterLimit
@@ -1572,7 +1576,8 @@ export namespace Path {
 		const paperPath = toPaperPath(path)
 
 		const _options: PaperOffsetOptions = {
-			join: options?.lineJoin,
+			cap: options?.cap,
+			join: options?.join,
 			limit: options?.miterLimit,
 		}
 
@@ -1610,7 +1615,7 @@ export namespace Path {
 		const paperPath = toPaperPath(path)
 
 		const _options: PaperOffsetOptions = {
-			join: options?.lineJoin,
+			join: options?.join,
 			cap: options?.lineCap,
 			limit: options?.miterLimit,
 		}
