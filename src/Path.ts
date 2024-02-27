@@ -10,7 +10,7 @@ import {Curve} from './Curve'
 import {CurveGroup} from './CurveGroup'
 import {Iter} from './Iter'
 import {Line} from './Line'
-import {PathLocation, SegmentLocation} from './Location'
+import {CurveLocation, PathLocation, SegmentLocation} from './Location'
 import {Rect} from './Rect'
 import {Segment} from './Segment'
 import {memoize, toFixedSimple} from './utils'
@@ -1480,6 +1480,33 @@ export namespace Path {
 		const curves = per === 'path' ? path.curves.slice().reverse() : path.curves
 
 		return {curves: curves.flatMap(Curve.reverse)}
+	}
+
+	export function trim(path: Path, from: PathLocation, to: PathLocation): Path {
+		const fromLoc = toSegmentLocation(path, from)
+		const toLoc = toSegmentLocation(path, to)
+
+		if (fromLoc.curveIndex === toLoc.curveIndex) {
+			const curve = path.curves[fromLoc.curveIndex]
+
+			const fromCurveLoc = {
+				segmentIndex: fromLoc.segmentIndex,
+				...(typeof fromLoc.location === 'number'
+					? {unit: fromLoc}
+					: fromLoc.location),
+			} as CurveLocation
+
+			const toCurveLoc = {
+				segmentIndex: toLoc.segmentIndex,
+				...(typeof toLoc.location === 'number'
+					? {unit: toLoc}
+					: toLoc.location),
+			} as CurveLocation
+
+			return {curves: [Curve.trim(curve, fromCurveLoc, toCurveLoc)]}
+		}
+
+		throw new Error('Not implemented')
 	}
 
 	/**
