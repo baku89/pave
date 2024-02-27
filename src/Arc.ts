@@ -369,11 +369,7 @@ export namespace Arc {
 		let startTime = toTime(arc, start)
 		let endTime = toTime(arc, end)
 
-		if (startTime > endTime) {
-			;[startTime, endTime] = [endTime, startTime]
-		}
-
-		const {radii, center, angles, xAxisRotation, sweep} =
+		let {radii, center, angles, xAxisRotation, sweep} =
 			toCenterParameterization(arc)
 
 		const xform = mat2d.trs(center, xAxisRotation, radii)
@@ -382,6 +378,10 @@ export namespace Arc {
 		const endAngle = scalar.lerp(...angles, endTime)
 
 		const largeArc = Math.abs(endAngle - startAngle) > 180
+
+		if (startTime > endTime) {
+			sweep = !sweep
+		}
 
 		return {
 			command: 'A',
