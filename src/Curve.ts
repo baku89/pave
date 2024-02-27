@@ -7,6 +7,7 @@ import {Vertex, VertexA, VertexC, VertexL} from './Path'
 import {Rect} from './Rect'
 import {Segment} from './Segment'
 import {memoize} from './utils'
+import {MultiSegment} from './MultiSegment'
 
 /**
  * A single open or closed path represented as an array of . All of the points are represented as tuple of vector `[x: number, y: number]` and the commands are represented in absolute form.
@@ -149,39 +150,56 @@ export namespace Curve {
 				command: 'L',
 				point: firstSeg.start,
 			}
-			const lastSeg = Segment.trim(toLoc.segment, 0, toLoc.location)
 
 			const inbetweenVertices = curve.vertices.slice(
 				fromLoc.segmentIndex + 2,
 				toLoc.segmentIndex + 1
 			)
 
-			delete (firstSeg as any)['start']
-			delete (lastSeg as any)['start']
+			const toTime = Segment.toTime(toLoc.segment, toLoc.location)
+
+			const lastVertices = scalar.approx(toTime, 0)
+				? []
+				: [Segment.trim(toLoc.segment, 0, {time: toTime})]
 
 			return {
-				vertices: [firstVertex, firstSeg, ...inbetweenVertices, lastSeg],
+				vertices: [
+					firstVertex,
+					firstSeg,
+					...inbetweenVertices,
+					...lastVertices,
+				],
 				closed: false,
 			}
 		} else {
 			// fromLoc.segmentIndex > toLoc.segmentIndex (reverse order)
-			const firstSeg = Segment.trim(fromLoc.segment, fromLoc.location, 0)
+			let firstVertices: Vertex[]
 
-			const firstVertex: Vertex = {
-				command: 'L',
-				point: firstSeg.start,
+			const fromTime = Segment.toTime(fromLoc.segment, fromLoc.location)
+
+			if (scalar.approx(fromTime, 0)) {
+				firstVertices = [{command: 'L', point: fromLoc.segment.start}]
+			} else {
+				const firstSeg = Segment.trim(fromLoc.segment, {time: fromTime}, 0)
+
+				firstVertices = [{command: 'L', point: firstSeg.start}, firstSeg]
 			}
+
+			const inbetweenVertices: MultiSegment = {
+				start: toLoc.segment.point,
+				vertices: curve.vertices.slice(
+					toLoc.segmentIndex + 2,
+					fromLoc.segmentIndex + 1
+				),
+			}
+
+			const inbetweenVerticesReversed =
+				MultiSegment.reverse(inbetweenVertices).vertices
+
 			const lastSeg = Segment.trim(toLoc.segment, 1, toLoc.location)
 
-			const inbetweenVertices = curve.vertices
-				.slice(toLoc.segmentIndex + 1, fromLoc.segmentIndex)
-				.reverse()
-
-			delete (firstSeg as any)['start']
-			delete (lastSeg as any)['start']
-
 			return {
-				vertices: [firstVertex, firstSeg, ...inbetweenVertices, lastSeg],
+				vertices: [...firstVertices, ...inbetweenVerticesReversed, lastSeg],
 				closed: false,
 			}
 		}
