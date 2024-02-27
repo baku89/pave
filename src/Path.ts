@@ -1531,7 +1531,7 @@ export namespace Path {
 
 	/**
 	 * Alias for {@link toCubicBezier}
-	 * @category Modifiers
+	 * @category Aliases
 	 */
 	export const toC = toCubicBezier
 
