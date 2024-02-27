@@ -539,7 +539,7 @@ export namespace Path {
 		const radii: vec2 = [radius, radius]
 		const sweep = endAngle > startAngle
 
-		const vertices = beginVertex(vec2.add(center, vec2.dir(startAngle, radius)))
+		const vertices = beginVertex(vec2.dir(startAngle, radius, center))
 
 		// Add intermediate vertices
 		const angles = Iter.resample(startAngle, endAngle, {
@@ -552,7 +552,7 @@ export namespace Path {
 			const largeArc = Math.abs(throughAngle - prevAngle) > 180
 
 			vertices.push({
-				point: vec2.add(center, vec2.dir(throughAngle, radius)),
+				point: vec2.dir(throughAngle, radius, center),
 				command: 'A',
 				args: [radii, 0, largeArc, sweep],
 			})
