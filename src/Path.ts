@@ -1238,14 +1238,13 @@ export namespace Path {
 
 				return {segment, location: {time}, curveIndex, segmentIndex}
 			} else {
+				// 'offset' | 'unit' in location
+
 				const pathLen = length(path)
 
-				if ('unit' in location) {
-					location = {offset: location.unit * pathLen}
-				}
-
-				// Offset-based serach from the beginning of the path
-				let offset = scalar.clamp(location.offset, 0, pathLen)
+				let offset =
+					'unit' in location ? location.unit * pathLen : location.offset
+				offset = scalar.clamp(offset, 0, pathLen)
 
 				if (offset < pathLen) {
 					for (const [curveIndex, curve] of path.curves.entries()) {
