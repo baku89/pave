@@ -149,6 +149,11 @@ export namespace Curve {
 			location = {unit: location}
 		}
 
+		if (location.segmentIndex !== undefined) {
+			const segment = Curve.segment(curve, location.segmentIndex)
+			return {segment, location, segmentIndex: location.segmentIndex}
+		}
+
 		if ('time' in location) {
 			const segCount = segmentCount(curve)
 			let extendedTime = location.time * segCount
@@ -167,18 +172,18 @@ export namespace Curve {
 			return {segment, location: {time}, segmentIndex}
 		}
 
-		if ('unit' in location) {
-			const segLength = length(curve)
-			location = {offset: location.unit * segLength}
-		}
+		const curveLength = length(curve)
 
-		let offset = location.offset
+		let offset =
+			'unit' in location ? location.unit * curveLength : location.offset
+		offset = scalar.clamp(offset, 0, curveLength)
 
-		for (const [segmentIndex, segment] of segments(curve).entries()) {
+		const segs = segments(curve)
+
+		for (const [segmentIndex, segment] of segs.entries()) {
 			const segLength = Segment.length(segment)
-			if (offset < segLength) {
-				const time = offset / segLength
-				return {segment, location: {time}, segmentIndex}
+			if (offset < segLength || segmentIndex === segs.length - 1) {
+				return {segment, location: {offset}, segmentIndex}
 			}
 			offset -= segLength
 		}
