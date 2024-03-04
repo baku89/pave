@@ -1433,6 +1433,98 @@ export namespace Path {
 		}
 	}
 
+	export interface SpawnOptions {
+		/**
+		 * If true, the continuous open path will be joined
+		 * @defaultValue true
+		 */
+		join?: boolean
+	}
+
+	/**
+	 * Maps each segments in the path to a path and create a new path concatinating those paths.
+	 * @category Modifier
+	 */
+	export function spawn(
+		path: Path,
+		fn: (seg: Segment, segmentIndex: number, curve: Curve) => Path,
+		{join = true}: SpawnOptions = {}
+	): Path {
+		const newPath: Path = {curves: []}
+
+		for (const originalCurve of path.curves) {
+			const curves: Curve[] = []
+
+			for (const [i, seg] of Curve.segments(originalCurve).entries()) {
+				const segPath = fn(seg, i, originalCurve)
+
+				if (!join) {
+					curves.push(...segPath.curves)
+					continue
+				}
+
+				// Join the path if possible
+				const lastCurve = curves.at(-1)
+				const firstCurve = segPath.curves.at(0)
+
+				if (
+					lastCurve &&
+					firstCurve &&
+					!lastCurve.closed &&
+					!firstCurve.closed
+				) {
+					const lastVertex = lastCurve.vertices.at(-1)
+					const firstVertex = firstCurve.vertices.at(0)
+
+					if (
+						lastVertex &&
+						firstVertex &&
+						vec2.approx(lastVertex.point, firstVertex.point)
+					) {
+						lastCurve.vertices.push(...firstCurve.vertices.slice(1))
+						segPath.curves.shift()
+					}
+				}
+
+				// Append to the curves
+				curves.push(...segPath.curves)
+			}
+
+			// Close the curve if it was originally closed
+			if (originalCurve.closed) {
+				const firstCurve = curves.at(0)
+				const lastCurve = curves.at(-1)
+
+				if (
+					firstCurve &&
+					lastCurve &&
+					!firstCurve.closed &&
+					!lastCurve.closed
+				) {
+					const firstVertex = firstCurve.vertices.at(0)
+					const lastVertex = lastCurve.vertices.at(-1)
+
+					if (
+						firstVertex &&
+						lastVertex &&
+						vec2.approx(firstVertex.point, lastVertex.point)
+					) {
+						if (firstCurve === lastCurve) {
+							curves[0] = Curve.close(firstCurve)
+						} else {
+							lastCurve.vertices.push(...firstCurve.vertices.slice(1))
+							curves.shift()
+						}
+					}
+				}
+			}
+
+			newPath.curves.push(...curves)
+		}
+
+		return newPath
+	}
+
 	/**
 	 * Transforms the given path by the given matrix.
 	 * @param path The path to transform
