@@ -111,6 +111,16 @@ export namespace Segment {
 		}
 	}
 
+	export function isStraight(seg: Segment) {
+		if (seg.command === 'L') {
+			return true
+		} else if (seg.command === 'C') {
+			return CubicBezier.isStraight(seg)
+		} else {
+			return Arc.isStraight(seg)
+		}
+	}
+
 	export const toTime = (seg: Segment, loc: SegmentLocation): number => {
 		if (seg.command === 'L') {
 			return Line.toTime(seg as SegmentL, loc)
