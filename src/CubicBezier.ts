@@ -224,6 +224,42 @@ export namespace CubicBezier {
 			vec2.approx(start, c2)
 		)
 	}
+
+	export function isStraight(bezier: SimpleSegmentC) {
+		if (isZero(bezier)) {
+			return true
+		}
+
+		const {
+			start,
+			point,
+			args: [c1, c2],
+		} = bezier
+
+		if (vec2.approx(start, c1) && vec2.approx(point, c2)) {
+			// Both handles are zero-length
+			return true
+		}
+
+		if (vec2.approx(start, point)) {
+			// Zero-length line, with some handles defined
+			return true
+		}
+
+		const sp = vec2.sub(point, start)
+		const sc1 = vec2.sub(c1, start)
+		const sc2 = vec2.sub(c2, start)
+
+		const spLen = vec2.len(sp)
+
+		// All of control points are on the line
+		return (
+			scalar.approx(vec2.angle(sp, sc1), 0) &&
+			scalar.approx(vec2.angle(sp, sc2), 0) &&
+			vec2.len(sc1) < spLen &&
+			vec2.len(sc2) < spLen
+		)
+	}
 }
 
 function toPoint([x, y]: vec2): Point {
