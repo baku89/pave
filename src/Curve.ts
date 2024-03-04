@@ -228,6 +228,38 @@ export namespace Curve {
 		}
 	}
 
+	export interface ReduceOptions {
+		/**
+		 * If true, the function will convert straight lines to `L` commands
+		 * @default true
+		 */
+		convertStraightLines?: boolean
+	}
+
+	/**
+	 * Cleans up the curve by removing redundant vertices and segments
+	 */
+	export function reduce(
+		curve: Curve,
+		{convertStraightLines = true}: ReduceOptions = {}
+	): Curve {
+		let vertices = segments(curve).flatMap((seg): Vertex[] => {
+			// Check if the segment is zero-length and remove it
+			if (Segment.isZero(seg)) {
+				return []
+			}
+
+			// Check if the cubic bezier segment is a straight line
+			if (convertStraightLines && Segment.isStraight(seg)) {
+				return [{command: 'L', point: seg.point}]
+			}
+
+			return [seg]
+		})
+
+		return {vertices, closed: curve.closed}
+	}
+
 	export function toSegmentLocation(
 		curve: Curve,
 		location: CurveLocation

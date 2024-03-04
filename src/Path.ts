@@ -2542,6 +2542,30 @@ export namespace Path {
 		}
 	}
 
+	export type ReduceOptions = Curve.ReduceOptions & {
+		/**
+		 * If true, removes the curves with zero length
+		 * @default true
+		 */
+		removeEmptyCurves?: boolean
+	}
+
+	/**
+	 * Cleans up the path by removing redundant vertices and
+	 * @param path
+	 */
+	export function reduce(path: Path, options: ReduceOptions = {}): Path {
+		let curves = path.curves.map(c => Curve.reduce(c, options))
+
+		if (options.removeEmptyCurves) {
+			curves = curves.filter(Curve.hasLength)
+		}
+
+		return {
+			curves,
+		}
+	}
+
 	/**
 	 * Creates a new {@link Path} instance to begin drawing a path.
 	 * @category Draw Functions
