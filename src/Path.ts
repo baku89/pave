@@ -2557,7 +2557,7 @@ export namespace Path {
 	export function reduce(path: Path, options: ReduceOptions = {}): Path {
 		let curves = path.curves.map(c => Curve.reduce(c, options))
 
-		if (options.removeEmptyCurves) {
+		if (options.removeEmptyCurves ?? true) {
 			curves = curves.filter(Curve.hasLength)
 		}
 
