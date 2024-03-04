@@ -101,6 +101,16 @@ export namespace Segment {
 		}
 	}
 
+	export function isZero(seg: Segment) {
+		if (seg.command === 'L') {
+			return Line.isZero(seg)
+		} else if (seg.command === 'C') {
+			return CubicBezier.isZero(seg)
+		} else {
+			return Arc.isZero(seg)
+		}
+	}
+
 	export const toTime = (seg: Segment, loc: SegmentLocation): number => {
 		if (seg.command === 'L') {
 			return Line.toTime(seg as SegmentL, loc)
