@@ -30,6 +30,21 @@ export namespace Arc {
 			args: [radii, xAxisRotation, largeArcFlag, sweepFlag],
 		} = arc
 
+		if (scalar.approx(radii[0], 0) || scalar.approx(radii[1], 0)) {
+			// Treat as a straight line (B 2.5. Step 1)
+			const v = vec2.sub(start, point)
+			const xAxisRotation = vec2.angle(v)
+			const rx = vec2.len(v) / 2
+
+			return {
+				center: vec2.lerp(start, point, 0.5),
+				radii: [rx, 0] as vec2,
+				angles: [0, 180] as AngleRange,
+				xAxisRotation,
+				sweep: true,
+			}
+		}
+
 		const [x1p, y1p] = vec2.rotate(
 			vec2.scale(vec2.sub(start, point), 0.5),
 			-xAxisRotation
@@ -74,6 +89,10 @@ export namespace Arc {
 			sweep: deltaAngle > 0,
 		}
 
+		/**
+		 * Ensures the radii are large enough
+		 * https://svgwg.org/svg2-draft/implnote.html#ArcCorrectionOutOfRangeRadii
+		 **/
 		function correctRadii(signedRadii: vec2, p: vec2): vec2 {
 			const [signedRx, signedRy] = signedRadii
 			const [x1p, y1p] = p
