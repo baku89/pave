@@ -430,6 +430,16 @@ export namespace Arc {
 		return vec2.approx(start, point)
 	})
 
+	export function isStraight(arc: SimpleSegmentA): boolean {
+		if (isZero(arc)) {
+			return true
+		}
+
+		const [rx, ry] = arc.args[0]
+
+		return scalar.approx(rx, 0) || scalar.approx(ry, 0)
+	}
+
 	export function ellipticArcLength(radii: vec2, angles: AngleRange): number {
 		const [rx, ry] = radii
 		const [startAngle, endAngle] = angles
