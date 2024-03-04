@@ -2996,7 +2996,7 @@ function drawToRenderingContext(
 
 				if (!start) throw new Error('The start point is not found')
 
-				arcTo(context, start, point, args)
+				drawArcToRenderingContext(context, start, point, args)
 			}
 		})
 
@@ -3012,7 +3012,7 @@ function drawToRenderingContext(
 
 					if (!prev) throw new Error('The previous point is not found')
 
-					arcTo(context, prev, point, args)
+					drawArcToRenderingContext(context, prev, point, args)
 				}
 
 				if (command === 'L' && vertices.length === 1) {
@@ -3028,7 +3028,7 @@ function drawToRenderingContext(
 		}
 	}
 
-	function arcTo(
+	function drawArcToRenderingContext(
 		context:
 			| Path2D
 			| CanvasRenderingContext2D
