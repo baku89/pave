@@ -676,7 +676,7 @@ export namespace Path {
 	 * @category Primitives
 	 */
 	export function arcFromPointsAndAngle(start: vec2, end: vec2, angle: number) {
-		if (angle === 0) {
+		if (scalar.approx(angle, 0)) {
 			return line(start, end)
 		}
 		if (Math.abs(angle) >= 360) {
