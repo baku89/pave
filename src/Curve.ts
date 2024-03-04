@@ -257,6 +257,18 @@ export namespace Curve {
 			return [seg]
 		})
 
+		if (curve.closed) {
+			if (vertices.length > 1) {
+				const last = vertices.pop()!
+				vertices.unshift(last)
+			}
+		} else {
+			if (curve.vertices.length >= 1) {
+				const first = curve.vertices[0]
+				vertices.unshift(first)
+			}
+		}
+
 		return {vertices, closed: curve.closed}
 	}
 
