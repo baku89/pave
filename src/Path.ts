@@ -569,7 +569,7 @@ export namespace Path {
 	 * @returns The newly created path
 	 * @category Primitives
 	 */
-	export function arcFromPoints(start: vec2, through: vec2, end: vec2): Path {
+	export function arcByPoints(start: vec2, through: vec2, end: vec2): Path {
 		const circumcircle = Circle.circumcircle(start, through, end)
 
 		if (!circumcircle) {
@@ -640,7 +640,7 @@ export namespace Path {
 	 * @returns A newly created open arc path
 	 * @category Primitives
 	 */
-	export function arcFromPointsAndTangent(
+	export function arcByPointsTangent(
 		start: vec2,
 		startTangent: vec2,
 		end: vec2
@@ -664,7 +664,7 @@ export namespace Path {
 
 		const mid = vec2.scaleAndAdd(start, mDir, mDist)
 
-		return arcFromPoints(start, mid, end)
+		return arcByPoints(start, mid, end)
 	}
 
 	/**
@@ -675,7 +675,7 @@ export namespace Path {
 	 * @returns The newly created path
 	 * @category Primitives
 	 */
-	export function arcFromPointsAndAngle(start: vec2, end: vec2, angle: number) {
+	export function arcByPointsAngle(start: vec2, end: vec2, angle: number) {
 		if (scalar.approx(angle, 0)) {
 			return line(start, end)
 		}
@@ -685,6 +685,12 @@ export namespace Path {
 				halfLine(start, vec2.sub(start, dir)),
 				halfLine(end, vec2.add(end, dir)),
 			])
+		}
+		if (angle === 180) {
+			return semicircle(start, end, false)
+		}
+		if (angle === -180) {
+			return semicircle(end, start, false)
 		}
 
 		const sign = Math.sign(angle)
