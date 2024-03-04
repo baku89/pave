@@ -3003,7 +3003,7 @@ function drawToRenderingContext(
 		if (closed) {
 			const first = vertices.at(0)
 
-			if (first && first.command !== 'L') {
+			if (first) {
 				const {point, command, args} = first
 				if (command === 'C') {
 					context.bezierCurveTo(...args[0], ...args[1], ...point)
@@ -3013,6 +3013,14 @@ function drawToRenderingContext(
 					if (!prev) throw new Error('The previous point is not found')
 
 					arcTo(context, prev, point, args)
+				}
+
+				if (command === 'L' && vertices.length === 1) {
+					// If the path is closed and has only one vertex
+					// draws a dot so that it behaves like SVG path.
+					// Calling .moveTo followed by .lineTo with the same point does not draw anything,
+					// so we used .quadraticCurveTo instead
+					context.quadraticCurveTo(...point, ...point)
 				}
 			}
 
