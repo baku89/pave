@@ -272,6 +272,12 @@ export namespace Curve {
 		return {vertices, closed: curve.closed}
 	}
 
+	export function hasLength(curve: Curve): boolean {
+		const segs = segments(curve)
+
+		return segs.length > 0 && segs.some(seg => !Segment.isZero(seg))
+	}
+
 	export function toSegmentLocation(
 		curve: Curve,
 		location: CurveLocation
