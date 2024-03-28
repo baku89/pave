@@ -1,10 +1,10 @@
-import {mat2d, scalar, vec2} from 'linearly'
+import {mat2d, vec2} from 'linearly'
 
 import {SegmentLocation} from './Location'
 import {VertexL} from './Path'
 import {Rect} from './Rect'
 import {SegmentL} from './Segment'
-import {PartialBy} from './utils'
+import {PartialBy, normalizeOffset} from './utils'
 
 type SimpleSegmentL = PartialBy<SegmentL, 'command'>
 
@@ -93,6 +93,6 @@ export namespace Line {
 			}
 		}
 
-		return scalar.clamp(loc >= 0 ? loc : 1 - loc, 0, 1)
+		return normalizeOffset(loc, 1)
 	}
 }
