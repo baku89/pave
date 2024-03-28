@@ -4,7 +4,7 @@ import {SegmentLocation, UnitSegmentLocation} from './Location'
 import {VertexA, VertexC} from './Path'
 import {Rect} from './Rect'
 import {SegmentA} from './Segment'
-import {memoize, PartialBy} from './utils'
+import {memoize, normalizeOffset, PartialBy} from './utils'
 import {Iter} from './Iter'
 
 /**
@@ -345,13 +345,11 @@ export namespace Arc {
 		if ('time' in loc) {
 			return normalizeOffset(loc.time, 1)
 		} else if ('unit' in loc) {
-			return scalar.clamp(unitToTime(arc, loc.unit), 0, 1)
-		} else if ('offset' in loc) {
+			return unitToTime(arc, loc.unit)
+		} else {
 			const unit = loc.offset / Arc.length(arc)
-			return scalar.clamp(unitToTime(arc, unit), 0, 1)
+			return unitToTime(arc, unit)
 		}
-
-		throw new Error('Invalid location')
 	}
 
 	export function point(arc: SimpleSegmentA, loc: SegmentLocation): vec2 {
@@ -536,10 +534,10 @@ function unitToTime(
 	arc: SimpleSegmentA,
 	unitLocation: UnitSegmentLocation
 ): number {
-	const targetUnit =
-		typeof unitLocation === 'number' ? unitLocation : unitLocation.unit
-
-	const length = Arc.length(arc)
+	const targetUnit = normalizeOffset(
+		typeof unitLocation === 'number' ? unitLocation : unitLocation.unit,
+		1
+	)
 
 	// For a circle
 	const [rx, ry] = arc.args[0]
@@ -563,7 +561,7 @@ function unitToTime(
 		const midAngle = scalar.lerp(startAngle, endAngle, time)
 
 		const unitAtTime =
-			Arc.ellipticArcLength(radii, [startAngle, midAngle]) / length
+			Arc.ellipticArcLength(radii, [startAngle, midAngle]) / Arc.length(arc)
 
 		if (unitAtTime < targetUnit) {
 			lowerTime = time
