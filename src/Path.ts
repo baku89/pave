@@ -6,7 +6,7 @@ import svgpath from 'svgpath'
 import {Arc} from './Arc'
 import {Circle} from './Circle'
 import {CubicBezier} from './CubicBezier'
-import {Curve} from './Curve'
+import {Curve, CurveL} from './Curve'
 import {CurveGroup} from './CurveGroup'
 import {Iter} from './Iter'
 import {Line} from './Line'
@@ -764,7 +764,7 @@ export namespace Path {
 	 * stroke(p)
 	 * ```
 	 */
-	export function line(start: vec2, end: vec2): Path {
+	export function line(start: vec2, end: vec2): PathL {
 		return {
 			curves: [
 				{
@@ -789,7 +789,7 @@ export namespace Path {
 	 * stroke(a, 'skyblue', 10)
 	 * ```
 	 */
-	export function dot(point: vec2): Path {
+	export function dot(point: vec2): PathL {
 		return {
 			curves: [
 				{
@@ -811,7 +811,7 @@ export namespace Path {
 	 * stroke(p)
 	 * ```
 	 */
-	export function polyline(...points: vec2[]): Path {
+	export function polyline(...points: vec2[]): PathL {
 		return {
 			curves: [
 				{
@@ -833,7 +833,7 @@ export namespace Path {
 	 * stroke(p)
 	 * ```
 	 */
-	export function polygon(...points: vec2[]): Path {
+	export function polygon(...points: vec2[]): PathL {
 		return {
 			curves: [
 				{
@@ -861,7 +861,7 @@ export namespace Path {
 		center: vec2,
 		radius: number,
 		sides: number
-	): Path {
+	): PathL {
 		const angleStep = 360 / sides
 		const points: vec2[] = []
 
@@ -882,11 +882,11 @@ export namespace Path {
 	/**
 	 * @category Primitives
 	 */
-	export function grid(rect: Rect, divs: vec2): Path {
+	export function grid(rect: Rect, divs: vec2): PathL {
 		const [xdiv, ydiv] = divs
 		const [start, end] = rect
 
-		const curves: Curve[] = []
+		const curves: CurveL[] = []
 
 		for (let t = 0; t <= xdiv; t++) {
 			const x = scalar.lerp(start[0], end[0], t / xdiv)
