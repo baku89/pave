@@ -1,4 +1,4 @@
-import {mat2d, vec2} from 'linearly'
+import {mat2d, scalar, vec2} from 'linearly'
 
 import {SegmentLocation} from './Location'
 import {VertexL} from './Path'
@@ -76,15 +76,23 @@ export namespace Line {
 		return vec2.approx(line.start, line.point)
 	}
 
+	/**
+	 * Converts a signed location to a time between 0 and 1.
+	 * @param line
+	 * @param loc
+	 * @returns
+	 */
 	export function toTime(line: SimpleSegmentL, loc: SegmentLocation): number {
-		if (typeof loc === 'number') {
-			return loc
-		} else if ('time' in loc) {
-			return loc.time
-		} else if ('unit' in loc) {
-			return loc.unit
-		} else {
-			return loc.offset / vec2.distance(line.start, line.point)
+		if (typeof loc !== 'number') {
+			if ('time' in loc) {
+				loc = loc.time
+			} else if ('unit' in loc) {
+				loc = loc.unit
+			} else {
+				loc = loc.offset / vec2.distance(line.start, line.point)
+			}
 		}
+
+		return scalar.clamp(loc >= 0 ? loc : 1 - loc, 0, 1)
 	}
 }
