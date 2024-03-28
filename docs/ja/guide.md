@@ -201,13 +201,13 @@ type PathLocation = UnitPathLocation | OffsetPathLocation | TimePathLocation
 
 ## 設計思想
 
-Paveの特色は、描画コマンドを逐次的に実行することでパスを描画するのではなく、静的なデータとしてのパスオブジェクトに対して操作をフィルターのように適用していく設計にあります。また、SVGやCanvas API、p5.js、Paper.jsなど外部のグラフィック描画環境にパス操作に関するユーティリティとして利用されることを想定しているため、ステージマネージャーや描画機能は無く、パス操作に特化しています。
+Paveの特色は、描画コマンドを逐次的に実行することでパスを描画するのではなく、静的なデータとしてのパスに対して操作をフィルターのように適用していく設計にあります。また、SVGやCanvas API、p5.js、Paper.jsなど外部のグラフィック描画環境においてパス操作に関するユーティリティとして使用されることを想定しているため、ステージマネージャーや描画機能は無く、またパスがベクターグラフィックなのか、レーザーカット用の輪郭データを表すのか、色空間がRRGなのかCMYKなのかといった解釈についても関知しません。
 
 ここで一度、グラフィックライブラリの設計における大きな3つのアプローチを挙げてみます。
 
-- **描画コマンド型**: Canvas API、Design By Numbers、Processing、openFrameworks
+- **描画コマンド型**: Canvas API、PostScript、Design By Numbers、Processing、openFrameworks
 - **ステージツリー型**: Flash (ActionScript)、THREE.js、Paper.js, Pixi.js
-- **関数型**: Houdini、TouchDesigner、Cavalry、**Pave**
+- **関数型**: Virtual DOM、Houdini/TouchDesigner、Cavalry、**Pave**
 
 クリエイティブ・コーディングにおいては描画コマンド型のアプローチが一般的です。「何かを描く手順」をコードとして記述するという点で、プログラミングによるお絵かきとして直感的でもあります。しかしこのアプローチは、すでに表示されているグラフィックに対してインタラクションや変更を行う際に、`upate()`関数などにおいて一から全てを再描画する必要があるため、インタラクティブコンテンツやGUIの構築にはあまり適していません。
 
