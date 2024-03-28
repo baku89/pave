@@ -1779,7 +1779,7 @@ export namespace Path {
 	}
 
 	/**
-	 * Merges the given paths into a single path. Unlike {@link join} or {@link unite}, the vertices are not connected, and the resulting path consists of multiple sub-paths.
+	 * Merges the given paths into a single path. Unlike {@link join} or {@link unite}, the vertices are not connected, and it simply returns compound path.
 	 * @category Modifiers
 	 */
 	export function merge(pathOrCurves: (Path | Curve)[]): Path {
