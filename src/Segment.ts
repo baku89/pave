@@ -123,7 +123,7 @@ export namespace Segment {
 
 	export const toTime = (seg: Segment, loc: SegmentLocation): number => {
 		if (seg.command === 'L') {
-			return Line.toTime(seg as SegmentL, loc)
+			return Line.toTime(seg, loc)
 		} else if (seg.command === 'C') {
 			return CubicBezier.toTime(seg, loc)
 		} else {
