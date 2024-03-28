@@ -3,7 +3,7 @@ import {scalar, vec2} from 'linearly'
 import paper from 'paper'
 
 import {SegmentLocation} from './Location'
-import {VertexC} from './Path'
+import {Path, VertexC} from './Path'
 import {SegmentC} from './Segment'
 import {memoize, normalizeOffset, PartialBy} from './utils'
 import {Iter} from './Iter'
@@ -256,6 +256,30 @@ export namespace CubicBezier {
 			vec2.len(sc1) < spLen &&
 			vec2.len(sc2) < spLen
 		)
+	}
+
+	export function offset(bezier: SimpleSegmentC, distance: number): Path {
+		const bezierJS = toBezierJS(bezier)
+		const offsetBeziers = bezierJS.offset(distance) as BezierJS[]
+
+		const pen = Path.pen()
+
+		if (offsetBeziers.length === 0) {
+			throw new Error('Offsetting a bezier curve failed')
+		}
+
+		const {x: x0, y: y0} = offsetBeziers[0].points[0]
+		pen.M([x0, y0])
+
+		for (const ob of offsetBeziers) {
+			pen.C(
+				[ob.points[1].x, ob.points[1].y],
+				[ob.points[2].x, ob.points[2].y],
+				[ob.points[3].x, ob.points[3].y]
+			)
+		}
+
+		return pen.get()
 	}
 }
 
