@@ -1,11 +1,12 @@
 import {mat2, mat2d, scalar, vec2} from 'linearly'
 
 import {SegmentLocation, UnitSegmentLocation} from './Location'
-import {VertexA, VertexC} from './Path'
+import {Path, VertexA, VertexC} from './Path'
 import {Rect} from './Rect'
 import {SegmentA} from './Segment'
 import {memoize, normalizeOffset, PartialBy} from './utils'
 import {Iter} from './Iter'
+import {CubicBezier} from './CubicBezier'
 
 /**
  * The angle range to check. `startAngle` is always in the range of [-π, π], and the `endAngle` is relative angle considering the rotation direction, with start angle as a reference.
@@ -491,6 +492,39 @@ export namespace Arc {
 		}
 
 		return length
+	}
+
+	export function offset(
+		arc: SimpleSegmentA,
+		distance: number,
+		unarcAngle = 90
+	): Path {
+		const {
+			center,
+			radii: [rx, ry],
+			angles: [fromAngle, toAngle],
+		} = toCenterParameterization(arc)
+
+		if (!scalar.approx(rx, ry)) {
+			const vertices: VertexC[] = [
+				{point: arc.start, command: 'C', args: [vec2.zero, vec2.zero]},
+				...approximateByCubicBeziers(arc, unarcAngle),
+			]
+
+			const paths = Array.from(Iter.tuple(vertices)).map(([v0, v1]) =>
+				CubicBezier.offset({start: v0.point, ...v1}, distance)
+			)
+			return Path.join(paths)
+		}
+
+		const sweep = fromAngle < toAngle
+
+		return Path.arc(
+			center,
+			rx + distance * (sweep ? -1 : 1),
+			fromAngle,
+			toAngle
+		)
 	}
 }
 
