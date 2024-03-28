@@ -10,10 +10,10 @@ import {Curve} from './Curve'
 import {CurveGroup} from './CurveGroup'
 import {Iter} from './Iter'
 import {Line} from './Line'
-import {CurveLocation, PathLocation, SegmentLocation} from './Location'
+import {CurveLocation, PathLocation, TimeSegmentLocation} from './Location'
 import {Rect} from './Rect'
 import {Segment} from './Segment'
-import {memoize, toFixedSimple} from './utils'
+import {memoize, toFixedSimple, normalizeIndex, normalizeOffset} from './utils'
 
 paper.setup(document.createElement('canvas'))
 
@@ -1137,18 +1137,18 @@ export namespace Path {
 	}
 
 	/**
-	 * Retrieves the segment location information from the given path and path-based location.
+	 * Retrieves the segment location information from the given path and path-based signed location.
 	 * @param path The path to retrieve the segment location
 	 * @param location The path-based location
 	 * @returns The information of the segment location
 	 * @category Utilities
 	 */
-	export function toSegmentLocation(
+	export function toTime(
 		path: Path,
 		location: PathLocation
 	): {
 		segment: Segment
-		location: SegmentLocation
+		location: TimeSegmentLocation
 		segmentIndex: number
 		curveIndex: number
 	} {
@@ -1161,73 +1161,52 @@ export namespace Path {
 		const segmentCount = Path.segmentCount(path)
 
 		let curveIndex = location.curveIndex ?? null
-		if (typeof curveIndex === 'number') {
-			if (curveIndex < 0) {
-				curveIndex = 0
-			} else if (curveIndex > path.curves.length - 1) {
-				curveIndex = path.curves.length - 1
-				location = {time: 1}
-			}
-		}
-
 		let segmentIndex = location.segmentIndex ?? null
-		if (typeof segmentIndex === 'number') {
-			if (segmentIndex < 0) {
-				segmentIndex = 0
-			} else if (segmentIndex > segmentCount - 1) {
-				segmentIndex = segmentCount - 1
-				location = {time: 1}
-			}
-		}
 
 		if (curveIndex !== null && segmentIndex !== null) {
 			// Location in the specified curve and segment
+
+			curveIndex = normalizeIndex(curveIndex, path.curves.length)
+			const segmentCount = Curve.segmentCount(path.curves[curveIndex])
+			segmentIndex = normalizeIndex(segmentIndex, segmentCount)
+
 			const segment = Path.segment(path, curveIndex, segmentIndex)
 
-			return {segment, location, curveIndex, segmentIndex}
+			return {
+				segment,
+				location: {time: Segment.toTime(segment, location)},
+				curveIndex,
+				segmentIndex,
+			}
 		}
 
 		if (curveIndex !== null && segmentIndex === null) {
 			// Location in the specific curve
+			curveIndex = normalizeOffset(curveIndex, path.curves.length)
+
 			const curve = path.curves[curveIndex]
 
-			return {...Curve.toSegmentLocation(curve, location), curveIndex}
+			return {curveIndex, ...Curve.toTime(curve, location)}
 		}
 
 		const segs = Path.segments(path)
 
 		if (curveIndex === null && segmentIndex !== null) {
 			// Location in the segment specified by linear index
+			segmentIndex = normalizeIndex(segmentIndex, segmentCount)
 
-			if ('time' in location) {
-				const segment = segs[segmentIndex]
-				return {segment, location, ...unlinearSegmentIndex(path, segmentIndex)}
-			}
+			const segment = segs[segmentIndex]
 
-			const pathLen = length(path)
-
-			if ('unit' in location) {
-				location = {offset: location.unit * pathLen}
-			}
-
-			let offset = scalar.clamp(location.offset, 0, pathLen)
-
-			for (const [linearSegmentIndex, segment] of segs.entries()) {
-				const segLength = Segment.length(segment)
-				if (offset < segLength || linearSegmentIndex === segs.length - 1) {
-					return {
-						segment,
-						location: {offset},
-						...unlinearSegmentIndex(path, linearSegmentIndex),
-					}
-				}
-				offset -= segLength
+			return {
+				segment,
+				location: {time: Segment.toTime(segment, location)},
+				...unlinearSegmentIndex(path, segmentIndex),
 			}
 		} else if (curveIndex === null && segmentIndex === null) {
 			// Location in the whole path
 
 			if ('time' in location) {
-				const extendedTime = location.time * segmentCount
+				const extendedTime = normalizeOffset(location.time, 1) * segmentCount
 				const linearSegmentIndex = scalar.clamp(
 					Math.floor(extendedTime),
 					0,
@@ -1248,16 +1227,17 @@ export namespace Path {
 
 				const pathLen = length(path)
 
-				let offset =
-					'unit' in location ? location.unit * pathLen : location.offset
-				offset = scalar.clamp(offset, 0, pathLen)
+				let offset = normalizeOffset(
+					'unit' in location ? location.unit * pathLen : location.offset,
+					pathLen
+				)
 
 				if (offset < pathLen) {
 					for (const [curveIndex, curve] of path.curves.entries()) {
 						const curveLen = Curve.length(curve)
 						if (offset < curveLen) {
 							return {
-								...Curve.toSegmentLocation(curve, {offset}),
+								...Curve.toTime(curve, {offset}),
 								curveIndex,
 							}
 						}
@@ -1318,7 +1298,7 @@ export namespace Path {
 	 * @category Properties
 	 */
 	export function point(path: Path, loc: PathLocation): vec2 {
-		const segLoc = toSegmentLocation(path, loc)
+		const segLoc = toTime(path, loc)
 		return Segment.point(segLoc.segment, segLoc.location)
 	}
 
@@ -1330,7 +1310,7 @@ export namespace Path {
 	 * @category Properties
 	 */
 	export function derivative(path: Path, loc: PathLocation): vec2 {
-		const segLoc = toSegmentLocation(path, loc)
+		const segLoc = toTime(path, loc)
 		return Segment.derivative(segLoc.segment, segLoc.location)
 	}
 
@@ -1342,7 +1322,7 @@ export namespace Path {
 	 * @category Properties
 	 */
 	export function tangent(path: Path, loc: PathLocation): vec2 {
-		const segLoc = toSegmentLocation(path, loc)
+		const segLoc = toTime(path, loc)
 		return Segment.tangent(segLoc.segment, segLoc.location)
 	}
 
@@ -1354,7 +1334,7 @@ export namespace Path {
 	 * @category Properties
 	 */
 	export function normal(path: Path, loc: PathLocation): vec2 {
-		const segLoc = toSegmentLocation(path, loc)
+		const segLoc = toTime(path, loc)
 		return Segment.normal(segLoc.segment, segLoc.location)
 	}
 
@@ -1366,7 +1346,7 @@ export namespace Path {
 	 * @category Properties
 	 */
 	export function orientation(path: Path, loc: PathLocation): mat2d {
-		const segLoc = toSegmentLocation(path, loc)
+		const segLoc = toTime(path, loc)
 		return Segment.orientation(segLoc.segment, segLoc.location)
 	}
 
@@ -1589,27 +1569,43 @@ export namespace Path {
 	}
 
 	export function trim(path: Path, from: PathLocation, to: PathLocation): Path {
-		const fromLoc = toSegmentLocation(path, from)
-		const toLoc = toSegmentLocation(path, to)
+		let fromLoc = toTime(path, from)
+		let toLoc = toTime(path, to)
+
+		let fromCurveLoc = {
+			segmentIndex: fromLoc.segmentIndex,
+			...(typeof fromLoc.location === 'number'
+				? {unit: fromLoc}
+				: fromLoc.location),
+		} as CurveLocation
+
+		let toCurveLoc = {
+			segmentIndex: toLoc.segmentIndex,
+			...(typeof toLoc.location === 'number' ? {unit: toLoc} : toLoc.location),
+		} as CurveLocation
 
 		if (fromLoc.curveIndex === toLoc.curveIndex) {
+			// If the range is in the same curve
 			const curve = path.curves[fromLoc.curveIndex]
 
-			const fromCurveLoc = {
-				segmentIndex: fromLoc.segmentIndex,
-				...(typeof fromLoc.location === 'number'
-					? {unit: fromLoc}
-					: fromLoc.location),
-			} as CurveLocation
-
-			const toCurveLoc = {
-				segmentIndex: toLoc.segmentIndex,
-				...(typeof toLoc.location === 'number'
-					? {unit: toLoc}
-					: toLoc.location),
-			} as CurveLocation
-
 			return {curves: [Curve.trim(curve, fromCurveLoc, toCurveLoc)]}
+		} else if (fromLoc.curveIndex !== toLoc.curveIndex) {
+			const invert = fromLoc.curveIndex > toLoc.curveIndex
+
+			if (invert) {
+				;[fromLoc, toLoc] = [toLoc, fromLoc]
+				;[fromCurveLoc, toCurveLoc] = [toCurveLoc, fromCurveLoc]
+			}
+
+			const trimmedPath = {
+				curves: [
+					Curve.trim(path.curves[fromLoc.curveIndex], fromCurveLoc, 1),
+					...path.curves.slice(fromLoc.curveIndex + 1, toLoc.curveIndex),
+					Curve.trim(path.curves[toLoc.curveIndex], 0, toCurveLoc),
+				],
+			}
+
+			return invert ? reverse(trimmedPath) : trimmedPath
 		}
 
 		throw new Error('Not implemented')
