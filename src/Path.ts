@@ -2669,7 +2669,7 @@ export namespace Path {
 		let curves = path.curves.map(c => Curve.reduce(c, options))
 
 		if (options.removeEmptyCurves ?? true) {
-			curves = curves.filter(Curve.hasLength)
+			curves = curves.filter(c => !Curve.isZero(c))
 		}
 
 		return {

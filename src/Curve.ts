@@ -276,10 +276,10 @@ export namespace Curve {
 		return {vertices, closed: curve.closed}
 	}
 
-	export function hasLength(curve: Curve): boolean {
+	export function isZero(curve: Curve): boolean {
 		const segs = segments(curve)
 
-		return segs.length > 0 && segs.some(seg => !Segment.isZero(seg))
+		return segs.length === 0 || segs.every(seg => Segment.isZero(seg))
 	}
 
 	/**
