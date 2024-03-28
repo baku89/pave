@@ -1843,6 +1843,19 @@ export namespace Path {
 	 */
 	export const subdiv = subdivide
 
+	/**
+	 * Splits the path into multiple paths at the given locations.
+	 * @param path The path to split
+	 * @param locs The locations to split
+	 * @returns The splitted paths
+	 * @category Modifiers
+	 */
+	export function split(path: Path, locs: Iterable<PathLocation>): Path[] {
+		return [...Iter.tuple(locs)].map(([from, to]) => {
+			return trim(path, from, to)
+		})
+	}
+
 	export interface DistortOptions {
 		/**
 		 * The angle step for approximating arc commands with cubic Béziers
