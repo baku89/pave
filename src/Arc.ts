@@ -339,17 +339,19 @@ export namespace Arc {
 
 	export function toTime(arc: SimpleSegmentA, loc: SegmentLocation): number {
 		if (typeof loc === 'number') {
-			return scalar.clamp(unitToTime(arc, loc), 0, 1)
-		} else if ('time' in loc) {
-			return scalar.clamp(loc.time, 0, 1)
+			loc = {unit: loc}
+		}
+
+		if ('time' in loc) {
+			return normalizeOffset(loc.time, 1)
 		} else if ('unit' in loc) {
 			return scalar.clamp(unitToTime(arc, loc.unit), 0, 1)
 		} else if ('offset' in loc) {
 			const unit = loc.offset / Arc.length(arc)
 			return scalar.clamp(unitToTime(arc, unit), 0, 1)
-		} else {
-			throw new Error('Invalid location')
 		}
+
+		throw new Error('Invalid location')
 	}
 
 	export function point(arc: SimpleSegmentA, loc: SegmentLocation): vec2 {
