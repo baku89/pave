@@ -156,11 +156,11 @@ export namespace Curve {
 				toLoc.segmentIndex + 1
 			)
 
-			const toTime = Segment.toTime(toLoc.segment, toLoc.location)
+			const time = Segment.toTime(toLoc.segment, toLoc.location)
 
-			const lastVertices = scalar.approx(toTime, 0)
+			const lastVertices = scalar.approx(time, 0)
 				? []
-				: [Segment.trim(toLoc.segment, 0, {time: toTime})]
+				: [Segment.trim(toLoc.segment, 0, {time})]
 
 			return {
 				vertices: [
