@@ -2,11 +2,11 @@ import {scalar, vec2} from 'linearly'
 
 import {Arc} from './Arc'
 import {CubicBezier} from './CubicBezier'
-import {CurveLocation, SegmentLocation} from './Location'
+import {CurveLocation, TimeSegmentLocation} from './Location'
 import {Vertex, VertexA, VertexC, VertexL} from './Path'
 import {Rect} from './Rect'
 import {Segment} from './Segment'
-import {memoize} from './utils'
+import {memoize, normalizeIndex, normalizeOffset} from './utils'
 import {MultiSegment} from './MultiSegment'
 
 /**
@@ -124,8 +124,8 @@ export namespace Curve {
 		from: CurveLocation,
 		to: CurveLocation
 	): Curve {
-		const fromLoc = toSegmentLocation(curve, from)
-		const toLoc = toSegmentLocation(curve, to)
+		const fromLoc = toTime(curve, from)
+		const toLoc = toTime(curve, to)
 
 		if (fromLoc.segmentIndex === toLoc.segmentIndex) {
 			const seg = Segment.trim(
@@ -282,49 +282,64 @@ export namespace Curve {
 		return segs.length > 0 && segs.some(seg => !Segment.isZero(seg))
 	}
 
-	export function toSegmentLocation(
+	/**
+	 * Retrieves the segment location information from a signed curve loocation
+	 * @param curve The cuve to retrieve the segment location from
+	 * @param location The location on the curve
+	 * @returns The information of the segment location
+	 */
+	export function toTime(
 		curve: Curve,
 		location: CurveLocation
-	): {segment: Segment; location: SegmentLocation; segmentIndex: number} {
+	): {segment: Segment; segmentIndex: number; location: TimeSegmentLocation} {
 		if (typeof location === 'number') {
 			location = {unit: location}
 		}
 
 		if (location.segmentIndex !== undefined) {
-			const segment = Curve.segment(curve, location.segmentIndex)
-			return {segment, location, segmentIndex: location.segmentIndex}
+			const segmentIndex = normalizeIndex(
+				location.segmentIndex,
+				segmentCount(curve)
+			)
+			const segment = Curve.segment(curve, segmentIndex)
+
+			return {
+				segment,
+				segmentIndex,
+				location: {time: Segment.toTime(segment, location)},
+			}
 		}
 
 		if ('time' in location) {
 			const segCount = segmentCount(curve)
-			let extendedTime = location.time * segCount
-			let segmentIndex = Math.floor(extendedTime)
+			const extendedTime = normalizeOffset(location.time, 1) * segCount
 
-			if (segmentIndex < 0) {
-				segmentIndex = 0
-				extendedTime = 0
-			} else if (segmentIndex >= segCount) {
-				segmentIndex = segCount - 1
-				extendedTime = segCount
-			}
-
+			const segmentIndex = Math.floor(extendedTime)
 			const segment = Curve.segment(curve, segmentIndex)
 			const time = extendedTime - segmentIndex
+
 			return {segment, location: {time}, segmentIndex}
 		}
 
 		const curveLength = length(curve)
 
-		let offset =
-			'unit' in location ? location.unit * curveLength : location.offset
-		offset = scalar.clamp(offset, 0, curveLength)
+		let offset = normalizeOffset(
+			'unit' in location ? location.unit * curveLength : location.offset,
+			curveLength
+		)
 
 		const segs = segments(curve)
 
 		for (const [segmentIndex, segment] of segs.entries()) {
 			const segLength = Segment.length(segment)
 			if (offset < segLength || segmentIndex === segs.length - 1) {
-				return {segment, location: {offset}, segmentIndex}
+				return {
+					segment,
+					segmentIndex,
+					location: {
+						time: Segment.toTime(segment, {offset}),
+					},
+				}
 			}
 			offset -= segLength
 		}
