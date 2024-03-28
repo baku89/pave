@@ -1283,7 +1283,7 @@ export namespace Path {
 	}
 
 	/**
-	 * Converts a linear segment index to a pair of curve and segment index.
+	 * Converts a signed linear segment index to a pair of curve and unsgined segment index.
 	 * @category Utilities
 	 */
 	export function unlinearSegmentIndex(
@@ -1292,6 +1292,10 @@ export namespace Path {
 	): {curveIndex: number; segmentIndex: number} {
 		let segmentIndex = linearSegmentIndex
 		let curveIndex = 0
+
+		if (segmentIndex < 0) {
+			segmentIndex = segmentCount(path) + segmentIndex
+		}
 
 		// TODO: Refactor this to avoid O(n) search
 		for (const curve of path.curves) {
