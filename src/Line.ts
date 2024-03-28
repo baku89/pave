@@ -1,7 +1,7 @@
 import {mat2d, vec2} from 'linearly'
 
 import {SegmentLocation} from './Location'
-import {VertexL} from './Path'
+import {Path, PathL, VertexL} from './Path'
 import {Rect} from './Rect'
 import {SegmentL} from './Segment'
 import {PartialBy, normalizeOffset} from './utils'
@@ -74,6 +74,13 @@ export namespace Line {
 	 */
 	export function isZero(line: SimpleSegmentL) {
 		return vec2.approx(line.start, line.point)
+	}
+
+	export function offset(line: SimpleSegmentL, distance: number): PathL {
+		const n = normal(line)
+		const offset = vec2.scale(n, distance)
+
+		return Path.line(vec2.add(line.start, offset), vec2.add(line.point, offset))
 	}
 
 	/**
