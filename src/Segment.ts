@@ -4,7 +4,7 @@ import {Arc} from './Arc'
 import {CubicBezier} from './CubicBezier'
 import {Line} from './Line'
 import {SegmentLocation} from './Location'
-import {Vertex, VertexA, VertexC, VertexL} from './Path'
+import {type Path, Vertex, VertexA, VertexC, VertexL} from './Path'
 import {Rect} from './Rect'
 
 /**
@@ -118,6 +118,20 @@ export namespace Segment {
 			return CubicBezier.isStraight(seg)
 		} else {
 			return Arc.isStraight(seg)
+		}
+	}
+
+	export function offset(
+		seg: Segment,
+		distance: number,
+		unarcAngle = 90
+	): Path {
+		if (seg.command === 'L') {
+			return Line.offset(seg, distance)
+		} else if (seg.command === 'C') {
+			return CubicBezier.offset(seg, distance)
+		} else {
+			return Arc.offset(seg, distance, unarcAngle)
 		}
 	}
 
