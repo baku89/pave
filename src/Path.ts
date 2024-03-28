@@ -1433,7 +1433,7 @@ export namespace Path {
 
 	/**
 	 * Maps each segments in the path to a path and create a new path concatinating those paths.
-	 * @category Modifier
+	 * @category Modifiers
 	 */
 	export function spawn(
 		path: Path,
@@ -1568,6 +1568,14 @@ export namespace Path {
 		return {curves: curves.flatMap(Curve.reverse)}
 	}
 
+	/**
+	 * Trims the path from the given location to the given location.
+	 * @param path The path to trim
+	 * @param from The start location
+	 * @param to The end location
+	 * @returns The trimmed path
+	 * @category Modifiers
+	 */
 	export function trim(path: Path, from: PathLocation, to: PathLocation): Path {
 		let fromLoc = toTime(path, from)
 		let toLoc = toTime(path, to)
@@ -1933,7 +1941,7 @@ export namespace Path {
 	}
 
 	/**
-	 * Parses the given d attribute of an SVG path and creates a new path. Internally uses [svgpath](https://github.com/fontello/svgpath) library. ![](https://baku89.com/wp-content/uploads/2020/08/monaca_C-0-00-00-00-1-1080x1440.jpg)
+	 * Parses the given d attribute of an SVG path and creates a new path. Internally uses [svgpath](https://github.com/fontello/svgpath) library.
 	 * @param d The d attribute of an SVG path
 	 * @returns The newly created path
 	 * @category Converters
@@ -2640,6 +2648,10 @@ export namespace Path {
 		}
 	}
 
+	/**
+	 * An options for {@link reduce}
+	 * @category Options
+	 */
 	export type ReduceOptions = Curve.ReduceOptions & {
 		/**
 		 * If true, removes the curves with zero length
@@ -2651,6 +2663,7 @@ export namespace Path {
 	/**
 	 * Cleans up the path by removing redundant vertices and
 	 * @param path
+	 * @category Modifiers
 	 */
 	export function reduce(path: Path, options: ReduceOptions = {}): Path {
 		let curves = path.curves.map(c => Curve.reduce(c, options))
