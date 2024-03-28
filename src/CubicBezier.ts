@@ -5,7 +5,7 @@ import paper from 'paper'
 import {SegmentLocation} from './Location'
 import {VertexC} from './Path'
 import {SegmentC} from './Segment'
-import {memoize, PartialBy} from './utils'
+import {memoize, normalizeOffset, PartialBy} from './utils'
 import {Iter} from './Iter'
 
 /**
@@ -70,24 +70,21 @@ export namespace CubicBezier {
 
 	export function toTime(bezier: SimpleSegmentC, loc: SegmentLocation): number {
 		if (typeof loc === 'number') {
-			return scalar.clamp(loc, 0, 1)
-		} else if ('time' in loc) {
-			return scalar.clamp(loc.time, 0, 1)
+			loc = {unit: loc}
+		}
+
+		if ('time' in loc) {
+			return normalizeOffset(loc.time, 1)
 		}
 
 		const paperBezier = toPaperBezier(bezier)
 
-		if ('unit' in loc) {
-			loc = {offset: loc.unit * paperBezier.length}
-		}
+		const offset = normalizeOffset(
+			'unit' in loc ? loc.unit * paperBezier.length : loc.offset,
+			paperBezier.length
+		)
 
-		if (loc.offset < 0) {
-			return 0
-		} else if (loc.offset > paperBezier.length) {
-			return 1
-		}
-
-		return paperBezier.getTimeAt(loc.offset)
+		return paperBezier.getTimeAt(offset)
 	}
 
 	/**
