@@ -1576,7 +1576,12 @@ export namespace Path {
 	 * @returns The trimmed path
 	 * @category Modifiers
 	 */
-	export function trim(path: Path, from: PathLocation, to: PathLocation): Path {
+	export function trim(
+		path: Path,
+		from: PathLocation,
+		to: PathLocation,
+		crossFirstPoint = true
+	): Path {
 		let fromLoc = toTime(path, from)
 		let toLoc = toTime(path, to)
 
@@ -1596,7 +1601,30 @@ export namespace Path {
 			// If the range is in the same curve
 			const curve = path.curves[fromLoc.curveIndex]
 
-			return {curves: [Curve.trim(curve, fromCurveLoc, toCurveLoc)]}
+			if (crossFirstPoint && fromLoc.location.time > toLoc.location.time) {
+				const firstCurve = Curve.trim(curve, fromCurveLoc, 1)
+				const secondCurve = Curve.trim(curve, 0, toCurveLoc)
+
+				if (curve.closed) {
+					return {
+						curves: [
+							{
+								vertices: [
+									...firstCurve.vertices,
+									...secondCurve.vertices.slice(1),
+								],
+								closed: false,
+							},
+						],
+					}
+				} else {
+					return {
+						curves: [firstCurve, secondCurve],
+					}
+				}
+			} else {
+				return {curves: [Curve.trim(curve, fromCurveLoc, toCurveLoc)]}
+			}
 		} else if (fromLoc.curveIndex !== toLoc.curveIndex) {
 			const invert = fromLoc.curveIndex > toLoc.curveIndex
 
