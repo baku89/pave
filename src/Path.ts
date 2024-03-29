@@ -10,7 +10,7 @@ import {Curve, CurveL} from './Curve'
 import {CurveGroup} from './CurveGroup'
 import {Iter} from './Iter'
 import {Line} from './Line'
-import {CurveLocation, PathLocation, TimeSegmentLocation} from './Location'
+import {PathLocation, TimePathLocation} from './Location'
 import {Rect} from './Rect'
 import {Segment} from './Segment'
 import {memoize, toFixedSimple, normalizeIndex, normalizeOffset} from './utils'
@@ -1146,12 +1146,7 @@ export namespace Path {
 	export function toTime(
 		path: Path,
 		location: PathLocation
-	): {
-		segment: Segment
-		location: TimeSegmentLocation
-		segmentIndex: number
-		curveIndex: number
-	} {
+	): Required<TimePathLocation> & {segment: Segment} {
 		// TODO: Fix this
 
 		if (typeof location === 'number') {
@@ -1174,7 +1169,7 @@ export namespace Path {
 
 			return {
 				segment,
-				location: {time: Segment.toTime(segment, location)},
+				time: Segment.toTime(segment, location),
 				curveIndex,
 				segmentIndex,
 			}
@@ -1199,7 +1194,7 @@ export namespace Path {
 
 			return {
 				segment,
-				location: {time: Segment.toTime(segment, location)},
+				time: Segment.toTime(segment, location),
 				...unlinearSegmentIndex(path, segmentIndex),
 			}
 		} else if (curveIndex === null && segmentIndex === null) {
@@ -1221,7 +1216,7 @@ export namespace Path {
 					linearSegmentIndex
 				)
 
-				return {segment, location: {time}, curveIndex, segmentIndex}
+				return {segment, time, curveIndex, segmentIndex}
 			} else {
 				// 'offset' | 'unit' in location
 
@@ -1248,7 +1243,7 @@ export namespace Path {
 					if (segment) {
 						return {
 							segment,
-							location: {time: 1},
+							time: 1,
 							curveIndex: path.curves.length - 1,
 							segmentIndex: segs.length - 1,
 						}
@@ -1299,7 +1294,7 @@ export namespace Path {
 	 */
 	export function point(path: Path, loc: PathLocation): vec2 {
 		const segLoc = toTime(path, loc)
-		return Segment.point(segLoc.segment, segLoc.location)
+		return Segment.point(segLoc.segment, segLoc)
 	}
 
 	/**
@@ -1311,7 +1306,7 @@ export namespace Path {
 	 */
 	export function derivative(path: Path, loc: PathLocation): vec2 {
 		const segLoc = toTime(path, loc)
-		return Segment.derivative(segLoc.segment, segLoc.location)
+		return Segment.derivative(segLoc.segment, segLoc)
 	}
 
 	/**
@@ -1323,7 +1318,7 @@ export namespace Path {
 	 */
 	export function tangent(path: Path, loc: PathLocation): vec2 {
 		const segLoc = toTime(path, loc)
-		return Segment.tangent(segLoc.segment, segLoc.location)
+		return Segment.tangent(segLoc.segment, segLoc)
 	}
 
 	/**
@@ -1335,7 +1330,7 @@ export namespace Path {
 	 */
 	export function normal(path: Path, loc: PathLocation): vec2 {
 		const segLoc = toTime(path, loc)
-		return Segment.normal(segLoc.segment, segLoc.location)
+		return Segment.normal(segLoc.segment, segLoc)
 	}
 
 	/**
@@ -1347,7 +1342,7 @@ export namespace Path {
 	 */
 	export function orientation(path: Path, loc: PathLocation): mat2d {
 		const segLoc = toTime(path, loc)
-		return Segment.orientation(segLoc.segment, segLoc.location)
+		return Segment.orientation(segLoc.segment, segLoc)
 	}
 
 	/**
@@ -1585,25 +1580,13 @@ export namespace Path {
 		let fromLoc = toTime(path, from)
 		let toLoc = toTime(path, to)
 
-		let fromCurveLoc = {
-			segmentIndex: fromLoc.segmentIndex,
-			...(typeof fromLoc.location === 'number'
-				? {unit: fromLoc}
-				: fromLoc.location),
-		} as CurveLocation
-
-		let toCurveLoc = {
-			segmentIndex: toLoc.segmentIndex,
-			...(typeof toLoc.location === 'number' ? {unit: toLoc} : toLoc.location),
-		} as CurveLocation
-
 		if (fromLoc.curveIndex === toLoc.curveIndex) {
 			// If the range is in the same curve
 			const curve = path.curves[fromLoc.curveIndex]
 
-			if (crossFirstPoint && fromLoc.location.time > toLoc.location.time) {
-				const firstCurve = Curve.trim(curve, fromCurveLoc, 1)
-				const secondCurve = Curve.trim(curve, 0, toCurveLoc)
+			if (crossFirstPoint && fromLoc.time > toLoc.time) {
+				const firstCurve = Curve.trim(curve, fromLoc, 1)
+				const secondCurve = Curve.trim(curve, 0, toLoc)
 
 				if (curve.closed) {
 					return {
@@ -1623,21 +1606,20 @@ export namespace Path {
 					}
 				}
 			} else {
-				return {curves: [Curve.trim(curve, fromCurveLoc, toCurveLoc)]}
+				return {curves: [Curve.trim(curve, fromLoc, toLoc)]}
 			}
 		} else if (fromLoc.curveIndex !== toLoc.curveIndex) {
 			const invert = fromLoc.curveIndex > toLoc.curveIndex
 
 			if (invert) {
 				;[fromLoc, toLoc] = [toLoc, fromLoc]
-				;[fromCurveLoc, toCurveLoc] = [toCurveLoc, fromCurveLoc]
 			}
 
 			const trimmedPath = {
 				curves: [
-					Curve.trim(path.curves[fromLoc.curveIndex], fromCurveLoc, 1),
+					Curve.trim(path.curves[fromLoc.curveIndex], fromLoc, 1),
 					...path.curves.slice(fromLoc.curveIndex + 1, toLoc.curveIndex),
-					Curve.trim(path.curves[toLoc.curveIndex], 0, toCurveLoc),
+					Curve.trim(path.curves[toLoc.curveIndex], 0, toLoc),
 				],
 			}
 

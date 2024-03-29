@@ -2,7 +2,7 @@ import {scalar, vec2} from 'linearly'
 
 import {Arc} from './Arc'
 import {CubicBezier} from './CubicBezier'
-import {CurveLocation, TimeSegmentLocation} from './Location'
+import {CurveLocation, TimeCurveLocation} from './Location'
 import {Vertex, VertexA, VertexC, VertexL} from './Path'
 import {Rect} from './Rect'
 import {Segment} from './Segment'
@@ -128,24 +128,18 @@ export namespace Curve {
 		const toLoc = toTime(curve, to)
 
 		if (fromLoc.segmentIndex === toLoc.segmentIndex) {
-			const seg = Segment.trim(
-				fromLoc.segment,
-				fromLoc.location,
-				toLoc.location
-			)
+			const seg = Segment.trim(fromLoc.segment, fromLoc, toLoc)
 			const firstVertex: Vertex = {
 				command: 'L',
 				point: seg.start,
 			}
-
-			delete (seg as any)['start']
 
 			return {
 				vertices: [firstVertex, seg],
 				closed: false,
 			}
 		} else if (fromLoc.segmentIndex < toLoc.segmentIndex) {
-			const firstSeg = Segment.trim(fromLoc.segment, fromLoc.location, 1)
+			const firstSeg = Segment.trim(fromLoc.segment, fromLoc, 1)
 			const firstVertex: Vertex = {
 				command: 'L',
 				point: firstSeg.start,
@@ -156,7 +150,7 @@ export namespace Curve {
 				toLoc.segmentIndex + 1
 			)
 
-			const time = Segment.toTime(toLoc.segment, toLoc.location)
+			const time = Segment.toTime(toLoc.segment, toLoc)
 
 			const lastVertices = scalar.approx(time, 0)
 				? []
@@ -175,7 +169,7 @@ export namespace Curve {
 			// fromLoc.segmentIndex > toLoc.segmentIndex (reverse order)
 			let firstVertices: Vertex[]
 
-			const fromTime = Segment.toTime(fromLoc.segment, fromLoc.location)
+			const fromTime = Segment.toTime(fromLoc.segment, fromLoc)
 
 			if (scalar.approx(fromTime, 0)) {
 				firstVertices = [{command: 'L', point: fromLoc.segment.start}]
@@ -196,7 +190,7 @@ export namespace Curve {
 			const inbetweenVerticesReversed =
 				MultiSegment.reverse(inbetweenVertices).vertices
 
-			const lastSeg = Segment.trim(toLoc.segment, 1, toLoc.location)
+			const lastSeg = Segment.trim(toLoc.segment, 1, toLoc)
 
 			return {
 				vertices: [...firstVertices, ...inbetweenVerticesReversed, lastSeg],
@@ -291,7 +285,7 @@ export namespace Curve {
 	export function toTime(
 		curve: Curve,
 		location: CurveLocation
-	): {segment: Segment; segmentIndex: number; location: TimeSegmentLocation} {
+	): Required<TimeCurveLocation> & {segment: Segment} {
 		if (typeof location === 'number') {
 			location = {unit: location}
 		}
@@ -306,7 +300,7 @@ export namespace Curve {
 			return {
 				segment,
 				segmentIndex,
-				location: {time: Segment.toTime(segment, location)},
+				time: Segment.toTime(segment, location),
 			}
 		}
 
@@ -318,7 +312,7 @@ export namespace Curve {
 			const segment = Curve.segment(curve, segmentIndex)
 			const time = extendedTime - segmentIndex
 
-			return {segment, location: {time}, segmentIndex}
+			return {segment, time, segmentIndex}
 		}
 
 		const curveLength = length(curve)
@@ -336,9 +330,7 @@ export namespace Curve {
 				return {
 					segment,
 					segmentIndex,
-					location: {
-						time: Segment.toTime(segment, {offset}),
-					},
+					time: Segment.toTime(segment, {offset}),
 				}
 			}
 			offset -= segLength
