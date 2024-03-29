@@ -48,7 +48,7 @@ All code blocks with viewer on the right are editable so you can try out the Pav
 
 See the full documentation on [API](./api)
 
-- [Path](./api/modules/Path-1): The core module for manipulating paths.
+- [Path](./api/modules/Path): The core module for manipulating paths.
 - Comamnds
   - [Arc](./api/modules/Arc): The arc (A) commands functions.
   - [CubicBezier](./api/modules/CubicBezier): The cubic Bezier (C) commands functions.
