@@ -958,6 +958,58 @@ export namespace Path {
 		const c2 = vec2.lerp(point, control, 2 / 3)
 		return cubicBezier(start, c1, c2, point)
 	}
+
+	/**
+	 * Create a path consisting of cubic Bézier curves approximating the arbitrary higher-order Bézier curve.
+	 * @param points The control points of the Bézier curve
+	 * @returns The newly created path
+	 * @category Primitives
+	 */
+	export function nBezier(points: vec2[]) {
+		if (points.length === 0) {
+			return empty
+		}
+		if (points.length === 1) {
+			return dot(points[0])
+		}
+		if (points.length === 2) {
+			return line(points[0], points[1])
+		}
+		if (points.length === 3) {
+			return quadraticBezier(points[0], points[1], points[2])
+		}
+		if (points.length === 4) {
+			return cubicBezier(points[0], points[1], points[2], points[3])
+		}
+
+		const vertices: vec2[] = []
+
+		const order = points.length - 1
+
+		const coeffs = Array(order + 1)
+			.fill(0)
+			.map((_, i) => combination(order, i))
+
+		for (const t of Iter.resample(0, 1, {count: order * 10})) {
+			let point = vec2.zero
+			for (const [i, p] of points.entries()) {
+				const weight = coeffs[i] * Math.pow(1 - t, order - i) * Math.pow(t, i)
+				point = vec2.scaleAndAdd(point, p, weight)
+			}
+			vertices.push(point)
+		}
+
+		return polyline(...vertices)
+
+		function combination(n: number, k: number) {
+			let result = 1
+			for (let i = 1; i <= k; i++) {
+				result *= (n - i + 1) / i
+			}
+			return result
+		}
+	}
+
 	/**
 	 * Creates an open path consist of only a single command.
 	 * @param segment The segment to create
