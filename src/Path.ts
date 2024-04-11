@@ -942,6 +942,23 @@ export namespace Path {
 	}
 
 	/**
+	 * Creates a quadratic Bézier curve path from the given points.
+	 * @param start The start point
+	 * @param control The control point
+	 * @param point The end point
+	 * @returns THe newly created path
+	 * @category Primitives
+	 */
+	export function quadraticBezier(
+		start: vec2,
+		control: vec2,
+		point: vec2
+	): Path {
+		const c1 = vec2.lerp(start, control, 2 / 3)
+		const c2 = vec2.lerp(point, control, 2 / 3)
+		return cubicBezier(start, c1, c2, point)
+	}
+	/**
 	 * Creates an open path consist of only a single command.
 	 * @param segment The segment to create
 	 * @returns The newly created path
