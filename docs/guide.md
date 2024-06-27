@@ -132,3 +132,56 @@ In addition to the above hierarchy, there is also a type called **[Segment](./ap
 ```ts
 type Segment = Vertex & {start: vec2}
 ```
+
+### Location Representation on Paths
+
+To represent a specific position on a segment, you can use the following three representations:
+
+- **Unit**: A relative position to the start and end points on the segment. This is the default representation in Pave. It takes a value in the range `[0, 1]`.
+- **Offset**: A representation based on the distance from the start point. `0` corresponds to the start point, and the length of the segment corresponds to the end point.
+- **Time**: A representation based on the parameter of the mathematical curve used in the segment. It takes a value in the range `[0, 1]`. Note that unlike the other two position representations, time may not be evenly distributed on the segment.
+
+```ts
+type UnitSegmentLocation = number | {unit: number}
+type OffsetSegmentLocation = {offset: number}
+type TimeSegmentLocation = {time: number}
+
+type SegmentLocation =
+	| UnitSegmentLocation
+	| OffsetSegmentLocation
+	| TimeSegmentLocation
+```
+
+Locations on curves consisting of multiple segments, such as Curve or Path, can be represented by specifying the index of the vertex or curve in addition to the above representations. If not specified, in the case of unit or offset, it is treated as a relative position in the range of `[0, max]` to the total curve length, and in the case of time, it is treated as a value of the parameter evenly divided by the number of segments. (For example, in the case of a path consisting of two segments, `{time: 0.25}` corresponds to `{time: 0.5}` in the first segment.)
+
+```ts
+type UnitPathLocation =
+	| number
+	| {
+			unit: number
+			vertexIndex?: number
+			curveIndex?: number
+	  }
+
+type OffsetPathLocation = {
+	offset: number
+	vertexIndex?: number
+	curveIndex?: number
+}
+
+type TimePathLocation = {
+	time: number
+	vertexIndex?: number
+	curveIndex?: number
+}
+
+type PathLocation = UnitPathLocation | OffsetPathLocation | TimePathLocation
+```
+
+:::tip
+範囲外の値を指定した場合、自動的にクランプされます。ただし、unitやoffset、timeが`-最大値 <= x  < 0`の範囲で負の値を取る場合、該当するカーブの終点を基準に絶対値だけオフセットした位置について取得されます。これは[`Array.at()`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/at)の挙動とも似ています。
+
+If you specify a value that is out of range, it will be automatically clamped. However, if you specify a negative value in the range of `-max <= x < 0` , the position will be obtained by offsetting the absolute value of the location from the end point of the corresponding curve. This behavior is similar to [`Array.at()`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/at).
+:::
+
+Also, if a position representation can be interpreted as both the end point of a segment and the start point of a subsequent segment, the start point of the later segment takes precedence. For example, in a path consisting of two separate lines, `{time: 0.5}` may refer to both the end point of the first line and the start point of the second line, but the start point of the second line is prioritized by this rule. If you want to refer to the end point of the first line, you need to specify it explicitly as `{time: 1, curveIndex: 0}`.

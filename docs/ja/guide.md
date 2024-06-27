@@ -160,11 +160,14 @@ type Segment = Vertex & {start: vec2}
 - **Time**: セグメントに用いられる数理曲線の媒介変数による表現。`[0, 1]`の範囲をとります。残りの2つの位置表現と異なり、timeは3次ベジェ補間や楕円弧において、セグメント上で等間隔に分布しない場合があることに注意してください。
 
 ```ts
-type UnitLocation = number | {unit: number}
-type OffsetLocation = {offset: number}
-type TimeLocation = {time: number}
+type UnitSegmentLocation = number | {unit: number}
+type OffsetSegmentLocation = {offset: number}
+type TimeSegmentLocation = {time: number}
 
-type SegmentLocation = UnitLocation | OffsetLocation | TimeLocation
+type SegmentLocation =
+	| UnitSegmentLocation
+	| OffsetSegmentLocation
+	| TimeSegmentLocation
 ```
 
 CurveやPathなど、複数のセグメントからなる曲線上の位置を表すには、上記の表現に加えて、頂点やカーブのインデックスを指定することが出来ます。もし指定されない場合、unitにおいては全体の曲線長に対する`[0, 1]`の範囲をとる相対的な位置として、timeにおいては、`[0, 1]`をセグメントの個数で等分した媒介変数の値として扱われます。（2つのセグメントからなるパスを例に挙げると、`{time: 0.25}`は1番目のセグメントにおける`{time: 0.5}`に対応します）
@@ -194,7 +197,7 @@ type PathLocation = UnitPathLocation | OffsetPathLocation | TimePathLocation
 ```
 
 :::tip
-範囲外の値を指定した場合、自動的にクランプされます。ただし、unitやoffset、timeが`-最大値 <= x  < 0`の範囲で負の値を取る場合、該当するカーブの終点を基準に絶対値だけオフセットした位置について取得されます。これは[`Array.at()`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/at)の挙動とも似ています。
+範囲外の値を指定した場合、自動的にクランプされます。ただし、位置が`-最大値 <= x  < 0`の範囲で負の値を取る場合、該当するカーブの終点を基準にその絶対値だけオフセットした位置について取得されます。これは[`Array.at()`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/at)の挙動とも似ています。
 :::
 
 また、位置表現があるセグメントの終点とも後続のセグメントの始点とも解釈されるような場合は、セグメントの始点の方が優先されます。例えば、2つの分離した直線から成るパスにおいて、`{time: 0.5}`は1番目の直線の終点と2番目の直線の始点の両方を指す可能性がありますが、このルールにより2番目の直線の始点が優先されます。もし1番目の直線の終点を指したい場合は、`{time: 1, curveIndex: 0}`のように明示する必要があります。
