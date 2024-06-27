@@ -1415,7 +1415,7 @@ export namespace Path {
 	}
 
 	/**
-	 * Maps each segment in the path to a single or array of vertices and creates a new path concatinating those vertices. you can change the type of commands, and change the number of them in the path, but you cannot change the topology of the path. The segments that were originally continuous remains connected, and vice versa.
+	 * Maps each segment in the path to a single or array of vertices and creates a new path concatinating those vertices. Unlike {@link spawn}, the mapping function must returns a single or multiple vertices instead of {@link Path}. So while you can change the type of commands, and change the number of them in the path, you cannot change the topology of the path. The segments that were originally continuous remains connected, and vice versa.
 	 * @param path The path to map
 	 * @param fn The vertex mapping function. It takes a {@link Segment} and returns a single or array of vertices.
 	 * @returns The newly created path
@@ -1426,7 +1426,7 @@ export namespace Path {
 		V2 extends Vertex = Vertex,
 	>(
 		path: Path<V1>,
-		fn: (segment: Segment<V1>, index: number, curve: Curve) => V2 | V2[]
+		fn: (segment: Segment<V1>, segmentIndex: number, curve: Curve) => V2 | V2[]
 	): Path<V2> {
 		return {
 			curves: path.curves.map(curve => {
@@ -1451,8 +1451,8 @@ export namespace Path {
 				}
 
 				vertices.push(
-					...Curve.segments(curve).flatMap((seg, i) =>
-						fn(seg as Segment<V1>, i, curve)
+					...Curve.segments(curve).flatMap((segment, segmentIndex) =>
+						fn(segment as Segment<V1>, segmentIndex, curve)
 					)
 				)
 
