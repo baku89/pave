@@ -80,6 +80,40 @@ export namespace Curve {
 		return segs
 	})
 
+	export function neighborSegment(
+		curve: Curve,
+		segmentIndex: number,
+		offset: number
+	): Segment | null {
+		const segCount = segmentCount(curve)
+
+		let index = segmentIndex + offset
+
+		if (curve.closed) {
+			index = scalar.mod(index, segCount)
+		}
+
+		if (index < 0 || index >= segCount) {
+			return null
+		}
+
+		return segment(curve, index)
+	}
+
+	export function nextSegment(
+		curve: Curve,
+		segmentIndex: number
+	): Segment | null {
+		return neighborSegment(curve, segmentIndex, 1)
+	}
+
+	export function prevSegment(
+		curve: Curve,
+		segmentIndex: number
+	): Segment | null {
+		return neighborSegment(curve, segmentIndex, -1)
+	}
+
 	export function reverse(curve: Curve): Curve {
 		const vertices: Vertex[] = []
 
