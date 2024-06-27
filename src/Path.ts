@@ -1044,20 +1044,23 @@ export namespace Path {
 		 * @default 10e-6
 		 */
 		delta?: number
-		/**
-		 * The maximum count of the vertices
-		 */
-		maxVertices?: number
 	}
 
 	/**
 	 * Creates a path from the given formula, which maps a parameter `t` to a point. The tangent will be automatically calculated by the derivative function, which is computed using Euler's method with given delta. If the formula has cusps, you need to appropriately specify the range to put `t` at the cusp.
 	 * @param f The formula to create the path
-	 * @param start The start value of `t`
-	 * @param end The end value of `t`
+	 * @param iter The iterable object to iterate the parameter `t`
 	 * @param options The options
 	 * @returns The newly created path
 	 * @category Primitives
+	 * @example
+	 * ```js:pave
+	 * const p = formula(
+	 * 	t => [t * 50, 50 + scalar.sin(t * 360) * 20],
+	 * 	Iter.range(0, 2, .25)
+	 * )
+	 * stroke(p)
+	 * ```
 	 */
 	export function formula(
 		f: (t: number) => vec2,
