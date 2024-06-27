@@ -11,6 +11,9 @@ export function normalizeOffset(offset: number, max: number) {
 	return scalar.clamp(offset >= 0 ? offset : max + offset, 0, max)
 }
 
+/**
+ * Normalize an index to the range 0 to length - 1. Negative values are interpreted as offsets from the end. If the index is out of bounds, it is clamped to the nearest bound.
+ */
 export function normalizeIndex(index: number, length: number) {
 	return scalar.clamp(index >= 0 ? index : length + index, 0, length - 1)
 }
