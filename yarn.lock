@@ -2620,10 +2620,10 @@ lilconfig@^3.0.0:
   resolved "https://registry.yarnpkg.com/lilconfig/-/lilconfig-3.0.0.tgz#f8067feb033b5b74dab4602a5f5029420be749bc"
   integrity sha512-K2U4W2Ff5ibV7j7ydLr+zLAkIg5JJ4lPn1Ltsdt+Tz/IjQ8buJ55pZAxoP34lqIiwtF9iAvtLv3JGv7CAyAg+g==
 
-linearly@0.29.0:
-  version "0.29.0"
-  resolved "https://registry.yarnpkg.com/linearly/-/linearly-0.29.0.tgz#f02ce92b05caba61cdf7ce57d7a7924ade460806"
-  integrity sha512-x6GdpACtpVjlepjt/ZhZQReq9KRoXpd+Z1gWy9Rff2KK/gG88AgUFDnDcz50iz+Rw3OTfEEZJvGlTJpp0TT2yA==
+linearly@0.32.0:
+  version "0.32.0"
+  resolved "https://registry.yarnpkg.com/linearly/-/linearly-0.32.0.tgz#f41d1feb6f518aa38e39e555395c22990c5c9750"
+  integrity sha512-m8pBLZWmcAj3zUcRt9ZBaBa1lcA3sqGJGK248n3wPtdBlAfD2K993ESMcREHDFZofcN/gUW0bAbZu/s7BWVx7g==
 
 linkify-it@^5.0.0:
   version "5.0.0"
