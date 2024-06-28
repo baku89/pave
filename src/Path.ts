@@ -13,7 +13,13 @@ import {Line} from './Line'
 import {PathLocation, TimePathLocation} from './Location'
 import {Rect} from './Rect'
 import {Segment} from './Segment'
-import {memoize, toFixedSimple, normalizeIndex, normalizeOffset} from './utils'
+import {
+	memoize,
+	toFixedSimple,
+	normalizeIndex,
+	normalizeOffset,
+	minimizeVec2,
+} from './utils'
 
 paper.setup(document.createElement('canvas'))
 
@@ -1995,6 +2001,93 @@ export namespace Path {
 				return [{point, command: 'C', args: [c1, c2]}]
 			}
 		)
+	}
+
+	export function chamfer(path: Path, distance: number): Path {
+		return spawnVertex(path, (s0, i, curve) => {
+			if (i === -1) return s0
+
+			const s1 = Curve.nextSegment(curve, i)
+
+			if (!s1) {
+				return s0
+			}
+
+			/**
+			 *    +
+			 *    |\
+			 *    | \  s1
+			 * s0 |  \
+			 *    |   \
+			 * p 0+----\ p1
+			 *    |     \
+			 *    |      \
+			 */
+
+			const f = ([t0, t1]: vec2) => {
+				const p0 = Segment.point(s0, t0)
+				const p1 = Segment.point(s1, t1)
+
+				const v01 = vec2.normalize(vec2.sub(p1, p0))
+
+				const distanceCost = (vec2.dist(p0, p1) - distance) ** 2
+
+				const angle0 = vec2.dot(Segment.tangent(s0, t0), v01)
+				const angle1 = vec2.dot(Segment.tangent(s1, t1), v01)
+
+				const angleCost = Math.abs(angle0 - angle1) ** 2
+				return distanceCost + angleCost
+			}
+
+			function visualizeGraph(f: (v: vec2) => number) {
+				let canvas = document.getElementById('canvas') as HTMLCanvasElement
+
+				if (!canvas) {
+					canvas = document.createElement('canvas')
+					canvas.id = 'canvas'
+					canvas.width = 100
+					canvas.height = 100
+					document.body.appendChild(canvas)
+				}
+
+				const ctx = canvas.getContext('2d')!
+
+				// creates empty 100 x 100 array
+				const costs = Array.from({length: 100}, () =>
+					Array.from({length: 100}, () => 0)
+				)
+
+				let maxCost = -Infinity
+
+				for (let y = 0; y < 100; y++) {
+					for (let x = 0; x < 100; x++) {
+						const cost = f([x / 100, y / 100])
+						costs[y][x] = cost
+						maxCost = Math.max(maxCost, cost)
+					}
+				}
+
+				console.log('maxCost', maxCost)
+
+				for (let y = 0; y < 100; y++) {
+					for (let x = 0; x < 100; x++) {
+						const cost = costs[y][x]
+						const gray = Math.floor(Math.pow(cost / maxCost, 0.44) * 255)
+						ctx.fillStyle = `rgb(${gray}, ${gray}, ${gray})`
+						ctx.fillRect(x, y, 1, 1)
+					}
+				}
+			}
+
+			visualizeGraph(f)
+
+			const [t0, t1] = minimizeVec2(f, [0.5, 0.5])
+
+			const trimmedSeg: Vertex = Segment.trim(s0, 0, t0)
+			const chamferSeg: Vertex = {command: 'L', point: Segment.point(s1, t1)}
+
+			return [trimmedSeg, chamferSeg]
+		})
 	}
 
 	/**
