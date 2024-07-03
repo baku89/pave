@@ -135,6 +135,19 @@ export namespace Segment {
 		}
 	}
 
+	export function divideAtTimes(
+		seg: Segment,
+		times: Iterable<number>
+	): Vertex[] {
+		if (seg.command === 'L') {
+			return Line.divideAtTimes(seg, times)
+		} else if (seg.command === 'C') {
+			return CubicBezier.divideAtTimes(seg, times)
+		} else {
+			return Arc.divideAtTimes(seg, times)
+		}
+	}
+
 	export const toTime = (seg: Segment, loc: SegmentLocation): number => {
 		if (seg.command === 'L') {
 			return Line.toTime(seg, loc)

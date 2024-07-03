@@ -1914,14 +1914,8 @@ export namespace Path {
 			.fill(0)
 			.map((_, i) => (i + 1) / division)
 
-		return spawnVertex(path, (segment): Vertex[] => {
-			if (segment.command === 'L') {
-				return Line.divideAtTimes(segment, times)
-			} else if (segment.command === 'C') {
-				return CubicBezier.divideAtTimes(segment, times)
-			} else {
-				return Arc.divideAtTimes(segment, times)
-			}
+		return spawnVertex(path, segment => {
+			return Segment.divideAtTimes(segment, times)
 		})
 	}
 
