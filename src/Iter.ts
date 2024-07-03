@@ -90,6 +90,10 @@ export namespace Iter {
 		}
 	}
 
+	/**
+	 * Yields tuples of values from the input generator, where its first element is the index of the value and the second one is the value itself.
+	 * @param iter The input generator.
+	 */
 	export function* enumerate<T>(iter: Iterable<T>): Generator<[number, T]> {
 		let i = 0
 
