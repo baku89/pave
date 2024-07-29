@@ -2048,6 +2048,8 @@ export namespace Path {
 					canvas.width = 100
 					canvas.height = 100
 					document.body.appendChild(canvas)
+					canvas.style.width = '400px'
+					canvas.style.height = '400px'
 				}
 
 				const ctx = canvas.getContext('2d')!
@@ -2062,21 +2064,21 @@ export namespace Path {
 				for (let y = 0; y < 100; y++) {
 					for (let x = 0; x < 100; x++) {
 						const cost = f([x / 100, y / 100])
-						costs[y][x] = cost
+						costs[x][y] = cost
 						maxCost = Math.max(maxCost, cost)
 					}
 				}
-
-				console.log('maxCost', maxCost)
-
 				for (let y = 0; y < 100; y++) {
 					for (let x = 0; x < 100; x++) {
-						const cost = costs[y][x]
-						const gray = Math.floor(Math.pow(cost / maxCost, 0.44) * 255)
+						const cost = costs[x][y]
+						const gray = (cost / maxCost) * 255
 						ctx.fillStyle = `rgb(${gray}, ${gray}, ${gray})`
 						ctx.fillRect(x, y, 1, 1)
 					}
 				}
+
+				ctx.fillStyle = 'red'
+				ctx.fillText(maxCost.toFixed(2), 2, 12)
 			}
 
 			visualizeGraph(f)
