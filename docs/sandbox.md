@@ -26,6 +26,9 @@ context: CanvasRenderingContext2D
 // Current time ranging from 0 to 1
 time: number
 
+// The position of the mouse ranging from 0 to 100. Initial value is [50, 50]
+mouse: [x: number, y: number]
+
 // Shorhands for drawing functions
 stroke: (path: Path, color = accentCoor, width = 1) => void
 fill: (path: Path, color = accentColor) => void

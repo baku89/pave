@@ -66,7 +66,7 @@ export async function exportVideo(code: string, onlyCanvas = false) {
 	for (let i = 0; i < frameCount; i++) {
 		const time = i / frameCount
 
-		evalFn(time)
+		evalFn({time, mouse: [50, 50]})
 
 		if (!onlyCanvas) {
 			videoContext.clearRect(0, 0, 1920, 1080)

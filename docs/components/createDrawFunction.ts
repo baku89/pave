@@ -134,15 +134,15 @@ export function createDrawFunction(
 
 	try {
 		const draw = saferEval(
-			`(time) => {\n${code}\n}`,
+			`({time, mouse}) => {\n${code}\n}`,
 			evalContext
-		) as unknown as (time: number) => void
+		) as unknown as (arg: {time: number; mouse: vec2}) => void
 
-		return (time: number) => {
+		return (arg: {time: number; mouse: vec2}) => {
 			canvasContext.clearRect(0, 0, canvas.width, canvas.height)
 			canvasContext.resetTransform()
 			canvasContext.transform(...mat2d.fromScaling([scale, scale]))
-			draw(time)
+			draw(arg)
 		}
 	} catch (e) {
 		// eslint-disable-next-line no-console

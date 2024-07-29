@@ -1,8 +1,14 @@
 <script lang="ts" setup>
-import {throttledWatch, useCssVar, useElementSize} from '@vueuse/core'
-import {computed, onMounted, ref, watch} from 'vue'
+import {
+	throttledWatch,
+	useCssVar,
+	useElementSize,
+	useMouseInElement,
+} from '@vueuse/core'
+import {computed, onMounted, ref, watch, watchEffect} from 'vue'
 
 import {createDrawFunction, setupEvalContextCreator} from './createDrawFunction'
+import {vec2} from 'linearly'
 
 const props = withDefaults(
 	defineProps<{
@@ -14,6 +20,22 @@ const props = withDefaults(
 
 const canvas = ref<null | HTMLCanvasElement>(null)
 const context = ref<null | CanvasRenderingContext2D>(null)
+
+const {x: mouseX, y: mouseY} = useMouseInElement(canvas, {
+	target: canvas,
+	type: e => {
+		const el = e.target as HTMLElement
+		return [
+			((e.pageX - el.offsetLeft) / el.offsetWidth) * 100,
+			((e.pageY - el.offsetTop) / el.offsetHeight) * 100,
+		]
+	},
+	initialValue: {x: 50, y: 50},
+})
+
+const mouse = computed<vec2>(() => [mouseX.value, mouseY.value])
+
+watchEffect(() => console.log(mouse.value))
 
 const {width: canvasWidth, height: canvasHeight} = useElementSize(canvas)
 
@@ -30,7 +52,7 @@ onMounted(async () => {
 		return createDrawContext(ctx)
 	})
 
-	const evalFn = ref<((time: number) => void) | null>(null)
+	const evalFn = ref<((arg: {time: number; mouse: vec2}) => void) | null>(null)
 
 	throttledWatch(
 		() =>
@@ -50,12 +72,12 @@ onMounted(async () => {
 	)
 
 	watch(
-		() => [props.time, evalFn.value] as const,
-		([time, evalFn]) => {
+		() => [props.time, mouse.value, evalFn.value] as const,
+		([time, mouse, evalFn]) => {
 			if (!evalFn) return
 
 			try {
-				evalFn(time)
+				evalFn({time, mouse})
 			} catch (e) {
 				// eslint-disable-next-line no-console
 				console.error(e)
