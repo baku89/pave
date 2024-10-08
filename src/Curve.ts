@@ -10,7 +10,7 @@ import {memoize, normalizeIndex, normalizeOffset} from './utils'
 import {MultiSegment} from './MultiSegment'
 
 /**
- * A single open or closed path represented as an array of . All of the points are represented as tuple of vector `[x: number, y: number]` and the commands are represented in absolute form.
+ * A single open or closed stroke represented as an array of vertices. All of the points are represented as tuple `[x: number, y: number]` and the commands are represented in absolute form.
  * @category Types
  */
 export type Curve<V extends Vertex = Vertex> = {
