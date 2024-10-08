@@ -4,7 +4,7 @@ import {scalar, vec2} from 'linearly'
  * A circle represented as a tuple of a center and a radius.
  * @category Types
  */
-export type Circle = readonly [center: vec2, radius: number]
+export type Circle = {readonly center: vec2; readonly radius: number}
 
 /**
  * Functions for manipulating circles represented as {@link Circle}.
@@ -36,6 +36,6 @@ export namespace Circle {
 
 		const radius = vec2.dist(center, a)
 
-		return [center, radius]
+		return {center, radius}
 	}
 }

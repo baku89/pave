@@ -427,7 +427,7 @@ export namespace Path {
 			throw new Error('Circumcircle is not defined')
 		}
 
-		const [, radius] = circumcircle
+		const {radius} = circumcircle
 		const radii: vec2 = [radius, radius]
 
 		const sweep = vec2.angle(vec2.sub(p2, p1), vec2.sub(p3, p1)) > 0
@@ -599,7 +599,7 @@ export namespace Path {
 			}
 		}
 
-		const [center, radius] = circumcircle
+		const {center, radius} = circumcircle
 
 		const CS = vec2.sub(start, center)
 		const CT = vec2.sub(through, center)
