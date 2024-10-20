@@ -2594,6 +2594,9 @@ export namespace Path {
 				return paperPath
 			})
 
+			// Prevents the memory leak by clearing the project after the conversion
+			setTimeout(() => paper.project.clear(), 0)
+
 			return paperPaths.length > 1
 				? new paper.CompoundPath({children: paperPaths})
 				: paperPaths[0]
