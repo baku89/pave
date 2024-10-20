@@ -1977,10 +1977,10 @@ export namespace Path {
 	export function distort(
 		path: Path,
 		transform: (position: vec2) => mat2d,
-		{unarcAngle = 5, subdivide: subdivideNum = 1}: DistortOptions = {}
+		{unarcAngle = 5, subdivide = 1}: DistortOptions = {}
 	) {
 		return spawnVertex(
-			toCubicBezier(subdivide(path, subdivideNum), unarcAngle),
+			toCubicBezier(Path.subdivide(path, subdivide), unarcAngle),
 			(segment): Vertex[] => {
 				let [c1, c2] = segment.args
 				const startXform = transform(segment.start)
