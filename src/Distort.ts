@@ -50,4 +50,32 @@ export namespace Distort {
 			return pDistorted
 		})
 	}
+
+	/**
+	 * Add a twirl distortion to the given point.
+	 * @param center The center of the twirl.
+	 * @param radius The radius of the twirl.
+	 * @param angle The angle of the twirl in degrees.
+	 * @param ramp The ramp function that maps the distance ratio to the twirl amplitude.
+	 * @returns The twirl distortion function.
+	 */
+	export function twirl(
+		center: vec2,
+		radius: number,
+		angle: number,
+		ramp: (t: number) => number = t => t
+	): Distort {
+		return fromPointTransformer((p: vec2) => {
+			const dist = vec2.distance(center, p)
+
+			if (dist > radius) {
+				return p
+			}
+
+			const theta = ramp(1 - dist / radius) * angle
+			const xform = mat2d.rotation(theta, center)
+
+			return vec2.transformMat2d(p, xform)
+		})
+	}
 }
