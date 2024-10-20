@@ -5,7 +5,7 @@ import {
 	useElementSize,
 	useMouseInElement,
 } from '@vueuse/core'
-import {computed, onMounted, ref, watch, watchEffect} from 'vue'
+import {computed, onMounted, ref, watch} from 'vue'
 
 import {createDrawFunction, setupEvalContextCreator} from './createDrawFunction'
 import {vec2} from 'linearly'
@@ -34,8 +34,6 @@ const {x: mouseX, y: mouseY} = useMouseInElement(canvas, {
 })
 
 const mouse = computed<vec2>(() => [mouseX.value, mouseY.value])
-
-watchEffect(() => console.log(mouse.value))
 
 const {width: canvasWidth, height: canvasHeight} = useElementSize(canvas)
 
