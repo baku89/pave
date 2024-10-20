@@ -7,7 +7,6 @@
 	"sort": ["alphabetical"],
 	"cleanOutputDir": true,
 	"includeVersion": true,
-	"hideInPageTOC": true,
 	"categoryOrder": [
 		"Primitives",
 		"Properties",
