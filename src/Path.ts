@@ -12,13 +12,7 @@ import {Iter} from './Iter'
 import {PathLocation, TimePathLocation} from './Location'
 import {Rect} from './Rect'
 import {Segment} from './Segment'
-import {
-	memoize,
-	toFixedSimple,
-	normalizeIndex,
-	normalizeOffset,
-	minimizeVec2,
-} from './utils'
+import {memoize, toFixedSimple, normalizeIndex, normalizeOffset} from './utils'
 
 paper.setup(document.createElement('canvas'))
 
@@ -1997,91 +1991,48 @@ export namespace Path {
 	}
 
 	export function chamfer(path: Path, distance: number): Path {
-		return spawnVertex(path, (s0, i, curve) => {
-			if (i === -1) return s0
+		return spawnVertex(path, (seg, index, curve) => {
+			const next = Curve.nextSegment(curve, index)
 
-			const s1 = Curve.nextSegment(curve, i)
-
-			if (!s1) {
-				return s0
+			if (!next || index === -1) {
+				return seg
 			}
 
-			/**
-			 *    +
-			 *    |\
-			 *    | \  s1
-			 * s0 |  \
-			 *    |   \
-			 * p 0+----\ p1
-			 *    |     \
-			 *    |      \
-			 */
+			const point = Segment.point(next, {offset: distance})
 
-			const f = ([t0, t1]: vec2) => {
-				const p0 = Segment.point(s0, t0)
-				const p1 = Segment.point(s1, t1)
+			return [Segment.trim(seg, 0, {offset: -distance}), {command: 'L', point}]
+		})
+	}
 
-				const v01 = vec2.normalize(vec2.sub(p1, p0))
+	export function fillet(path: Path, radius: number): Path {
+		return spawnVertex(path, (seg, index, curve) => {
+			const next = Curve.nextSegment(curve, index)
 
-				const distanceCost = (vec2.dist(p0, p1) - distance) ** 2
-
-				const angle0 = vec2.dot(Segment.tangent(s0, t0), v01)
-				const angle1 = vec2.dot(Segment.tangent(s1, t1), v01)
-
-				const angleCost = Math.abs(angle0 - angle1) ** 2
-				return distanceCost + angleCost
+			if (!next || index === -1) {
+				return seg
 			}
 
-			function visualizeGraph(f: (v: vec2) => number) {
-				let canvas = document.getElementById('canvas') as HTMLCanvasElement
+			// NOTE: This assumes the two segments are straight lines. It should be improved to handle curves.
+			const angle = Math.abs(
+				vec2.angle(Segment.tangent(seg, 1), Segment.tangent(next, 0))
+			)
 
-				if (!canvas) {
-					canvas = document.createElement('canvas')
-					canvas.id = 'canvas'
-					canvas.width = 100
-					canvas.height = 100
-					document.body.appendChild(canvas)
-					canvas.style.width = '400px'
-					canvas.style.height = '400px'
-				}
+			const trimLength = radius * scalar.tan(angle / 2)
 
-				const ctx = canvas.getContext('2d')!
+			const start = Segment.point(seg, {offset: -trimLength})
+			const end = Segment.point(next, {offset: trimLength})
+			const startTangent = Segment.tangent(seg, {offset: -trimLength})
+			const endTangent = Segment.tangent(next, {offset: trimLength})
 
-				// creates empty 100 x 100 array
-				const costs = Array.from({length: 100}, () =>
-					Array.from({length: 100}, () => 0)
-				)
+			const handleLength = (4 / 3) * scalar.tan(angle / 4) * radius
 
-				let maxCost = -Infinity
+			const c1 = vec2.scaleAndAdd(start, startTangent, handleLength)
+			const c2 = vec2.scaleAndAdd(end, endTangent, -handleLength)
 
-				for (let y = 0; y < 100; y++) {
-					for (let x = 0; x < 100; x++) {
-						const cost = f([x / 100, y / 100])
-						costs[x][y] = cost
-						maxCost = Math.max(maxCost, cost)
-					}
-				}
-				for (let y = 0; y < 100; y++) {
-					for (let x = 0; x < 100; x++) {
-						const cost = costs[x][y]
-						const gray = (cost / maxCost) * 255
-						ctx.fillStyle = `rgb(${gray}, ${gray}, ${gray})`
-						ctx.fillRect(x, y, 1, 1)
-					}
-				}
-
-				ctx.fillStyle = 'red'
-				ctx.fillText(maxCost.toFixed(2), 2, 12)
-			}
-
-			visualizeGraph(f)
-
-			const [t0, t1] = minimizeVec2(f, [0.5, 0.5])
-
-			const trimmedSeg: Vertex = Segment.trim(s0, 0, t0)
-			const chamferSeg: Vertex = {command: 'L', point: Segment.point(s1, t1)}
-
-			return [trimmedSeg, chamferSeg]
+			return [
+				Segment.trim(seg, 0, {offset: -trimLength}),
+				{command: 'C', args: [c1, c2], point: end},
+			]
 		})
 	}
 
