@@ -44,6 +44,7 @@
 	"homepage": "https://baku89.github.io/pave",
 	"devDependencies": {
 		"@types/ccapture.js": "^1.1.3",
+		"@types/p5": "^1.7.6",
 		"@typescript-eslint/eslint-plugin": "^8.10.0",
 		"@typescript-eslint/parser": "^8.10.0",
 		"@vuepress/bundler-vite": "2.0.0-rc.2",

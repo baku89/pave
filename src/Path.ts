@@ -13,6 +13,7 @@ import {PathLocation, TimePathLocation} from './Location'
 import {Rect} from './Rect'
 import {Segment} from './Segment'
 import {memoize, toFixedSimple, normalizeIndex, normalizeOffset} from './utils'
+import type p5 from 'p5'
 
 paper.setup(document.createElement('canvas'))
 
@@ -2488,6 +2489,49 @@ export namespace Path {
 	) {
 		context.beginPath()
 		drawToRenderingContext(path, context)
+	}
+
+	/**
+	 * Draws the given path to the context. It calls [`beginShape`](https://p5js.org/reference/p5/beginShape) at the beginning, drawing the path with `vertex` and `bezierVertex` commands, then calls [`endShape`](https://p5js.org/reference/p5/endShape) at the end if the curve is closed.
+	 * @param path The path to draw
+	 * @param p5Instance The p5.js instance. Pass the instance only if you are using p5.js in instance mode.
+	 */
+
+	export function drawToP5(path: Path, p5Instance: p5 | Window = window) {
+		const unarced = unarc(path)
+
+		const _p5 = p5Instance as p5
+
+		for (const {vertices, closed} of unarced.curves) {
+			_p5.beginShape()
+
+			const first = vertices.at(0)
+
+			if (first) {
+				_p5.vertex(...first.point)
+			}
+
+			for (const {point, command, args} of vertices.slice(1)) {
+				if (command === 'L') {
+					_p5.vertex(...point)
+				} else if (command === 'C') {
+					_p5.bezierVertex(...args[0], ...args[1], ...point)
+				}
+			}
+
+			if (closed) {
+				if (first) {
+					const {point, command, args} = first
+					if (command === 'L') {
+						_p5.vertex(...point)
+					} else if (command === 'C') {
+						_p5.bezierVertex(...args[0], ...args[1], ...point)
+					}
+				}
+
+				_p5.endShape(_p5.CLOSE)
+			}
+		}
 	}
 
 	/**
