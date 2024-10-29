@@ -179,8 +179,6 @@ type PathLocation = UnitPathLocation | OffsetPathLocation | TimePathLocation
 ```
 
 :::tip
-範囲外の値を指定した場合、自動的にクランプされます。ただし、unitやoffset、timeが`-最大値 <= x  < 0`の範囲で負の値を取る場合、該当するカーブの終点を基準に絶対値だけオフセットした位置について取得されます。これは[`Array.at()`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/at)の挙動とも似ています。
-
 If you specify a value that is out of range, it will be automatically clamped. However, if you specify a negative value in the range of `-max <= x < 0` , the position will be obtained by offsetting the absolute value of the location from the end point of the corresponding curve. This behavior is similar to [`Array.at()`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/at).
 :::
 
