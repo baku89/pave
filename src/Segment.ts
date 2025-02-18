@@ -30,6 +30,9 @@ export type SegmentC = VertexC & {start: vec2}
 export type SegmentA = VertexA & {start: vec2}
 
 export namespace Segment {
+	/**
+	 * Returns the length of the segment.
+	 */
 	export const length = (seg: Segment): number => {
 		if (seg.command === 'L') {
 			return vec2.distance(seg.start, seg.point)
@@ -40,6 +43,9 @@ export namespace Segment {
 		}
 	}
 
+	/**
+	 * Returns the bounding box of the segment.
+	 */
 	export const bounds = (seg: Segment): Rect => {
 		if (seg.command === 'L') {
 			return Line.bounds(seg)
@@ -50,6 +56,9 @@ export namespace Segment {
 		}
 	}
 
+	/**
+	 * Returns the point of the segment at the given location.
+	 */
 	export function point(seg: Segment, loc: SegmentLocation): vec2 {
 		if (seg.command === 'L') {
 			return Line.point(seg, loc)
@@ -60,6 +69,9 @@ export namespace Segment {
 		}
 	}
 
+	/**
+	 * Returns the derivative of the segment at the given location.
+	 */
 	export function derivative(seg: Segment, loc: SegmentLocation): vec2 {
 		if (seg.command === 'L') {
 			return Line.derivative(seg)
@@ -70,16 +82,25 @@ export namespace Segment {
 		}
 	}
 
+	/**
+	 * Returns the tangent vector of the segment at the given location.
+	 */
 	export function tangent(seg: Segment, loc: SegmentLocation): vec2 {
 		const d = Segment.derivative(seg, loc)
 		return vec2.normalize(d)
 	}
 
+	/**
+	 * Returns the normal vector of the segment at the given location., which is normally rotated 90 degrees clockwise in Y-down coordinate.
+	 */
 	export function normal(seg: Segment, loc: SegmentLocation): vec2 {
 		const tangent = Segment.tangent(seg, loc)
 		return vec2.rotate90(tangent)
 	}
 
+	/**
+	 * Returns the orientation  matrix of the segment at the given location.
+	 */
 	export function orientation(seg: Segment, loc: SegmentLocation): mat2d {
 		const p = point(seg, loc)
 		const xAxis = tangent(seg, loc)
@@ -87,6 +108,9 @@ export namespace Segment {
 		return [...xAxis, ...yAxis, ...p]
 	}
 
+	/**
+	 * Returns a new segment that is the result of trimming the given segment from the start to the end.
+	 */
 	export function trim(
 		seg: Segment,
 		from: SegmentLocation,
@@ -101,6 +125,9 @@ export namespace Segment {
 		}
 	}
 
+	/**
+	 * Returns true if the segment is a zero-length segment.
+	 */
 	export function isZero(seg: Segment) {
 		if (seg.command === 'L') {
 			return Line.isZero(seg)
@@ -111,6 +138,9 @@ export namespace Segment {
 		}
 	}
 
+	/**
+	 * Returns true if the segment is a straight line. Also returns true for zero-length segments.
+	 */
 	export function isStraight(seg: Segment) {
 		if (seg.command === 'L') {
 			return true
@@ -121,6 +151,9 @@ export namespace Segment {
 		}
 	}
 
+	/**
+	 * Returns a new path with the segment offset by the given distance.
+	 */
 	export function offset(
 		seg: Segment,
 		distance: number,
@@ -135,6 +168,9 @@ export namespace Segment {
 		}
 	}
 
+	/**
+	 * Returns a new vertex array with the segment divided at the given times.
+	 */
 	export function divideAtTimes(
 		seg: Segment,
 		times: Iterable<number>
@@ -148,7 +184,10 @@ export namespace Segment {
 		}
 	}
 
-	export const toTime = (seg: Segment, loc: SegmentLocation): number => {
+	/**
+	 * Returns the time of the segment at the given location.
+	 */
+	export function toTime(seg: Segment, loc: SegmentLocation): number {
 		if (seg.command === 'L') {
 			return Line.toTime(seg, loc)
 		} else if (seg.command === 'C') {
