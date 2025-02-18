@@ -2500,22 +2500,22 @@ export namespace Path {
 	export function drawToP5(path: Path, p5Instance: p5 | Window = window) {
 		const unarced = unarc(path)
 
-		const _p5 = p5Instance as p5
+		const p5 = p5Instance as p5
 
 		for (const {vertices, closed} of unarced.curves) {
-			_p5.beginShape()
+			p5.beginShape()
 
 			const first = vertices.at(0)
 
 			if (first) {
-				_p5.vertex(...first.point)
+				p5.vertex(...first.point)
 			}
 
 			for (const {point, command, args} of vertices.slice(1)) {
 				if (command === 'L') {
-					_p5.vertex(...point)
+					p5.vertex(...point)
 				} else if (command === 'C') {
-					_p5.bezierVertex(...args[0], ...args[1], ...point)
+					p5.bezierVertex(...args[0], ...args[1], ...point)
 				}
 			}
 
@@ -2523,13 +2523,13 @@ export namespace Path {
 				if (first) {
 					const {point, command, args} = first
 					if (command === 'L') {
-						_p5.vertex(...point)
+						p5.vertex(...point)
 					} else if (command === 'C') {
-						_p5.bezierVertex(...args[0], ...args[1], ...point)
+						p5.bezierVertex(...args[0], ...args[1], ...point)
 					}
 				}
 
-				_p5.endShape(_p5.CLOSE)
+				p5.endShape(p5.CLOSE)
 			}
 		}
 	}
