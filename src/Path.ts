@@ -2532,6 +2532,8 @@ export namespace Path {
 				}
 
 				p5.endShape(p5.CLOSE)
+			} else {
+				p5.endShape()
 			}
 		}
 	}
