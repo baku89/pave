@@ -539,14 +539,16 @@ export namespace Path {
 		const radii: vec2 = [radius, radius]
 		const sweep = endAngle > startAngle
 
-		const vertices = beginVertex(vec2.dir(startAngle, radius, center))
-
 		// Add intermediate vertices
 		const angles = Iter.resample(startAngle, endAngle, {
 			align: 'uniform',
 			step,
 			...options,
 		})
+
+		const vertices: Vertex[] = [
+			{command: 'L', point: vec2.dir(startAngle, radius, center)},
+		]
 
 		for (const [prevAngle, throughAngle] of Iter.tuple(angles)) {
 			const largeArc = Math.abs(throughAngle - prevAngle) > 180
@@ -3345,8 +3347,4 @@ function drawToRenderingContext(
 			!ret.sweep
 		)
 	}
-}
-
-function beginVertex(point: vec2): Vertex[] {
-	return [{command: 'L', point}]
 }
