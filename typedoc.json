@@ -16,5 +16,19 @@
 		"Draw Functions",
 		"Utilities",
 		"*"
-	]
+	],
+
+	"outputFileStrategy": "modules",
+
+	"parametersFormat": "table",
+	"interfacePropertiesFormat": "table",
+	"classPropertiesFormat": "table",
+	"enumMembersFormat": "table",
+	"propertyMembersFormat": "table",
+	"typeDeclarationFormat": "table",
+	"typeDeclarationVisibility": "compact",
+
+	"tableColumnSettings": {
+		"hideSources": true
+	}
 }

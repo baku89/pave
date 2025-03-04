@@ -48,7 +48,9 @@ export async function exportVideo(code: string, onlyCanvas = false) {
 
 	const ctx = canvas.getContext('2d')!
 
-	const setupEvalContext = await setupEvalContextCreator(useCssVar('--c-text'))
+	const setupEvalContext = await setupEvalContextCreator(
+		useCssVar('--vp-c-text')
+	)
 	const evalContext = setupEvalContext(ctx)
 
 	const evalFn = createDrawFunction(ctx, evalContext, code)!

@@ -127,7 +127,7 @@ whenever(keys.shift_cmd_e, async () => {
 
 	margin-top: 2rem;
 	margin-bottom: 2rem;
-	border 1px solid var(--c-border-dark)
+	border 1px solid var(--vp-c-border-dark)
 	padding 1em
 	border-radius var(--border-radius)
 	display grid

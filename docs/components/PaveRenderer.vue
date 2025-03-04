@@ -40,7 +40,9 @@ const {width: canvasWidth, height: canvasHeight} = useElementSize(canvas)
 onMounted(async () => {
 	context.value = canvas.value?.getContext('2d') ?? null
 
-	const createDrawContext = await setupEvalContextCreator(useCssVar('--c-text'))
+	const createDrawContext = await setupEvalContextCreator(
+		useCssVar('--vp-c-text')
+	)
 
 	const evalContext = computed(() => {
 		if (!context.value) return {}
@@ -92,11 +94,11 @@ onMounted(async () => {
 
 <style lang="stylus" scoped>
 .PaveRenderer
-	border-color var(--c-bg-light)
-	background var(--c-bg)
+	border-color var(--vp-c-bg-alt)
+	background var(--vp-c-bg)
 	border-style solid
 	border-width 1px 1px 0 0
-	background-image: linear-gradient(0deg, var(--c-bg-light) 1px, transparent 1px),
-		linear-gradient(90deg, var(--c-bg-light) 1px, transparent 1px);
+	background-image: linear-gradient(0deg, var(--vp-c-bg-alt) 1px, transparent 1px),
+		linear-gradient(90deg, var(--vp-c-bg-alt) 1px, transparent 1px);
 	background-size: 10% 10%;
 </style>
