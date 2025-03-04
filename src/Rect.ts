@@ -8,6 +8,7 @@ export type Rect = readonly [min: vec2, max: vec2]
 
 /**
  * Functions for manipulating rects represented as {@link Rect}.
+ * @category Modules
  */
 export namespace Rect {
 	/**

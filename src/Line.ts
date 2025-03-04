@@ -10,6 +10,7 @@ type SimpleSegmentL = PartialBy<SegmentL, 'command'>
 
 /**
  * A collection of functions to handle a line represented with {@link SegmentL}.
+ * @category Modules
  */
 export namespace Line {
 	export function bounds(line: SimpleSegmentL): Rect {

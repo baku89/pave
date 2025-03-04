@@ -8,6 +8,7 @@ export type Circle = {readonly center: vec2; readonly radius: number}
 
 /**
  * Functions for manipulating circles represented as {@link Circle}.
+ * @category Modules
  */
 export namespace Circle {
 	/**

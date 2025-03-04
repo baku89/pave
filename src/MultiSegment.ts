@@ -3,6 +3,7 @@ import {Vertex} from './Path'
 
 /**
  * Represents a part of curve that spans multiple vertices.
+ * @category Types
  */
 export type MultiSegment<V extends Vertex = Vertex> = {
 	start: vec2
@@ -11,6 +12,7 @@ export type MultiSegment<V extends Vertex = Vertex> = {
 
 /**
  * A collection of functions to handle {@link MultiSegment}.
+ * @category Modules
  */
 export namespace MultiSegment {
 	export function reverse<V extends Vertex = Vertex>(

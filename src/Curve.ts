@@ -27,6 +27,10 @@ export type CurveC = Curve<VertexC>
 /** @category Types */
 export type CurveA = Curve<VertexA>
 
+/**
+ * A collection of functions to handle {@link Curve}.
+ * @category Modules
+ */
 export namespace Curve {
 	export const length = memoize((curve: Curve): number => {
 		let length = 0

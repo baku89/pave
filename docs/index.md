@@ -48,16 +48,16 @@ All code blocks with viewer on the right are editable so you can try out the Pav
 
 See the full documentation on [API](./api)
 
-- [Path](./api/modules/Path): The core module for manipulating paths.
+- [Path](./api/namespaces/Path): The core module for manipulating paths.
 - Comamnds
-  - [Arc](./api/modules/Arc): The arc (A) commands functions.
-  - [CubicBezier](./api/modules/CubicBezier): The cubic Bezier (C) commands functions.
-  - [Line](./api/modules/Line): The line-to (L) commands functions.
+  - [Arc](./api/namespaces/Arc): The arc (A) commands functions.
+  - [CubicBezier](./api/namespaces/CubicBezier): The cubic Bezier (C) commands functions.
+  - [Line](./api/namespaces/Line): The line-to (L) commands functions.
 - Geometries
-  - [Circle](./api/modules/Circle): The functions for handling circles.
-  - [Rect](./api/modules/Rect): The functions for handling rects.
-- [Distort](./api/modules/Distort): The functions for handling distortions.
-- [Type Aliases](./api#types)
+  - [Circle](./api/namespaces/Circle): The functions for handling circles.
+  - [Rect](./api/namespaces/Rect): The functions for handling rects.
+- [Distort](./api/namespaces/Distort): The functions for handling distortions.
+- [Type Aliases](./api/#types)
 
 ## Getting Started
 

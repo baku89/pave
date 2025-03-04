@@ -2,6 +2,7 @@ import {scalar} from 'linearly'
 
 /**
  * A collection of utility functions for working with iterables.
+ * @category Modules
  */
 export namespace Iter {
 	/**

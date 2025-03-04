@@ -17,6 +17,7 @@ type SimpleSegmentA = PartialBy<SegmentA, 'command'>
 
 /**
  * A collection of functions to handle arcs represented with {@link SegmentA}.
+ * @category Modules
  */
 export namespace Arc {
 	/**

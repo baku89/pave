@@ -2,6 +2,10 @@ import {mat2d, vec2} from 'linearly'
 
 type Distort = (p: vec2) => mat2d
 
+/**
+ * A collection of functions to generate distortion functions.
+ * @category Modules
+ */
 export namespace Distort {
 	export function fromPointTransformer(fn: (p: vec2) => vec2): Distort {
 		const delta = 0.01

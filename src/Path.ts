@@ -148,7 +148,7 @@ type SVGCommand =
 
 /**
  * Functions for manipulating paths represented as {@link Path}.
- * @category Path
+ * @category Modules
  */
 export namespace Path {
 	/**
@@ -338,6 +338,9 @@ export namespace Path {
 		return line(point, pointAtInfinity)
 	}
 
+	/**
+	 * @category Options
+	 */
 	export interface CircleFromPointsOptions {
 		/**
 		 * If the given points are less than three and the circumcenter cannot be well-defined, the circle will be drawn in the direction of the sweep flag. (in Canvas API, it means clockwise).
@@ -1374,7 +1377,7 @@ export namespace Path {
 	/**
 	 * Calculates the normalized tangent vector of the path at the given location.
 	 * @param path The path to calcuate
-	 * @param lc The location on the path
+	 * @param loc The location on the path
 	 * @returns The tangent vector
 	 * @category Properties
 	 */
@@ -1492,6 +1495,9 @@ export namespace Path {
 		}
 	}
 
+	/**
+	 * @category Options
+	 */
 	export interface SpawnOptions {
 		/**
 		 * If true, the continuous open path will be joined
@@ -1755,6 +1761,9 @@ export namespace Path {
 	 */
 	export const toC = toCubicBezier
 
+	/**
+	 * @category Options
+	 */
 	export interface OffsetOptions {
 		/**
 		 * The cap style of offset path
@@ -1804,6 +1813,9 @@ export namespace Path {
 		return fromPaperPath(PaperOffset.offset(paperPath, offset, _options))
 	}
 
+	/**
+	 * @category Options
+	 */
 	export interface OffsetStrokeOptions extends OffsetOptions {
 		/**
 		 * The cap style of offset path (`'square'` will be supported in future)
@@ -1934,6 +1946,9 @@ export namespace Path {
 		})
 	}
 
+	/**
+	 * @category Options
+	 */
 	export interface DistortOptions {
 		/**
 		 * The angle step for approximating arc commands with cubic Béziers
@@ -1993,6 +2008,13 @@ export namespace Path {
 		)
 	}
 
+	/**
+	 * Chamfers the given path.
+	 * @param path The path to chamfer
+	 * @param distance The distance of chamfer
+	 * @returns The newly created path
+	 * @category Modifiers
+	 */
 	export function chamfer(path: Path, distance: number): Path {
 		return spawnVertex(path, (seg, index, curve) => {
 			const next = Curve.nextSegment(curve, index)
@@ -2007,6 +2029,13 @@ export namespace Path {
 		})
 	}
 
+	/**
+	 * Fillets the given path.
+	 * @param path The path to fillet
+	 * @param radius The radius of fillet
+	 * @returns The newly created path
+	 * @category Modifiers
+	 */
 	export function fillet(path: Path, radius: number): Path {
 		return spawnVertex(path, (seg, index, curve) => {
 			const next = Curve.nextSegment(curve, index)
@@ -2497,6 +2526,7 @@ export namespace Path {
 	 * Draws the given path to the context. It calls [`beginShape`](https://p5js.org/reference/p5/beginShape) at the beginning, drawing the path with `vertex` and `bezierVertex` commands, then calls [`endShape`](https://p5js.org/reference/p5/endShape) at the end if the curve is closed.
 	 * @param path The path to draw
 	 * @param p5Instance The p5.js instance. Pass the instance only if you are using p5.js in instance mode.
+	 * @category Converters
 	 */
 
 	export function drawToP5(path: Path, p5Instance: p5 | Window = window) {
@@ -2613,7 +2643,7 @@ export namespace Path {
 
 	/**
 	 * Creates a path from the given paper.Path instance.
-	 * @paperPath The paper.Path instance to convert
+	 * @param paperPath The paper.Path instance to convert
 	 * @returns The newly created path
 	 * @category Converters
 	 */

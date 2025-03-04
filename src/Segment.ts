@@ -29,6 +29,10 @@ export type SegmentC = VertexC & {start: vec2}
 /** @category Types */
 export type SegmentA = VertexA & {start: vec2}
 
+/**
+ * A collection of functions to handle {@link Segment}.
+ * @category Modules
+ */
 export namespace Segment {
 	/**
 	 * Returns the length of the segment.
