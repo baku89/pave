@@ -37,11 +37,13 @@ const mouse = computed<vec2>(() => [mouseX.value, mouseY.value])
 
 const {width: canvasWidth, height: canvasHeight} = useElementSize(canvas)
 
+const defaultColor = useCssVar('--vp-c-text')
+
 onMounted(async () => {
 	context.value = canvas.value?.getContext('2d') ?? null
 
 	const createDrawContext = await setupEvalContextCreator(
-		useCssVar('--vp-c-text')
+		computed(() => defaultColor.value || 'black')
 	)
 
 	const evalContext = computed(() => {
