@@ -1,4 +1,5 @@
 import {useCssVar} from '@vueuse/core'
+import {computed} from 'vue'
 import LightTheme from 'monaco-themes/themes/Clouds.json'
 import saferEval from 'safer-eval'
 
@@ -48,8 +49,10 @@ export async function exportVideo(code: string, onlyCanvas = false) {
 
 	const ctx = canvas.getContext('2d')!
 
+	const defaultColor = useCssVar('--vp-c-text')
+
 	const setupEvalContext = await setupEvalContextCreator(
-		useCssVar('--vp-c-text')
+		computed(() => defaultColor.value || 'black')
 	)
 	const evalContext = setupEvalContext(ctx)
 
