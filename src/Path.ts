@@ -18,14 +18,14 @@ import type p5 from 'p5'
 paper.setup(document.createElement('canvas'))
 
 /**
- * Arguments for cubic Bézier curve (C) command.
+ * Arguments for cubic Bézier curve (`C`) command.
  * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Paths#curve_commands
  * @category Types
  */
 export type CommandArgsC = readonly [control1: vec2, control2: vec2]
 
 /**
- * Arguments for arc (A) command
+ * Arguments for arc (`A`) command
  * @category Types
  * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Paths#arcs
  */
@@ -49,13 +49,13 @@ export type CommandArgsA = readonly [
 ]
 
 /**
- * A vertex of a path. It consists of a end point and an interpolation command from the previous vertex, which is either a line (L) command, a cubic Bézier curve (C) command, or an arc (A) command.
+ * A vertex of a path. It consists of a end point and an interpolation command from the previous vertex, which is either a line (`L`) command, a cubic Bézier curve (`C`) command, or an arc (`A`) command.
  * @category Types
  */
 export type Vertex = VertexL | VertexC | VertexA
 
 /**
- * A vertex representing a line (L) command.
+ * A vertex representing a line (`L`) command.
  * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Paths#Line_commands
  * @category Types
  */
@@ -66,7 +66,7 @@ export type VertexL = {
 }
 
 /**
- * A vertex representing a cubic Bézier curve (C) command.
+ * A vertex representing a cubic Bézier curve (`C`) command.
  * @category Types
  **/
 export type VertexC = {
@@ -76,7 +76,7 @@ export type VertexC = {
 }
 
 /**
- * A vertex representing an arc (A) command.
+ * A vertex representing an arc (`A`) command.
  * @category Types
  * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Paths#arcs
  **/
@@ -95,21 +95,21 @@ export type Path<V extends Vertex = Vertex> = {
 }
 
 /**
- * A path that only consists of line (L) commands, which is a simple polygon or polyline.
+ * A path that only consists of line (`L`) commands, which is a simple polygon or polyline.
  * @category Types
  * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Paths#Line_commands
  **/
 export type PathL = Path<VertexL>
 
 /**
- * A path that only consists of cubic Bézier curve (C) commands.
+ * A path that only consists of cubic Bézier curve (`C`) commands.
  * @category Types
  * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Paths#curve_commands
  **/
 export type PathC = Path<VertexC>
 
 /**
- * A path that only consists of arc (A) commands.
+ * A path that only consists of arc (`A`) commands.
  * @category Types
  * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Paths#curve_commands
  **/
@@ -148,6 +148,10 @@ type SVGCommand =
 
 /**
  * Functions for manipulating paths represented as {@link Path}.
+ *
+ * For creating new paths, see [Primitives](#primitives). Getting intrinsic properties of paths, see [Properties](#properties).
+ * Manipulating existing paths, such as transforming, styling	, deforming, etc., see [Modifiers](#modifiers).
+ *
  * @category Modules
  */
 export namespace Path {

@@ -1,8 +1,17 @@
 ---
 home: true
 heroImage: /logo.svg
+heroHeight: 160
 actionText: Get Started →
-actionLink: /guide
+actions:
+  - text: Get Started
+    link: /guide
+  - text: Sandbox
+    link: /sandbox
+    type: secondary
+  - text: API
+    link: /api/
+    type: secondary
 features:
   - title: Functional Programming
     details: All APIs are provided in a functional programming manner, making it easy to compose and transform paths.
@@ -57,15 +66,11 @@ See the full documentation on [API](./api/).
 
 - [Path](./api/namespaces/Path): The core module for manipulating paths.
 - Comamnds
-  - [Arc](./api/namespaces/Arc): The arc (A) commands functions.
-  - [CubicBezier](./api/namespaces/CubicBezier): The cubic Bezier (C) commands functions.
-  - [Line](./api/namespaces/Line): The line-to (L) commands functions.
+  - [Arc](./api/namespaces/Arc): The arc (`A`) commands functions.
+  - [CubicBezier](./api/namespaces/CubicBezier): The cubic Bezier (`C`) commands functions.
+  - [Line](./api/namespaces/Line): The line-to (`L`) commands functions.
 - Geometries
   - [Circle](./api/namespaces/Circle): The functions for handling circles.
   - [Rect](./api/namespaces/Rect): The functions for handling rects.
 - [Distort](./api/namespaces/Distort): The functions for handling distortions.
 - [Type Aliases](./api/#types)
-
-## Getting Started
-
-See the [Guide](./guide) for more detailed information.
