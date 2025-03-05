@@ -42,19 +42,18 @@ whenever(monaco, monaco => {
 })
 
 const theme = ref<'LightTheme' | 'DarkTheme'>(
-	document.documentElement.classList.contains('dark')
-		? 'DarkTheme'
-		: 'LightTheme'
+	document.documentElement.dataset.theme === 'dark' ? 'DarkTheme' : 'LightTheme'
 )
 
 useMutationObserver(
 	document.documentElement,
 	() => {
-		theme.value = document.documentElement.classList.contains('dark')
-			? 'DarkTheme'
-			: 'LightTheme'
+		theme.value =
+			document.documentElement.dataset.theme === 'dark'
+				? 'DarkTheme'
+				: 'LightTheme'
 	},
-	{attributeFilter: ['class']}
+	{attributeFilter: ['dataset']}
 )
 
 const options = {
@@ -96,6 +95,9 @@ function onEditorWillMount(monaco: typeof import('monaco-editor')) {
 .monaco-editor-vue3
 	position absolute
 	inset 0
+
+.monaco-editor
+	outline none !important
 
 .monaco-editor, .monaco-editor-background,
 .monaco-editor .inputarea.ime-input

@@ -5,6 +5,7 @@ import {viteBundler} from '@vuepress/bundler-vite'
 import monacoEditorPlugin, {
 	type IMonacoEditorOpts,
 } from 'vite-plugin-monaco-editor'
+import {shikiPlugin} from '@vuepress/plugin-shiki'
 
 const monacoEditorPluginDefault = (monacoEditorPlugin as any).default as (
 	options: IMonacoEditorOpts
@@ -83,13 +84,15 @@ export default defineUserConfig({
 			],
 		},
 	}),
+	plugins: [
+		shikiPlugin({
+			langs: ['ts', 'bash'],
+			lineNumbers: 'disable',
+		}),
+	],
 	markdown: {
-		//@ts-ignore
 		linkify: true,
 		typographer: true,
-		code: {
-			lineNumbers: false,
-		},
 	},
 	extendsMarkdown: md => {
 		const defaultRender = md.renderer.rules.fence!

@@ -13,7 +13,7 @@ import {vec2} from 'linearly'
 const props = withDefaults(
 	defineProps<{
 		code: string
-		time: number
+		time?: number
 	}>(),
 	{time: 0}
 )

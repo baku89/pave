@@ -48,6 +48,7 @@
 		"@typescript-eslint/eslint-plugin": "^8.10.0",
 		"@typescript-eslint/parser": "^8.10.0",
 		"@vuepress/bundler-vite": "^2.0.0-rc.20",
+		"@vuepress/plugin-shiki": "^2.0.0-rc.81",
 		"@vuepress/theme-default": "^2.0.0-rc.80",
 		"@vueuse/core": "^11.1.0",
 		"concurrently": "^9.0.1",

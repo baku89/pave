@@ -1,81 +1,89 @@
 :root {
+	// accent colors
 	--vp-c-accent: #ed7c6e;
-	--vp-c-accent-bg: #ee998e;
-	--vp-c-accent-hover: #ee998e;
+	--vp-c-accent-bg: var(--vp-c-accent);
+	--vp-c-accent-hover: color-mix(
+		in srgb,
+		var(--vp-c-accent) 90%,
+		var(--vp-c-bg)
+	);
+	--vp-c-accent-text: color-mix(
+		in srgb,
+		var(--vp-c-accent) 50%,
+		var(--vp-c-bg)
+	);
+
+	// tip colors
 	--tip-c-accent: var(--vp-c-accent);
 	--tip-c-text: var(--vp-c-accent);
 	--tip-c-soft: color-mix(in srgb, var(--vp-c-accent) 10%, transparent);
+
+	// text colors
 	--vp-c-text: black;
-	--vp-c-text-lighter: #525368;
-	--vp-c-text-lightest: var(--vp-c-accent);
+
+	// border colors
 	--vp-c-border: var(--vp-c-text);
-	--vp-c-border-dark: var(--vp-c-border);
-	--code-bg-color: black;
-	--code-ln-color: white;
-	--font-family: 'aktiv-grotesk', '游ゴシック体', YuGothic, '游ゴシック',
-		'Yu Gothic', 'Hiragino Kaku Gothic ProN', Osaka, sans-serif;
-	--font-family-code: 'IBM Plex Mono', monospace;
+	--vp-c-border-hard: var(--vp-c-border);
+	--vp-c-gutter: var(--vp-c-border);
+
+	// font family
+	--font-family: aktiv-grotesk, 'Inter', a-otf-gothic-bbb-pr6n, 游ゴシック体,
+		'Yu Gothic', YuGothic, 'Hiragino Kaku Gothic ProN', Osaka, 'ＭＳ Ｐゴシック',
+		sans-serif;
+	--code-font-family: 'IBM Plex Mono', monospace !important;
+
+	// custom variables
 	--border-radius: 6px;
 }
 
-html[data-theme='dark'] {
+[data-theme='dark'] {
+	// brand colors
 	--vp-c-accent: #ee998e;
-	--vp-c-text: white;
-	--vp-c-border: white;
-	--vp-c-border-dark: white;
-	--vp-c-tip: var(--vp-c-brand);
-	--vp-c-tip-bg: var(--code-bg-color);
-	--vp-c-text-lightest: var(--vp-c-brand);
-}
 
-a {
-	font-weight: inherit;
+	// text colors
+	--vp-c-text: white;
 }
 
 // Navbar
 .vp-navbar {
-	background-color: transparent;
-	background-repeat: repeat-x;
 	border-bottom: none;
 
 	.vp-site-name {
-		font-size: 1.4rem;
+		font-family: var(--code-font-family);
+		letter-spacing: -0.05em;
+	}
+}
+
+.vp-navbar-item {
+	* {
 		font-weight: 400;
-		background: var(--vp-c-bg);
-		width: min-content;
+		font-family: var(--code-font-family);
 	}
 
-	padding-top: calc(var(--navbar-padding-v) + 2px);
-}
-
-.vp-navbar-item * {
-	font-weight: 400;
-	font-family: var(--font-family-code);
-}
-
-.vp-navbar-item a[aria-label='GitHub'] {
-	width: 1.4em;
-	overflow: hidden;
-	vertical-align: middle;
-	background: none;
-
-	&:before {
-		display: inline-block;
-		content: '';
+	a[aria-label='GitHub'] {
 		width: 1.4em;
-		height: 1.4em;
-		background: currentColor;
-		margin-bottom: 0.2em;
-		mask: url('/github-mark.svg') no-repeat;
-		mask-size: 100% 100%;
+		overflow: hidden;
 		vertical-align: middle;
-	}
-
-	@media (max-width: 719px) {
-		width: auto;
+		background: none;
 
 		&:before {
-			display: none;
+			display: inline-block;
+			content: '';
+			width: 1.4em;
+			height: 1.4em;
+			background: currentColor;
+			margin-bottom: 0.2em;
+			mask: url('/github-mark.svg') no-repeat;
+			mask-size: 100% 100%;
+			vertical-align: middle;
+		}
+
+		@media (max-width: 719px) {
+			width: auto;
+
+			&:before {
+				display: none;
+			}
 		}
 	}
 }
@@ -84,23 +92,56 @@ a {
 	opacity: 1;
 }
 
-main {
+[vp-content] {
+	h2,
+	h3:not(:where(h2 + *)) {
+		margin-top: calc(1rem - var(--header-offset));
+	}
+
+	a:not(.header-anchor) {
+		font-weight: inherit;
+		text-decoration-thickness: 0.5px;
+		text-underline-offset: 2px;
+
+		&:has(img) {
+			&:after {
+				content: '';
+				display: none !important;
+			}
+		}
+	}
+
+	// Code
+	code {
+		padding: 0 0.2em;
+		background: transparent;
+	}
+
+	// Paragraph
+	p {
+		line-height: 1.8;
+	}
+
 	// List
+	:is(ul, ol, dl) {
+		margin: 1em 0;
+	}
+
 	li {
 		list-style: none;
 		margin-bottom: 0.5em;
-
-		ul {
-			margin-top: 0.5em;
-		}
 
 		&:before {
 			content: '❊';
 			color: var(--vp-c-text-quote);
 			display: inline-block;
 			width: 1em;
-			margin-left: -1em;
-			margin-right: 0.2em;
+			margin-left: -0.5em;
+			margin-right: 0.3em;
+		}
+
+		:is(ul, ol, dl) {
+			margin: 0.5em 0;
 		}
 	}
 }
@@ -109,56 +150,18 @@ main {
 .vp-sidebar {
 	border-right: none;
 
-	.vp-navbar-items {
-		border: none;
-
-		a {
-			font-weight: 500;
-		}
+	li li li {
+		font-family: var(--code-font-family);
+		font-size: 0.9em;
 	}
 }
 
-.sidebar-item.sidebar-heading {
+.vp-sidebar-item.vp-sidebar-heading {
 	font-weight: 500;
 }
 
-.sidebar-item:not(.sidebar-heading) {
+.vp-sidebar-item:not(.vp-sidebar-heading) {
 	padding-left: 1.25rem;
-}
-
-// Code
-code {
-	border-radius: var(--border-radius);
-	padding: 0.25em;
-	background: transparent;
-}
-
-p strong code {
-	font-size: 1.15rem;
-	background: none;
-	color: var(--vp-c-text);
-	padding: 0;
-}
-
-// Home
-.home {
-	.hero {
-		text-align: left;
-
-		h1 {
-			font-weight: 400;
-			font-size: 4rem;
-		}
-
-		.description {
-			max-width: unset;
-			margin-bottom: 2.5rem;
-		}
-	}
-
-	.badges {
-		margin-bottom: 2rem;
-	}
 }
 
 // Table
@@ -174,55 +177,62 @@ table {
 	border-collapse: separate;
 	border-spacing: 0;
 }
-th:not(:last-child),
-td:not(:last-child) {
-	border-right: 0;
+
+:is(th, td) {
+	&:not(:last-child) {
+		border-right: 0;
+	}
+
+	&:not(:first-child) {
+		border-left: 0;
+	}
 }
-th:not(:first-child),
-td:not(:first-child) {
-	border-left: 0;
+
+th {
+	text-align: left;
 }
+
 th,
 tr:not(:last-child) td {
 	border-bottom: 0;
 }
 th:first-child {
-	border-radius: 18px 0 0 0;
+	border-top-left-radius: var(--border-radius);
 }
 th:last-child {
-	border-radius: 0 18px 0 0;
+	border-top-right-radius: var(--border-radius);
 }
-tr:last-child td:first-child {
-	border-radius: 0 0 0 18px;
+
+tr:last-child {
+	td:first-child {
+		border-bottom-left-radius: var(--border-radius);
+	}
+	td:last-child {
+		border-bottom-right-radius: var(--border-radius);
+	}
 }
-tr:last-child td:last-child {
-	border-radius: 0 0 18px 0;
-}
-tbody tr:nth-child(odd) {
-	background-color: var(--vp-c-bg);
+
+tr {
+	background-color: transparent !important;
 }
 
 td code {
-	background-color: transparent !important;
 	padding-left: 0;
 	padding-right: 0;
-	color: var(--vp-c-text);
 }
 
-.sandbox .page-meta {
-	display: none;
-}
+.sandbox {
+	.page-meta {
+		display: none;
+	}
 
-.sandbox [vp-content] {
-	max-width: unset;
+	[vp-content] {
+		max-width: unset;
+	}
 }
 
 .sandbox-code {
 	font-size: 40px;
-	font-family: var(--font-family-code);
+	font-family: var(--code-font-family);
 	width: min-content;
-}
-
-p {
-	line-height: 1.8;
 }

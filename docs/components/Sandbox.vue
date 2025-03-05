@@ -127,7 +127,7 @@ whenever(keys.shift_cmd_e, async () => {
 
 	margin-top: 2rem;
 	margin-bottom: 2rem;
-	border 1px solid var(--vp-c-border-dark)
+	border 1px solid var(--vp-c-border)
 	padding 1em
 	border-radius var(--border-radius)
 	display grid
@@ -172,7 +172,7 @@ whenever(keys.shift_cmd_e, async () => {
 .value
 	width 3.2em
 	text-align right
-	// font-family var(--font-family-code)
+	// font-family var(--code-font-family)
 	font-variant-numeric tabular-nums
 
 .slider
@@ -181,6 +181,7 @@ whenever(keys.shift_cmd_e, async () => {
 	accent-color black
 	outline none
 	appearance none
+	background transparent
 
 	&::-webkit-slider-runnable-track
 		height: 2rem

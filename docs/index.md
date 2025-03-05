@@ -1,5 +1,15 @@
 ---
 home: true
+heroImage: /logo.svg
+actionText: Get Started →
+actionLink: /guide
+features:
+  - title: Functional Programming
+    details: All APIs are provided in a functional programming manner, making it easy to compose and transform paths.
+  - title: Environment Agnostic
+    details: Works with any JavaScript environment - Canvas API, SVG, p5.js, Paper.js, etc.
+  - title: Powerful Features
+    details: Create primitives, calculate positions/normals/tangents, offset paths, resample curves, and more.
 ---
 
 <div class="badges">
@@ -35,10 +45,7 @@ stroke(t, 'MediumSlateBlue')
 
 Pave is a environment-agnostic toolkit specialized for manipulating SVG/Path2D curves, which includes creating primitives, calculating positions/normals/tangents, offsetting, and resampling paths. All of the API are provided in a functional programming manner, and the path data is represented as an immutable plain object.
 
-Currently, the library heavily depends on [Bazier.js](https://pomax.github.io/bezierjs) by [Pomax](https://github.com/Pomax) and [Paper.js](http://paperjs.org) by [Jürg Lehni
-](https://github.com/lehni) -- or it might be said that this library is a thin wrapper for them to provide FP-oriented interfaces. Although I'm going to rewrite the whole library with zero dependencies for performance and file size, please consider sponsoring them if you think it'd be useful.
-
-To try out the library, visit the **[Sandbox](./sandbox)**.
+To try out the library, visit the [Sandbox](./sandbox).
 
 ::: tip
 All code blocks with viewer on the right are editable so you can try out the Pave library right here in the documentation.
@@ -46,7 +53,7 @@ All code blocks with viewer on the right are editable so you can try out the Pav
 
 ## API
 
-See the full documentation on [API](./api)
+See the full documentation on [API](./api/).
 
 - [Path](./api/namespaces/Path): The core module for manipulating paths.
 - Comamnds

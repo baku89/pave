@@ -43,7 +43,7 @@ watch(
 <style lang="stylus" scoped>
 .Example
 	position relative
-	border 1px solid var(--vp-c-border-dark)
+	border 1px solid var(--vp-c-border)
 	padding 1em
 	border-radius var(--border-radius)
 	display grid
