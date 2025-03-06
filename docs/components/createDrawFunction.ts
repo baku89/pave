@@ -1,6 +1,6 @@
 import * as Linearly from 'linearly'
 import {mat2d, vec2} from 'linearly'
-import {type Path} from 'pave'
+import {Path} from 'pave'
 import saferEval from 'safer-eval'
 import {Ref} from 'vue'
 
