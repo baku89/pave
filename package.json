@@ -1,6 +1,6 @@
 {
 	"name": "@baku89/pave",
-	"version": "0.6.2",
+	"version": "0.7.0",
 	"description": "A environment-agnostic toolkit for manipulating SVG/Path2D curves.",
 	"type": "module",
 	"main": "./lib/index.js",
