@@ -1,8 +1,8 @@
 import {mat2d, vec2} from 'linearly'
+import {Rect} from 'geome'
 
 import {SegmentLocation} from './Location'
 import {Path, PathL, VertexL} from './Path'
-import {Rect} from './Rect'
 import {SegmentL} from './Segment'
 import {PartialBy, normalizeOffset} from './utils'
 

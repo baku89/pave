@@ -1,10 +1,10 @@
 import {scalar, vec2} from 'linearly'
+import {Rect} from 'geome'
 
 import {Arc} from './Arc'
 import {CubicBezier} from './CubicBezier'
 import {CurveLocation, TimeCurveLocation} from './Location'
 import {Vertex, VertexA, VertexC, VertexL} from './Path'
-import {Rect} from './Rect'
 import {Segment} from './Segment'
 import {memoize, normalizeIndex, normalizeOffset} from './utils'
 import {MultiSegment} from './MultiSegment'

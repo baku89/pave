@@ -1,8 +1,8 @@
 import {mat2, mat2d, scalar, vec2} from 'linearly'
+import {Rect} from 'geome'
 
 import {SegmentLocation, UnitSegmentLocation} from './Location'
 import {Path, VertexA, VertexC} from './Path'
-import {Rect} from './Rect'
 import {SegmentA} from './Segment'
 import {memoize, normalizeOffset, PartialBy} from './utils'
 import {Iter} from './Iter'

@@ -1,11 +1,11 @@
 import {mat2d, vec2} from 'linearly'
+import {Rect} from 'geome'
 
 import {Arc} from './Arc'
 import {CubicBezier} from './CubicBezier'
 import {Line} from './Line'
 import {SegmentLocation} from './Location'
 import {type Path, Vertex, VertexA, VertexC, VertexL} from './Path'
-import {Rect} from './Rect'
 
 /**
  * A segment of a path, which consists of a starting point, end point, and an interpolation command.
