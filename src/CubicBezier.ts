@@ -2,11 +2,11 @@ import {Bezier as BezierJS, Point} from 'bezier-js'
 import {scalar, vec2} from 'linearly'
 import paper from 'paper'
 
+import {Iter} from './Iter'
 import {SegmentLocation} from './Location'
 import {Path, VertexC} from './Path'
 import {SegmentC} from './Segment'
 import {memoize, normalizeOffset, PartialBy} from './utils'
-import {Iter} from './Iter'
 
 /**
  * Almost equivalent to {@link SegmentC}, but the redundant `command` field can be ommited. Used for the argument of CubicBezier functions.

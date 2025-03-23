@@ -1,5 +1,6 @@
-import {mat2d, scalar, vec2} from 'linearly'
 import {Circle, Rect} from 'geome'
+import {mat2d, scalar, vec2} from 'linearly'
+import type p5 from 'p5'
 import paper from 'paper'
 import {OffsetOptions as PaperOffsetOptions, PaperOffset} from 'paperjs-offset'
 import svgpath from 'svgpath'
@@ -11,8 +12,7 @@ import {CurveGroup} from './CurveGroup'
 import {Iter} from './Iter'
 import {PathLocation, TimePathLocation} from './Location'
 import {Segment} from './Segment'
-import {memoize, toFixedSimple, normalizeIndex, normalizeOffset} from './utils'
-import type p5 from 'p5'
+import {memoize, normalizeIndex, normalizeOffset, toFixedSimple} from './utils'
 
 paper.setup(document.createElement('canvas'))
 

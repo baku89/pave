@@ -1,4 +1,5 @@
 import {vec2} from 'linearly'
+
 import {Vertex} from './Path'
 
 /**

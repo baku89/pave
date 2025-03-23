@@ -1,12 +1,12 @@
-import {mat2, mat2d, scalar, vec2} from 'linearly'
 import {Rect} from 'geome'
+import {mat2, mat2d, scalar, vec2} from 'linearly'
 
+import {CubicBezier} from './CubicBezier'
+import {Iter} from './Iter'
 import {SegmentLocation, UnitSegmentLocation} from './Location'
 import {Path, VertexA, VertexC} from './Path'
 import {SegmentA} from './Segment'
 import {memoize, normalizeOffset, PartialBy} from './utils'
-import {Iter} from './Iter'
-import {CubicBezier} from './CubicBezier'
 
 /**
  * The angle range to check. `startAngle` is always in the range of [-π, π], and the `endAngle` is relative angle considering the rotation direction, with start angle as a reference.
@@ -387,8 +387,8 @@ export namespace Arc {
 		start: SegmentLocation,
 		end: SegmentLocation
 	): SegmentA {
-		let startTime = toTime(arc, start)
-		let endTime = toTime(arc, end)
+		const startTime = toTime(arc, start)
+		const endTime = toTime(arc, end)
 
 		let {radii, center, angles, xAxisRotation, sweep} =
 			toCenterParameterization(arc)

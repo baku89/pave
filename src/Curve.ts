@@ -1,13 +1,13 @@
-import {scalar, vec2} from 'linearly'
 import {Rect} from 'geome'
+import {scalar, vec2} from 'linearly'
 
 import {Arc} from './Arc'
 import {CubicBezier} from './CubicBezier'
 import {CurveLocation, TimeCurveLocation} from './Location'
+import {MultiSegment} from './MultiSegment'
 import {Vertex, VertexA, VertexC, VertexL} from './Path'
 import {Segment} from './Segment'
 import {memoize, normalizeIndex, normalizeOffset} from './utils'
-import {MultiSegment} from './MultiSegment'
 
 /**
  * A single open or closed stroke represented as an array of vertices. All of the points are represented as tuple `[x: number, y: number]` and the commands are represented in absolute form.

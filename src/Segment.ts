@@ -1,5 +1,5 @@
-import {mat2d, vec2} from 'linearly'
 import {Rect} from 'geome'
+import {mat2d, vec2} from 'linearly'
 
 import {Arc} from './Arc'
 import {CubicBezier} from './CubicBezier'

@@ -1,10 +1,10 @@
-import {mat2d, vec2} from 'linearly'
 import {Rect} from 'geome'
+import {mat2d, vec2} from 'linearly'
 
 import {SegmentLocation} from './Location'
 import {Path, PathL, VertexL} from './Path'
 import {SegmentL} from './Segment'
-import {PartialBy, normalizeOffset} from './utils'
+import {normalizeOffset, PartialBy} from './utils'
 
 type SimpleSegmentL = PartialBy<SegmentL, 'command'>
 

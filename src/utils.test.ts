@@ -1,5 +1,5 @@
-import {describe, expect, it} from 'vitest'
 import {vec2} from 'linearly'
+import {describe, expect, it} from 'vitest'
 
 import {minimizeVec2, toFixedSimple} from './utils'
 
