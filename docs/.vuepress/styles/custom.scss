@@ -1,0 +1,31 @@
+:root {
+	// accent colors
+	--vp-c-accent: #ed7c6e;
+}
+
+[data-theme='dark'] {
+	// brand colors
+	--vp-c-accent: #ee998e;
+}
+
+// Custom styles
+.sandbox {
+	.page-meta {
+		display: none;
+	}
+
+	[vp-content] {
+		max-width: unset;
+	}
+}
+
+.sandbox-code {
+	font-size: 40px;
+	font-family: var(--code-font-family);
+	width: min-content;
+}
+
+// For user testing
+.user-test .vp-navbar {
+	display: none;
+}
