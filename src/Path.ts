@@ -2537,8 +2537,14 @@ export namespace Path {
 
 		const p5 = p5Instance as p5
 
-		for (const {vertices, closed} of unarced.curves) {
-			p5.beginShape()
+		// For compound paths, call beginShape() only once
+		p5.beginShape()
+
+		for (const [i, {vertices, closed}] of unarced.curves.entries()) {
+			// For curves after the first one, call beginContour()
+			if (i > 0) {
+				p5.beginContour()
+			}
 
 			const first = vertices.at(0)
 
@@ -2563,11 +2569,20 @@ export namespace Path {
 						p5.bezierVertex(...args[0], ...args[1], ...point)
 					}
 				}
-
-				p5.endShape(p5.CLOSE)
-			} else {
-				p5.endShape()
 			}
+
+			// For curves after the first one, call endContour()
+			if (i > 0) {
+				p5.endContour()
+			}
+		}
+
+		// Call endShape() after drawing all curves
+		// Specify CLOSE if the first curve is closed
+		if (unarced.curves.length > 0 && unarced.curves[0].closed) {
+			p5.endShape(p5.CLOSE)
+		} else {
+			p5.endShape()
 		}
 	}
 
