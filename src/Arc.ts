@@ -390,8 +390,8 @@ export namespace Arc {
 		const startTime = toTime(arc, start)
 		const endTime = toTime(arc, end)
 
-		let {radii, center, angles, xAxisRotation, sweep} =
-			toCenterParameterization(arc)
+		const {radii, center, angles, xAxisRotation} = toCenterParameterization(arc)
+		let {sweep} = toCenterParameterization(arc)
 
 		const xform = mat2d.trs(center, xAxisRotation, radii)
 

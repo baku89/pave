@@ -1,11 +1,11 @@
-import {defineUserConfig} from 'vuepress'
-import {path} from '@vuepress/utils'
-import {defaultTheme} from '@vuepress/theme-default'
 import {viteBundler} from '@vuepress/bundler-vite'
+import {shikiPlugin} from '@vuepress/plugin-shiki'
+import {defaultTheme} from '@vuepress/theme-default'
+import {path} from '@vuepress/utils'
 import monacoEditorPlugin, {
 	type IMonacoEditorOpts,
 } from 'vite-plugin-monaco-editor'
-import {shikiPlugin} from '@vuepress/plugin-shiki'
+import {defineUserConfig} from 'vuepress'
 
 const monacoEditorPluginDefault = (monacoEditorPlugin as any).default as (
 	options: IMonacoEditorOpts
