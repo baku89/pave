@@ -310,6 +310,23 @@ describe('transform', () => {
 		args: [[50, 25], 0, false, true],
 	}
 
+	it('should not change anything if the matrix is identity', () => {
+		const ret = Arc.transform(arc, mat2d.identity)
+
+		expect(ret).toEqual(arc)
+	})
+
+	it('should scale x by 0.5', () => {
+		const ret = Arc.transform(arc, mat2d.scaling([0.5, 1]))
+
+		expect(ret).toEqual({
+			command: 'A',
+			start: [25, 0],
+			point: [0, 50],
+			args: [[25, 50], 0, false, true],
+		})
+	})
+
 	it('should rotate 90°', () => {
 		const ret = Arc.transform(arc, mat2d.rotation(90))
 
@@ -328,7 +345,7 @@ describe('transform', () => {
 			command: 'A',
 			start: [-50, 0],
 			point: [0, -25],
-			args: [[50, 25], 0, false, true],
+			args: [[25, 50], 90, false, true],
 		})
 	})
 })
