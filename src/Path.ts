@@ -3384,7 +3384,6 @@ function drawToRenderingContext(
 		const ret = Arc.toCenterParameterization({
 			start,
 			point,
-			command: 'A',
 			args,
 		})
 
