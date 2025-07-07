@@ -251,7 +251,7 @@ export namespace Arc {
 	 */
 	export function transform(arc: SimpleSegmentA, matrix: mat2d): SegmentA {
 		// eslint-disable-next-line prefer-const
-		let [[rh, rv], offsetRot, largeArc, sweep] = arc.args
+		let [[rx, ry], offsetRot, largeArc, sweep] = arc.args
 
 		const s = scalar.sin(offsetRot)
 		const c = scalar.cos(offsetRot)
@@ -261,10 +261,10 @@ export namespace Arc {
 		const mt = matrix //mat2.transpose([matrix[0], matrix[1], matrix[2], matrix[3]])
 
 		const m: mat2 = [
-			mt[0] * +rh * c + mt[2] * rh * s,
-			mt[1] * +rh * c + mt[3] * rh * s,
-			mt[0] * -rv * s + mt[2] * rv * c,
-			mt[1] * -rv * s + mt[3] * rv * c,
+			mt[0] * +rx * c + mt[2] * rx * s,
+			mt[1] * +rx * c + mt[3] * rx * s,
+			mt[0] * -ry * s + mt[2] * ry * c,
+			mt[1] * -ry * s + mt[3] * ry * c,
 		]
 
 		// to implict equation (centered)
@@ -307,12 +307,18 @@ export namespace Arc {
 		C2 = C2 < 0 ? 0 : Math.sqrt(C2)
 
 		// now A2 and C2 are half-axis:
-		if (ac <= 0) {
-			rv = A2
-			rh = C2
+		if (Math.abs(offsetRot) % 180 === 0) {
+			rx = A2
+			ry = C2
+		} else if (Math.abs(offsetRot) % 180 === 90) {
+			rx = C2
+			ry = A2
+		} else if (ac <= 0) {
+			rx = C2
+			ry = A2
 		} else {
-			rv = C2
-			rh = A2
+			rx = A2
+			ry = C2
 		}
 
 		// If the transformation matrix contain a mirror-component
@@ -325,7 +331,7 @@ export namespace Arc {
 			start: vec2.transformMat2d(arc.start, matrix),
 			point: vec2.transformMat2d(arc.point, matrix),
 			command: 'A',
-			args: [[rh, rv], offsetRot, largeArc, sweep],
+			args: [[rx, ry], offsetRot, largeArc, sweep],
 		}
 
 		function nearZero(B: number) {

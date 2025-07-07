@@ -317,13 +317,13 @@ describe('transform', () => {
 	})
 
 	it('should scale x by 0.5', () => {
-		const ret = Arc.transform(arc, mat2d.scaling([0.5, 1]))
+		const ret = Arc.transform(arc, mat2d.scaling([0.5, 3]))
 
 		expect(ret).toEqual({
 			command: 'A',
 			start: [25, 0],
-			point: [0, 50],
-			args: [[25, 50], 0, false, true],
+			point: [0, 75],
+			args: [[25, 75], 0, false, true],
 		})
 	})
 
@@ -345,7 +345,7 @@ describe('transform', () => {
 			command: 'A',
 			start: [-50, 0],
 			point: [0, -25],
-			args: [[25, 50], 90, false, true],
+			args: [[50, 25], 0, false, true],
 		})
 	})
 })
