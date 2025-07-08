@@ -47,33 +47,46 @@ export namespace Arc {
 			}
 		}
 
-		const [x1p, y1p] = vec2.rotate(
-			vec2.scale(vec2.sub(start, point), 0.5),
-			-xAxisRotation
-		)
+		// Convert xAxisRotation from degrees to radians
+		const xAxisRotationRad = scalar.rad(xAxisRotation)
+		const cosphi = Math.cos(xAxisRotationRad)
+		const sinphi = Math.sin(xAxisRotationRad)
+
+		// Step 1: Compute (x1', y1')
+		const [x1p, y1p] = [
+			(cosphi * (start[0] - point[0])) / 2 +
+				(sinphi * (start[1] - point[1])) / 2,
+			(-sinphi * (start[0] - point[0])) / 2 +
+				(cosphi * (start[1] - point[1])) / 2,
+		]
 
 		const [rx, ry] = correctRadii(radii, [x1p, y1p])
 		const rx2 = rx ** 2
 		const ry2 = ry ** 2
 
+		// Step 2: Compute (cx', cy')
 		const n = rx2 * ry2 - rx2 * y1p ** 2 - ry2 * x1p ** 2
 		const d = rx2 * y1p ** 2 + ry2 * x1p ** 2
 
 		const sign = largeArcFlag !== sweepFlag ? 1 : -1
-		const cp = vec2.scale(
-			[(rx * y1p) / ry, (-ry * x1p) / rx],
-			sign * Math.sqrt(Math.abs(n / d))
-		)
+		const cxp = (sign * Math.sqrt(Math.abs(n / d)) * (rx * y1p)) / ry
+		const cyp = (sign * Math.sqrt(Math.abs(n / d)) * (-ry * x1p)) / rx
 
-		const center = vec2.add(
-			vec2.rotate(cp, -xAxisRotation),
-			vec2.lerp(start, point, 0.5)
-		)
+		// Step 3: Compute (cx, cy) from (cx', cy')
+		const center: vec2 = [
+			cosphi * cxp - sinphi * cyp + (start[0] + point[0]) / 2,
+			sinphi * cxp + cosphi * cyp + (start[1] + point[1]) / 2,
+		]
 
-		const a = vec2.div(vec2.sub([x1p, y1p], cp), [rx, ry])
-		const b = vec2.div(vec2.sub(vec2.zero, [x1p, y1p], cp), [rx, ry])
-		const startAngle = vec2.angle(a)
-		let deltaAngle = vec2.angle(a, b) % 360
+		// Step 4: Compute start and end angles
+		const a = [(x1p - cxp) / rx, (y1p - cyp) / ry]
+		const b = [(-x1p - cxp) / rx, (-y1p - cyp) / ry]
+
+		// Calculate start angle relative to [1, 0]
+		const startAngle = scalar.deg(Math.atan2(a[1], a[0]))
+
+		// Calculate delta angle
+		let deltaAngle = scalar.deg(Math.atan2(b[1], b[0]) - Math.atan2(a[1], a[0]))
 
 		if (!sweepFlag && deltaAngle > 0) {
 			deltaAngle = deltaAngle - 360

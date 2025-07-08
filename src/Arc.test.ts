@@ -151,6 +151,23 @@ describe('toCenterParameterization', () => {
 			sweep: true,
 		})
 	})
+
+	it('should work in rotated elliptic arc whose angle is not 180°', () => {
+		const ret = Arc.toCenterParameterization({
+			start: [100 / Math.sqrt(2), 100 / Math.sqrt(2)],
+			point: [-50 / Math.sqrt(2), 50 / Math.sqrt(2)],
+			command: 'A',
+			args: [[100, 50], 45, false, true],
+		})
+
+		expect(ret).toEqual({
+			center: [0, 0],
+			radii: [100, 50],
+			angles: [0, 90],
+			xAxisRotation: 45,
+			sweep: true,
+		})
+	})
 })
 
 describe('bounds', () => {
