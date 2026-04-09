@@ -3512,10 +3512,10 @@ p-locate@^5.0.0:
   dependencies:
     p-limit "^3.0.2"
 
-paper@^0.12.18, paper@^0.12.4:
-  version "0.12.18"
-  resolved "https://registry.npmjs.org/paper/-/paper-0.12.18.tgz"
-  integrity sha512-ZSLIEejQTJZuYHhSSqAf4jXOnii0kPhCJGAnYAANtdS72aNwXJ9cP95tZHgq1tnNpvEwgQhggy+4OarviqTCGw==
+paper@0.12.4, paper@^0.12.4:
+  version "0.12.4"
+  resolved "https://registry.yarnpkg.com/paper/-/paper-0.12.4.tgz#c6b01fea26cb30d15a4f7abeb3465c45ad7b49ae"
+  integrity sha512-KypUqX2uXJZOX2j55RcgnBzK7weau9WKVCB+3e0E1Wa9yxlV7z6BsSrrJxmLNIC0pATbjcy9pJYDutQ7rIhnpQ==
 
 paperjs-offset@^1.0.8:
   version "1.0.8"
