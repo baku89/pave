@@ -2593,71 +2593,69 @@ export namespace Path {
 	 * @returns The newly created paper.Path instance
 	 * @category Converters
 	 */
-	export const toPaperPath = memoize(
-		(path: Path): paper.Path | paper.CompoundPath => {
-			const paperPaths = path.curves.map(({vertices, closed}) => {
-				const paperPath = new paper.Path()
-				let prev: vec2 | undefined
+	export function toPaperPath(path: Path): paper.Path | paper.CompoundPath {
+		const paperPaths = path.curves.map(({vertices, closed}) => {
+			const paperPath = new paper.Path()
+			let prev: vec2 | undefined
 
-				const firstVertex = vertices.at(0)
+			const firstVertex = vertices.at(0)
 
-				if (firstVertex) {
-					paperPath.moveTo(toPoint(firstVertex.point))
-					prev = firstVertex.point
+			if (firstVertex) {
+				paperPath.moveTo(toPoint(firstVertex.point))
+				prev = firstVertex.point
 
-					vertices = vertices.slice(1)
+				vertices = vertices.slice(1)
 
-					if (closed) {
-						vertices.push(firstVertex)
-					}
+				if (closed) {
+					vertices.push(firstVertex)
 				}
+			}
 
-				for (const {point, command, args} of vertices) {
-					if (command === 'L') {
-						paperPath.lineTo(toPoint(point))
-					} else if (command === 'C') {
+			for (const {point, command, args} of vertices) {
+				if (command === 'L') {
+					paperPath.lineTo(toPoint(point))
+				} else if (command === 'C') {
+					paperPath.cubicCurveTo(
+						toPoint(args[0]),
+						toPoint(args[1]),
+						toPoint(point)
+					)
+				} else {
+					const beziers = Arc.approximateByCubicBeziers(
+						{start: prev!, point, args},
+						90
+					)
+
+					for (const {point, args} of beziers) {
 						paperPath.cubicCurveTo(
 							toPoint(args[0]),
 							toPoint(args[1]),
 							toPoint(point)
 						)
-					} else {
-						const beziers = Arc.approximateByCubicBeziers(
-							{start: prev!, point, args},
-							90
-						)
-
-						for (const {point, args} of beziers) {
-							paperPath.cubicCurveTo(
-								toPoint(args[0]),
-								toPoint(args[1]),
-								toPoint(point)
-							)
-						}
 					}
-
-					prev = point
 				}
 
-				if (closed) {
-					paperPath.closePath()
-				}
-
-				return paperPath
-			})
-
-			// Prevents the memory leak by clearing the project after the conversion
-			setTimeout(() => paper.project.clear(), 0)
-
-			return paperPaths.length > 1
-				? new paper.CompoundPath({children: paperPaths})
-				: paperPaths[0]
-
-			function toPoint(point: vec2): paper.PointLike {
-				return {x: point[0], y: point[1]}
+				prev = point
 			}
+
+			if (closed) {
+				paperPath.closePath()
+			}
+
+			return paperPath
+		})
+
+		// Prevents the memory leak by clearing the project after the conversion
+		setTimeout(() => paper.project.clear(), 0)
+
+		return paperPaths.length > 1
+			? new paper.CompoundPath({children: paperPaths})
+			: paperPaths[0]
+
+		function toPoint(point: vec2): paper.Point {
+			return new paper.Point(point[0], point[1])
 		}
-	)
+	}
 
 	/**
 	 * Creates a path from the given paper.Path instance.

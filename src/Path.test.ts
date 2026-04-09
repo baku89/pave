@@ -433,6 +433,31 @@ describe('toPaperPath', () => {
 		expect(paperPath.curves[1].point1.equals({x: 2, y: 3})).toBe(true)
 		expect(paperPath.curves[2].point1.equals({x: 4, y: 5})).toBe(true)
 	})
+
+	it('should return a fresh paper path when the same Path is reused after project clear', async () => {
+		const testPath: Path = {
+			curves: [
+				{
+					vertices: [
+						{point: [0, 0], command: 'L'},
+						{point: [10, 0], command: 'L'},
+						{point: [10, 10], command: 'L'},
+						{point: [0, 10], command: 'L'},
+					],
+					closed: true,
+				},
+			],
+		}
+		const paperPath1 = Path.toPaperPath(testPath) as paper.Path
+		expect(paperPath1.segments.length).toBeGreaterThan(0)
+
+		await new Promise<void>(resolve => {
+			setTimeout(resolve, 0)
+		})
+
+		const paperPath2 = Path.toPaperPath(testPath) as paper.Path
+		expect(paperPath2.segments.length).toBeGreaterThan(0)
+	})
 })
 
 describe('fromPaperPath', () => {
