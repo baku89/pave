@@ -1,19 +1,38 @@
 import {mat2d, vec2} from 'linearly'
 
-type Distort = (p: vec2) => mat2d
-
 /**
- * A collection of functions to generate distortion functions.
+ * Factories for distortion callbacks `(p: vec2) => mat2d` used with {@link Path.distort}.
+ * Each callback tells {@link Path.distort} where segment endpoints should land and how
+ * nearby control handles should tilt so curves follow the warp instead of shearing oddly.
+ *
  * @category Modules
  */
 export namespace Distort {
-	export function fromPointTransformer(fn: (p: vec2) => vec2): Distort {
+	/**
+	 * Turn "move each point here" into a callback {@link Path.distort} understands.
+	 * Nearby samples (step `0.01`) infer how the warp stretches and turns locally so handles stay plausible. Very sharp or jumpy maps may look wrong.
+	 *
+	 * @param map - For any point, returns its image after your warp.
+	 * @returns A distortion callback.
+	 *
+	 * @example
+	 * ```js:pave
+	 * const base = Path.line([10, 55], [90, 55])
+	 * stroke(base, '#ccc')
+	 *
+	 * const d = Distort.fromPointMap(p =>
+	 *   vec2.add(p, [0, 8 * Math.sin(p[0] * 0.15)])
+	 * )
+	 * stroke(Path.distort(base, d, {subdivide: 10}), 'coral')
+	 * ```
+	 */
+	export function fromPointMap(map: (p: vec2) => vec2): (p: vec2) => mat2d {
 		const delta = 0.01
 
 		return (p: vec2) => {
-			const pt = fn(p)
-			const deltaX = fn(vec2.add(p, [delta, 0]))
-			const deltaY = fn(vec2.add(p, [0, delta]))
+			const pt = map(p)
+			const deltaX = map(vec2.add(p, [delta, 0]))
+			const deltaY = map(vec2.add(p, [0, delta]))
 
 			const axisX = vec2.scale(vec2.sub(deltaX, pt), 1 / delta)
 			const axisY = vec2.scale(vec2.sub(deltaY, pt), 1 / delta)
@@ -23,13 +42,23 @@ export namespace Distort {
 	}
 
 	/**
-	 * Add a sine wave distortion to the given point.
-	 * @param amplitude The amplitude of the wave.
-	 * @param width The wavelength of the wave.
-	 * @param phase The phase of the wave in degrees.
-	 * @param angle The angle of the wave in degrees.
-	 * @param origin The origin of the wave.
-	 * @returns The wave distortion function.
+	 * Push points side-to-side in a sine pattern: travel along one axis in the plane, offset along the perpendicular.
+	 *
+	 * @param amplitude - How far points move perpendicular to the wave direction.
+	 * @param width - Distance along the wave for one full cycle (non-zero).
+	 * @param phase - Shifts the wave along its direction, in degrees.
+	 * @param angle - Rotates the wave direction in the plane, in degrees.
+	 * @param origin - A reference point on the wave axis (with `angle`, fixes the frame).
+	 *
+	 * @example
+	 * ```js:pave
+	 * const p = Path.line([10, 50], [90, 50])
+	 * stroke(p, 'skyblue')
+	 * stroke(
+	 *   Path.distort(p, Distort.wave(6, 24, 0, 0), {subdivide: 10}),
+	 *   'coral'
+	 * )
+	 * ```
 	 */
 	export function wave(
 		amplitude: number,
@@ -37,11 +66,11 @@ export namespace Distort {
 		phase = 0,
 		angle = 0,
 		origin = vec2.zero
-	): Distort {
+	): (p: vec2) => mat2d {
 		const xform = mat2d.rotation(angle, origin)
 		const invXform = mat2d.invert(xform) ?? mat2d.id
 
-		return fromPointTransformer((p: vec2) => {
+		return fromPointMap((p: vec2) => {
 			const pLocal = vec2.transformMat2d(p, invXform)
 
 			const theta = (pLocal[0] / width + phase / 360) * 2 * Math.PI
@@ -56,20 +85,31 @@ export namespace Distort {
 	}
 
 	/**
-	 * Add a twirl distortion to the given point.
-	 * @param center The center of the twirl.
-	 * @param radius The radius of the twirl.
-	 * @param angle The angle of the twirl in degrees.
-	 * @param ramp The ramp function that maps the distance ratio to the twirl amplitude.
-	 * @returns The twirl distortion function.
+	 * Spin the plane around `center`: full effect at the center, none past `radius`, blended in between.
+	 * Points outside the radius are left as-is.
+	 *
+	 * @param center - Pivot for the rotation.
+	 * @param radius - Outside this distance from `center`, the warp does nothing.
+	 * @param angle - Largest rotation at the center, in degrees (scaled by `ramp` toward the edge).
+	 * @param ramp - Optional curve on the falloff from center (`1` at center, `0` at `radius`); default is straight-line falloff.
+	 *
+	 * @example
+	 * ```js:pave
+	 * const p = Path.rectangle([20, 20], [80, 80])
+	 * stroke(p, 'skyblue')
+	 * stroke(
+	 *   Path.distort(p, Distort.twirl([50, 50], 40, 180), {subdivide: 6}),
+	 *   'coral'
+	 * )
+	 * ```
 	 */
 	export function twirl(
 		center: vec2,
 		radius: number,
 		angle: number,
 		ramp: (t: number) => number = t => t
-	): Distort {
-		return fromPointTransformer((p: vec2) => {
+	): (p: vec2) => mat2d {
+		return fromPointMap((p: vec2) => {
 			const dist = vec2.distance(center, p)
 
 			if (dist > radius) {
