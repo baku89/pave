@@ -20,6 +20,22 @@ type SimpleSegmentA = PartialBy<SegmentA, 'command'>
  * @category Modules
  */
 export namespace Arc {
+	export function of(
+		start: vec2,
+		radii: vec2,
+		xAxisRotation: number,
+		largeArcFlag: boolean,
+		sweepFlag: boolean,
+		point: vec2
+	): SegmentA {
+		return {
+			command: 'A',
+			start,
+			args: [radii, xAxisRotation, largeArcFlag, sweepFlag],
+			point,
+		}
+	}
+
 	/**
 	 * Converts the Arc command to a center parameterization that can be used in Context2D.ellipse().
 	 * https://observablehq.com/@awhitty/svg-2-elliptical-arc-to-canvas-path2d

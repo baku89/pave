@@ -13,6 +13,10 @@ type SimpleSegmentL = PartialBy<SegmentL, 'command'>
  * @category Modules
  */
 export namespace Line {
+	export function of(start: vec2, point: vec2): SegmentL {
+		return {command: 'L', start, point}
+	}
+
 	export function bounds(line: SimpleSegmentL): Rect {
 		const {start, point} = line
 		return Rect.fromPoints(start, point)

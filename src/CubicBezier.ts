@@ -19,7 +19,12 @@ type SimpleSegmentC = PartialBy<SegmentC, 'command'>
  * @category Modules
  */
 export namespace CubicBezier {
-	export function of(start: vec2, control1: vec2, control2: vec2, point: vec2) {
+	export function of(
+		start: vec2,
+		control1: vec2,
+		control2: vec2,
+		point: vec2
+	): SegmentC {
 		return {command: 'C', start, args: [control1, control2], point}
 	}
 

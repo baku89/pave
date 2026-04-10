@@ -682,7 +682,11 @@ export namespace Path {
 	 * @returns The newly created path
 	 * @category Primitives
 	 */
-	export function arcByPointsAngle(start: vec2, end: vec2, angle: number) {
+	export function arcByPointsAngle(
+		start: vec2,
+		end: vec2,
+		angle: number
+	): Path {
 		if (scalar.approx(angle, 0)) {
 			return line(start, end)
 		}
@@ -972,7 +976,7 @@ export namespace Path {
 	 * @returns The newly created path
 	 * @category Primitives
 	 */
-	export function nBezier(points: vec2[]) {
+	export function nBezier(points: vec2[]): Path {
 		if (points.length === 0) {
 			return empty
 		}
@@ -2531,7 +2535,7 @@ export namespace Path {
 	 * @category Converters
 	 */
 
-	export function drawToP5(path: Path, p5Instance: p5 | Window = window) {
+	export function drawToP5(path: Path, p5Instance: p5 | Window = window): void {
 		const unarced = unarc(path)
 
 		const p5 = p5Instance as p5
