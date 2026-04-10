@@ -208,7 +208,7 @@ export namespace CubicBezier {
 
 		const vertices: VertexC[] = []
 
-		for (const [from, to] of Iter.tuple(times)) {
+		for (const [from, to] of Iter.pairwise(times)) {
 			const [, c1, c2, point] = trimBetweenTimes(segment, from, to)
 
 			vertices.push({command: 'C', args: [c1, c2], point})

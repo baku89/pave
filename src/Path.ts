@@ -555,7 +555,7 @@ export namespace Path {
 			{command: 'L', point: vec2.dir(startAngle, radius, center)},
 		]
 
-		for (const [prevAngle, throughAngle] of Iter.tuple(angles)) {
+		for (const [prevAngle, throughAngle] of Iter.pairwise(angles)) {
 			const largeArc = Math.abs(throughAngle - prevAngle) > 180
 
 			vertices.push({
@@ -1084,7 +1084,7 @@ export namespace Path {
 
 		const vertices: Vertex[] = [{point: points[0], command: 'L'}]
 
-		for (const [i, [prevT, t]] of Iter.enumerate(Iter.tuple(ts))) {
+		for (const [i, [prevT, t]] of Iter.enumerate(Iter.pairwise(ts))) {
 			const prevPoint = points[i]
 			const point = points[i + 1]
 			const handleMultiplier = (t - prevT) / delta / 3
@@ -1947,7 +1947,7 @@ export namespace Path {
 	 * @category Modifiers
 	 */
 	export function split(path: Path, locs: Iterable<PathLocation>): Path[] {
-		return [...Iter.tuple(locs)].map(([from, to]) => {
+		return [...Iter.pairwise(locs)].map(([from, to]) => {
 			return trim(path, from, to)
 		})
 	}

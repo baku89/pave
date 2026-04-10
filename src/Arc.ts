@@ -460,7 +460,7 @@ export namespace Arc {
 
 		times = [0, ...times, 1]
 
-		for (const [from, to] of Iter.tuple(times)) {
+		for (const [from, to] of Iter.pairwise(times)) {
 			const startAngle = scalar.lerp(...angles, from)
 			const endAngle = scalar.lerp(...angles, to)
 
@@ -538,7 +538,7 @@ export namespace Arc {
 				...approximateByCubicBeziers(arc, unarcAngle),
 			]
 
-			const paths = Array.from(Iter.tuple(vertices)).map(([v0, v1]) =>
+			const paths = Array.from(Iter.pairwise(vertices)).map(([v0, v1]) =>
 				CubicBezier.offset({start: v0.point, ...v1}, distance)
 			)
 			return Path.join(paths)

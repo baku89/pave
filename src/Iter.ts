@@ -75,11 +75,11 @@ export namespace Iter {
 	}
 
 	/**
-	 * Yields tuples of values from the input generator, where each tuple contains the current and previous values.
-	 * @param iter The input generator.
-	 * @returns A generator that yields tuples of values.
+	 * Yields overlapping consecutive pairs from the iterable: [a,b], [b,c], ...
+	 * @param iter The input iterable.
+	 * @returns A generator yielding [previous, current] pairs.
 	 */
-	export function* tuple<T>(iter: Iterable<T>): Generator<[T, T]> {
+	export function* pairwise<T>(iter: Iterable<T>): Generator<[T, T]> {
 		let prev: T | undefined = undefined
 
 		for (const value of iter) {
