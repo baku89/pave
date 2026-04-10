@@ -1,5 +1,4 @@
 import {scalar, vec2} from 'linearly'
-import paper from 'paper'
 
 import {
 	cubicArcLength,
@@ -7,12 +6,12 @@ import {
 	cubicOffsetHulls,
 	cubicPointAt,
 	cubicProject,
+	cubicTimeAtArcLength,
 	getCubicDerivativeFn,
 	trimCubicBetweenTimes,
 } from './cubicBezierGeometry'
 import {Iter} from './Iter'
 import {SegmentLocation} from './Location'
-import {ensurePaperScope} from './paperScope'
 import {Path, VertexC} from './Path'
 import {SegmentC} from './Segment'
 import {memoize, normalizeOffset} from './utils'
@@ -36,22 +35,6 @@ export namespace CubicBezier {
 	): SegmentC {
 		return {command: 'C', start, args: [control1, control2], point}
 	}
-
-	const toPaperBezier = memoize((beizer: BareSegmentC) => {
-		ensurePaperScope()
-		const {
-			start: [x0, y0],
-			args: [[x1, y1], [x2, y2]],
-			point: [x3, y3],
-		} = beizer
-
-		return new paper.Curve(
-			new paper.Point(x0, y0),
-			new paper.Point(x1 - x0, y1 - y0),
-			new paper.Point(x2 - x3, y2 - y3),
-			new paper.Point(x3, y3)
-		)
-	})
 
 	export function fromQuadraticBezier(
 		start: vec2,
@@ -87,14 +70,13 @@ export namespace CubicBezier {
 			return normalizeOffset(loc.time, 1)
 		}
 
-		const paperBezier = toPaperBezier(bezier)
-
+		const len = cubicArcLength(bezier)
 		const offset = normalizeOffset(
-			'unit' in loc ? loc.unit * paperBezier.length : loc.offset,
-			paperBezier.length
+			'unit' in loc ? loc.unit * len : loc.offset,
+			len
 		)
 
-		return paperBezier.getTimeAt(offset)
+		return cubicTimeAtArcLength(bezier, offset)
 	}
 
 	/**

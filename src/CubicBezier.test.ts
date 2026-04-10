@@ -1,6 +1,7 @@
 /**
  * {@link CubicBezier} — tests hit native cubic hull math in `cubicBezierGeometry.ts`
- * (via `CubicBezier.ts`); no bezier-js dependency. Paper.js is not used by these cases.
+ * (via `CubicBezier.ts`); no bezier-js dependency. Runtime Paper.js is not used; some
+ * expected lengths are golden values derived from Paper.js unit tests (MIT, see below).
  *
  * Some fixtures and expected values are adapted from third-party test suites (golden
  * vectors only). Attributions:
@@ -8,12 +9,14 @@
  * - **Bezier.js** (bezier-js): scenarios / numeric expectations informed by
  *   https://github.com/Pomax/bezierjs/tree/master/test — MIT License, see
  *   `BEZIER_JS_MIT_LICENSE` at the bottom of this file.
- * - **Paper.js**: golden fixtures from Curve tests — MIT, see section comment below.
+ * - **Paper.js**: golden fixtures from Curve tests — MIT, see `PAPER_JS_MIT_LICENSE`
+ *   at the bottom of this file.
  */
 import type {vec2} from 'linearly'
 import {describe, expect, it, test} from 'vitest'
 
 import {CubicBezier} from './CubicBezier'
+import {cubicArcLengthBetween} from './cubicBezierGeometry'
 import {SegmentC} from './Segment'
 
 /**
@@ -243,7 +246,7 @@ describe('Bezier.js projection.test.js (quadratic raised to cubic)', () => {
 	})
 })
 
-// --- Paper.js test/tests/Curve.js golden fixtures (MIT, github.com/paperjs/paper.js)
+// --- Paper.js test/tests/Curve.js (MIT, github.com/paperjs/paper.js) — geometry goldens
 
 /** Cubic coefficients for Path.Circle([100,100], 100).firstCurve in Paper.js 0.12.x */
 const CIRCLE_QUADRANT_SEGMENT: SegmentC = {
@@ -394,6 +397,71 @@ describe('CubicBezier.isStraight (Paper.js Curve#isStraight cases)', () => {
 	}
 })
 
+/**
+ * Paper.js `new Curve(x1,y1, cx1,cy1, cx2,cy2, x2,y2)` — eight absolute coordinates
+ * (anchors and Bézier control points); same layout as `Curve#getValues()`.
+ */
+function segmentCFromPaperCurveValues8(
+	x1: number,
+	y1: number,
+	cx1: number,
+	cy1: number,
+	cx2: number,
+	cy2: number,
+	x2: number,
+	y2: number
+): SegmentC {
+	return {
+		start: [x1, y1],
+		command: 'C',
+		args: [
+			[cx1, cy1],
+			[cx2, cy2],
+		],
+		point: [x2, y2],
+	}
+}
+
+describe('Paper.js Curve.js length regressions', () => {
+	it('circle quadrant cubic (Path.Circle firstCurve) total length', () => {
+		// True πr/2 for r=100 is ~157.0796; this is the arc length of Paper's cubic approximation.
+		expect(CubicBezier.length(CIRCLE_QUADRANT_SEGMENT)).toBeCloseTo(
+			157.1016698073856,
+			10
+		)
+	})
+
+	it('straight cubic from Curve#getPartLength() — total and partial lengths', () => {
+		// new Curve([0, 0, 0, 0, 64, 0, 64, 0])
+		const seg = segmentCFromPaperCurveValues8(0, 0, 0, 0, 64, 0, 64, 0)
+		expect(CubicBezier.length(seg)).toBeCloseTo(64, 12)
+		const parts: [number, number, number][] = [
+			[0.0, 0.25, 10],
+			[0.25, 0.5, 22],
+			[0.25, 0.75, 44],
+			[0.5, 0.75, 22],
+			[0.75, 1, 10],
+		]
+		for (const [t0, t1, expected] of parts) {
+			expect(cubicArcLengthBetween(seg, t0, t1)).toBeCloseTo(expected, 10)
+		}
+	})
+
+	it('issue #1149 — total length matches offset at end (Curve.getTimeAt)', () => {
+		const seg = segmentCFromPaperCurveValues8(
+			-7500,
+			0,
+			-7500,
+			4142.135623730952,
+			-4142.135623730952,
+			7500,
+			0,
+			7500
+		)
+		expect(CubicBezier.length(seg)).toBeCloseTo(11782.625235553916, 8)
+	})
+})
+
 describe('CubicBezier point / tangent / normal (circle quadrant, Paper.js Curve#getPointAtTime vectors)', () => {
 	const seg = CIRCLE_QUADRANT_SEGMENT
 
@@ -442,6 +510,35 @@ describe('CubicBezier point / tangent / normal (circle quadrant, Paper.js Curve#
 })
 
 /*
+ * -----------------------------------------------------------------------------
+ * MIT License — Paper.js
+ *
+ * Repository: https://github.com/paperjs/paper.js
+ * Test source used for numeric golden values: test/tests/Curve.js, src/path/Curve.js
+ * SPDX-License-Identifier: MIT (see upstream LICENSE file)
+ *
+ * Copyright (c) 2011 - 2020, Jürg Lehni & Jonathan Puckey
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ * -----------------------------------------------------------------------------
+ * (End Paper.js MIT notice — identifier: PAPER_JS_MIT_LICENSE)
+ *
  * -----------------------------------------------------------------------------
  * MIT License — Bezier.js (bezier-js)
  *

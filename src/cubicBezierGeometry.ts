@@ -2,10 +2,10 @@
  * Pure numeric geometry for planar cubic Bézier curves in {@link BareSegmentC} form
  * (`start`, two control points, `point`).
  *
- * **Why this module exists:** {@link CubicBezier} in `CubicBezier.ts` is the public API
- * (Paper.js for arc-length parameterization, path building, etc.). All closed-form and
- * numerical curve math that does not need Paper lives here so the API file stays thin and
- * testable without pulling in extra dependencies.
+ * **Why this module exists:** {@link CubicBezier} in `CubicBezier.ts` is the public API;
+ * Paper.js is only used for path boolean/offset in {@link Path}. All closed-form and
+ * numerical curve math that does not need Paper lives here so the API stays testable
+ * without pulling in extra dependencies.
  *
  * **Consumers:** `CubicBezier.length`, `bounds`, `point`/`derivative`, `trim`, `divideAtTimes`,
  * `project`, and `offset` delegate to these functions.
@@ -268,6 +268,58 @@ export function cubicArcLength(hull: BareSegmentC): number {
 		sum += LG_C[i] * Math.hypot(d[0], d[1])
 	}
 	return z * sum
+}
+
+function bareHullFromTrim(
+	hull: BareSegmentC,
+	from: number,
+	to: number
+): BareSegmentC {
+	const [s, c1, c2, e] = trimCubicBetweenTimes(hull, from, to)
+	return {start: s, args: [c1, c2], point: e}
+}
+
+/** Arc length along the hull from parameter `t0` to `t1` (0 ≤ t0 ≤ t1 ≤ 1). */
+export function cubicArcLengthBetween(
+	hull: BareSegmentC,
+	t0: number,
+	t1: number
+): number {
+	if (t1 <= t0) {
+		return 0
+	}
+	return cubicArcLength(bareHullFromTrim(hull, t0, t1))
+}
+
+const ARC_TIME_AT_LEN_REL_TOL = 1e-11
+const ARC_TIME_AT_LEN_MAX_IT = 64
+
+/**
+ * Parameter t ∈ [0, 1] whose arc-length from the curve start equals `s` (clamped to total length).
+ * Monotone bisection on cumulative arc length; pairs with {@link cubicArcLength}.
+ */
+export function cubicTimeAtArcLength(hull: BareSegmentC, s: number): number {
+	const total = cubicArcLength(hull)
+	if (total <= 1e-15) {
+		return 0
+	}
+	const target = scalar.clamp(s, 0, total)
+	let lo = 0
+	let hi = 1
+	for (let i = 0; i < ARC_TIME_AT_LEN_MAX_IT; i++) {
+		const mid = (lo + hi) * 0.5
+		const acc = cubicArcLengthBetween(hull, 0, mid)
+		const err = Math.abs(acc - target)
+		if (err <= ARC_TIME_AT_LEN_REL_TOL * total || hi - lo < 1e-15) {
+			return mid
+		}
+		if (acc < target) {
+			lo = mid
+		} else {
+			hi = mid
+		}
+	}
+	return (lo + hi) * 0.5
 }
 
 /**
