@@ -17,13 +17,15 @@ export namespace Distort {
 	 *
 	 * @example
 	 * ```js:pave
-	 * const base = Path.line([10, 55], [90, 55])
-	 * stroke(base, '#ccc')
+	 * const p = Path.line([10, 55], [90, 55])
+	 * stroke(p, '#ccc')
 	 *
-	 * const d = Distort.fromPointMap(p =>
-	 *   vec2.add(p, [0, 8 * Math.sin(p[0] * 0.15)])
+	 * const warped = Path.distort(
+	 *   p,
+	 *   Distort.fromPointMap(q => vec2.add(q, [0, 8 * Math.sin(q[0] * 0.15)])),
+	 *   {subdivide: 10}
 	 * )
-	 * stroke(Path.distort(base, d, {subdivide: 10}), 'coral')
+	 * stroke(warped, 'coral')
 	 * ```
 	 */
 	export function fromPointMap(map: (p: vec2) => vec2): (p: vec2) => mat2d {
@@ -54,10 +56,9 @@ export namespace Distort {
 	 * ```js:pave
 	 * const p = Path.line([10, 50], [90, 50])
 	 * stroke(p, 'skyblue')
-	 * stroke(
-	 *   Path.distort(p, Distort.wave(6, 24, 0, 0), {subdivide: 10}),
-	 *   'coral'
-	 * )
+	 *
+	 * const wavy = Path.distort(p, Distort.wave(6, 24, 0, 0), {subdivide: 10})
+	 * stroke(wavy, 'coral')
 	 * ```
 	 */
 	export function wave(
@@ -97,10 +98,9 @@ export namespace Distort {
 	 * ```js:pave
 	 * const p = Path.rectangle([20, 20], [80, 80])
 	 * stroke(p, 'skyblue')
-	 * stroke(
-	 *   Path.distort(p, Distort.twirl([50, 50], 40, 180), {subdivide: 6}),
-	 *   'coral'
-	 * )
+	 *
+	 * const twirled = Path.distort(p, Distort.twirl([50, 50], 40, 180), {subdivide: 6})
+	 * stroke(twirled, 'coral')
 	 * ```
 	 */
 	export function twirl(
@@ -120,6 +120,45 @@ export namespace Distort {
 			const xform = mat2d.rotation(theta, center)
 
 			return vec2.transformMat2d(p, xform)
+		})
+	}
+
+	/**
+	 * Spherize-style radial stretch from `center`: strongest at the center, fading to none at `radius`.
+	 * Points beyond `radius` are unchanged.
+	 *
+	 * @param center - Origin of the radial warp.
+	 * @param radius - Outside this distance from `center`, the warp does nothing.
+	 * @param strength - Scale added along each ray from `center` at full falloff (`0` = identity). Positive pushes outward, negative pinches inward.
+	 * @param ramp - Falloff from center (`1` at center, `0` at `radius`); default is linear.
+	 *
+	 * @example
+	 * ```js:pave
+	 * const p = Path.rectangle([20, 20], [80, 80])
+	 * stroke(p, 'skyblue')
+	 *
+	 * const bulged = Path.distort(p, Distort.bulge([50, 50], 50, 0.5))
+	 * stroke(bulged, 'coral')
+	 * ```
+	 */
+	export function bulge(
+		center: vec2,
+		radius: number,
+		strength: number,
+		ramp: (t: number) => number = t => t
+	): (p: vec2) => mat2d {
+		return fromPointMap((p: vec2) => {
+			const d = vec2.distance(center, p)
+
+			if (d > radius || d < 1e-15) {
+				return p
+			}
+
+			const t = ramp(1 - d / radius)
+			const scale = 1 + strength * t
+			const v = vec2.sub(p, center)
+
+			return vec2.add(center, vec2.scale(v, scale))
 		})
 	}
 }
