@@ -27,6 +27,10 @@ export namespace Line {
 		return vec2.sub(line.point, line.start)
 	}
 
+	export function length(line: SimpleSegmentL): number {
+		return vec2.distance(line.start, line.point)
+	}
+
 	export function tangent(line: SimpleSegmentL): vec2 {
 		return vec2.normalize(derivative(line))
 	}

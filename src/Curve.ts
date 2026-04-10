@@ -1,8 +1,6 @@
 import {Rect} from 'geome'
 import {scalar, vec2} from 'linearly'
 
-import {Arc} from './Arc'
-import {CubicBezier} from './CubicBezier'
 import {CurveLocation, TimeCurveLocation} from './Location'
 import {MultiSegment} from './MultiSegment'
 import {Vertex, VertexA, VertexC, VertexL} from './Path'
@@ -33,18 +31,11 @@ export type CurveA = Curve<VertexA>
  */
 export namespace Curve {
 	export const length = memoize((curve: Curve): number => {
-		let length = 0
+		let total = 0
 		for (const segment of segments(curve)) {
-			if (segment.command === 'L') {
-				length += vec2.distance(segment.start, segment.point)
-			} else if (segment.command === 'C') {
-				length += CubicBezier.length(segment)
-			} else {
-				length += Arc.length(segment)
-			}
+			total += Segment.length(segment)
 		}
-
-		return length
+		return total
 	})
 
 	export const bounds = memoize((curve: Curve): Rect => {

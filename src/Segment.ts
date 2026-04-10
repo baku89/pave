@@ -39,7 +39,7 @@ export namespace Segment {
 	 */
 	export const length = (seg: Segment): number => {
 		if (seg.command === 'L') {
-			return vec2.distance(seg.start, seg.point)
+			return Line.length(seg)
 		} else if (seg.command === 'C') {
 			return CubicBezier.length(seg)
 		} else {
