@@ -429,14 +429,14 @@ describe('toPaperPath', () => {
 				},
 			],
 		}
-		const paperPath = Path.toPaperPath(testPath) as paper.Path
+		const paperPath = Path.toPaperPath(testPath)
 
 		expect(paperPath).toBeInstanceOf(paper.Path)
 		expect(paperPath.closed).toBe(true)
 		expect(paperPath.curves.length).toBe(3)
-		expect(paperPath.curves[0].point1.equals({x: 0, y: 1})).toBe(true)
-		expect(paperPath.curves[1].point1.equals({x: 2, y: 3})).toBe(true)
-		expect(paperPath.curves[2].point1.equals({x: 4, y: 5})).toBe(true)
+		expect(paperPath.curves[0].point1.equals(new paper.Point(0, 1))).toBe(true)
+		expect(paperPath.curves[1].point1.equals(new paper.Point(2, 3))).toBe(true)
+		expect(paperPath.curves[2].point1.equals(new paper.Point(4, 5))).toBe(true)
 	})
 
 	it('should return a fresh paper path when the same Path is reused after project clear', async () => {
