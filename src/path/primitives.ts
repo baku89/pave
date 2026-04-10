@@ -657,15 +657,19 @@ export function dot(point: vec2): PathL {
  * stroke(p)
  * ```
  */
-export function polyline(...points: vec2[]): PathL {
+function lineStrip(closed: boolean, points: vec2[]): PathL {
 	return {
 		curves: [
 			{
 				vertices: points.map(point => ({point, command: 'L'})),
-				closed: false,
+				closed,
 			},
 		],
 	}
+}
+
+export function polyline(...points: vec2[]): PathL {
+	return lineStrip(false, points)
 }
 
 /**
@@ -680,14 +684,7 @@ export function polyline(...points: vec2[]): PathL {
  * ```
  */
 export function polygon(...points: vec2[]): PathL {
-	return {
-		curves: [
-			{
-				vertices: points.map(point => ({point, command: 'L'})),
-				closed: true,
-			},
-		],
-	}
+	return lineStrip(true, points)
 }
 
 /**
