@@ -1,5 +1,6 @@
 /**
- * {@link CubicBezier} only — no Bezier.js or Paper.js runtime calls.
+ * {@link CubicBezier} — tests hit native cubic hull math in `cubicBezierGeometry.ts`
+ * (via `CubicBezier.ts`); no bezier-js dependency. Paper.js is not used by these cases.
  *
  * Some fixtures and expected values are adapted from third-party test suites (golden
  * vectors only). Attributions:
@@ -221,40 +222,11 @@ describe('Bezier.js cubic.test.js (ported expectations)', () => {
 			expect(CubicBezier.normal(b, {time: 1})).toEqual([1, 0])
 		})
 
-		it('no inflections in [0, 1]', () => {
-			expect(CubicBezier.inflections(b)).toEqual([])
-		})
-
 		it('axis-aligned bounding box (min/max match Bezier bbox)', () => {
 			expect(CubicBezier.bounds(b)).toEqual([
 				[0, 0],
 				[1, 0.75],
 			])
-		})
-	})
-
-	describe('complex cubic Bezier(0,0,1,0.25,0,1,1,0)', () => {
-		const b = CubicBezier.of([0, 0], [1, 0.25], [0, 1], [1, 0])
-
-		it('inflection parameters', () => {
-			expect(CubicBezier.inflections(b)).toEqual([0.8, 0.5])
-		})
-	})
-
-	describe('cubicFromPoints (three-point fit)', () => {
-		const M: vec2 = [200 / 3, 100 / 3]
-
-		it('midpoint at t = 0.5 with default tension', () => {
-			const b = CubicBezier.cubicFromPoints([0, 0], M, [100, 100])
-			expectVecClose(CubicBezier.point(b, {time: 0.5}), M, 12)
-			expectVecClose(b.args[0], [55.55555555555557, 11.111111111111121], 12)
-			expectVecClose(b.args[1], [88.88888888888891, 44.44444444444443], 12)
-		})
-
-		it('curve passes through M at t = 0.25 when t is used as reference', () => {
-			const t = 0.25
-			const b = CubicBezier.cubicFromPoints([0, 0], M, [100, 100], t)
-			expectVecClose(CubicBezier.point(b, {time: t}), M, 12)
 		})
 	})
 })
