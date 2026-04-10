@@ -200,4 +200,40 @@ export namespace Segment {
 			return Arc.toTime(seg, loc)
 		}
 	}
+
+	/**
+	 * Reverses a vertex chain: `start` is the pen position before `vertices[0]`,
+	 * and each vertex draws to its `point` from the previous position.
+	 */
+	export function reverseVertexChain<V extends Vertex = Vertex>(
+		start: vec2,
+		vertices: readonly V[]
+	): V[] {
+		const out: Vertex[] = []
+
+		for (let i = vertices.length - 1; i >= 0; i--) {
+			const point = i >= 1 ? vertices[i - 1].point : start
+
+			const {command, args} = vertices[i]
+
+			if (command === 'L') {
+				out.push({command: 'L', point})
+			} else if (command === 'C') {
+				out.push({
+					command: 'C',
+					point,
+					args: [args[1], args[0]],
+				})
+			} else {
+				const [radii, xAxisRotation, largeArc, sweep] = args
+				out.push({
+					command: 'A',
+					point,
+					args: [radii, xAxisRotation, largeArc, !sweep],
+				})
+			}
+		}
+
+		return out as V[]
+	}
 }

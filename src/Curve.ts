@@ -2,7 +2,6 @@ import {Rect} from 'geome'
 import {scalar, vec2} from 'linearly'
 
 import {CurveLocation, TimeCurveLocation} from './Location'
-import {MultiSegment} from './MultiSegment'
 import {Vertex, VertexA, VertexC, VertexL} from './Path'
 import {Segment} from './Segment'
 import {memoize, normalizeIndex, normalizeOffset} from './utils'
@@ -110,20 +109,32 @@ export namespace Curve {
 	}
 
 	export function reverse(curve: Curve): Curve {
-		const vertices: Vertex[] = []
-
 		const numVertex = curve.vertices.length
-		const iStart = curve.closed ? numVertex : numVertex - 1
+
+		if (!curve.closed) {
+			if (numVertex === 0) {
+				return {vertices: [], closed: false}
+			}
+			if (numVertex === 1) {
+				return {
+					vertices: [{command: 'L', point: curve.vertices[0].point}],
+					closed: false,
+				}
+			}
+			const v = curve.vertices
+			return {
+				vertices: [
+					{command: 'L', point: v[numVertex - 1].point},
+					...Segment.reverseVertexChain(v[0].point, v.slice(1)),
+				],
+				closed: false,
+			}
+		}
+
+		const vertices: Vertex[] = []
+		const iStart = numVertex - 1
 
 		for (let i = iStart; i >= 0; i--) {
-			if (!curve.closed && i === numVertex - 1) {
-				vertices.push({
-					command: 'L',
-					point: curve.vertices[i].point,
-				})
-				continue
-			}
-
 			const point = curve.vertices[i % numVertex].point
 			const {command, args} = curve.vertices[(i + 1) % numVertex]
 
@@ -145,7 +156,7 @@ export namespace Curve {
 			}
 		}
 
-		return {vertices, closed: curve.closed}
+		return {vertices, closed: true}
 	}
 
 	export function trim(
@@ -208,16 +219,10 @@ export namespace Curve {
 				firstVertices = [{command: 'L', point: firstSeg.start}, firstSeg]
 			}
 
-			const inbetweenVertices: MultiSegment = {
-				start: toLoc.segment.point,
-				vertices: curve.vertices.slice(
-					toLoc.segmentIndex + 2,
-					fromLoc.segmentIndex + 1
-				),
-			}
-
-			const inbetweenVerticesReversed =
-				MultiSegment.reverse(inbetweenVertices).vertices
+			const inbetweenVerticesReversed = Segment.reverseVertexChain(
+				toLoc.segment.point,
+				curve.vertices.slice(toLoc.segmentIndex + 2, fromLoc.segmentIndex + 1)
+			)
 
 			const lastSeg = Segment.trim(toLoc.segment, 1, toLoc)
 
