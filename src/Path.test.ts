@@ -1,3 +1,4 @@
+import type {Rect} from 'geome'
 import paper from 'paper'
 import {beforeAll, describe, expect, it, test} from 'vitest'
 
@@ -7,6 +8,68 @@ import {Path} from './Path'
 beforeAll(() => {
 	ensurePaperScope()
 })
+
+function expectRectClose(
+	got: Rect,
+	expectedMin: readonly [number, number],
+	expectedMax: readonly [number, number],
+	digits = 2
+) {
+	expect(got[0][0]).toBeCloseTo(expectedMin[0], digits)
+	expect(got[0][1]).toBeCloseTo(expectedMin[1], digits)
+	expect(got[1][0]).toBeCloseTo(expectedMax[0], digits)
+	expect(got[1][1]).toBeCloseTo(expectedMax[1], digits)
+}
+
+/**
+ * Paper.js test/tests/Path.js / Item_Bounds.js — cubic edges from Segment(point, handleIn, handleOut):
+ * P1 = P0 + handleOut, P2 = P3 + handleIn (see Paper.js MIT sources).
+ */
+const PAPER_PATH_LENGTH_FIXTURE: Path = {
+	curves: [
+		{
+			vertices: [
+				{point: [121, 334], command: 'L'},
+				{
+					point: [248, 320],
+					command: 'C',
+					args: [
+						[121 + 30.7666015625, 334 - 61.53369140625],
+						[248 - 42, 320 - 74],
+					],
+				},
+			],
+			closed: false,
+		},
+	],
+}
+
+const PAPER_PATH_BOUNDS_OPEN_FIXTURE: Path = {
+	curves: [
+		{
+			vertices: [
+				{point: [121, 334], command: 'L'},
+				{
+					point: [248, 320],
+					command: 'C',
+					args: [
+						[121 + 30.7666015625, 334 - 61.53369140625],
+						[248 - 42, 320 - 74],
+					],
+				},
+				{
+					point: [205, 420.94482421875],
+					command: 'C',
+					args: [
+						[248 + 42, 320 + 74],
+						[205 + 66.7890625, 420.94482421875 - 12.72802734375],
+					],
+				},
+			],
+			closed: false,
+		},
+	],
+}
 
 describe('area', () => {
 	it('compute the area of a simple path as 0', () => {
@@ -61,6 +124,93 @@ describe('area', () => {
 			],
 		}
 		expect(Path.area(path)).toBe(0)
+	})
+
+	it('rectangle via Path.rect', () => {
+		expect(Path.area(Path.rect([0, 0], [4, 5]))).toBeCloseTo(20, 5)
+	})
+
+	it('axis-aligned rectangle away from origin', () => {
+		expect(Path.area(Path.rect([2, 2], [5, 8]))).toBeCloseTo(18, 5)
+	})
+
+	it('right triangle', () => {
+		expect(Path.area(Path.polygon([0, 0], [1, 0], [0, 1]))).toBeCloseTo(0.5, 5)
+	})
+
+	it('10×10 rectangle area 100 (Paper.js Path#area)', () => {
+		expect(Path.area(Path.rect([0, 0], [10, 10]))).toBeCloseTo(100, 10)
+	})
+
+	it('circle radius 10 area ≈ 100π (Paper.js Path#area)', () => {
+		expect(Path.area(Path.circle([0, 0], 10))).toBeCloseTo(100 * Math.PI, 0)
+	})
+})
+
+describe('length', () => {
+	it('empty path', () => {
+		expect(Path.length(Path.empty)).toBe(0)
+	})
+
+	it('single line (3-4-5)', () => {
+		expect(Path.length(Path.line([0, 0], [3, 4]))).toBe(5)
+	})
+
+	it('closed rectangle perimeter', () => {
+		expect(Path.length(Path.rect([0, 0], [2, 3]))).toBeCloseTo(10, 10)
+	})
+
+	it('canonical cubic (same control polygon as CubicBezier tests)', () => {
+		const p = Path.cubicBezier([0, 0], [0, 1], [1, 1], [1, 0])
+		expect(Path.length(p)).toBeCloseTo(2, 10)
+	})
+
+	it('Paper.js Path#length cubic fixture', () => {
+		expect(Path.length(PAPER_PATH_LENGTH_FIXTURE)).toBeCloseTo(
+			172.10112809179614,
+			7
+		)
+	})
+})
+
+describe('bounds', () => {
+	it('axis-aligned rectangle', () => {
+		expect(Path.bounds(Path.rect([0, 0], [2, 3]))).toEqual([
+			[0, 0],
+			[2, 3],
+		])
+	})
+
+	it('line segment', () => {
+		expect(Path.bounds(Path.line([10, 20], [30, 50]))).toEqual([
+			[10, 20],
+			[30, 50],
+		])
+	})
+
+	it('canonical cubic bounding box', () => {
+		const p = Path.cubicBezier([0, 0], [0, 1], [1, 1], [1, 0])
+		expect(Path.bounds(p)).toEqual([
+			[0, 0],
+			[1, 0.75],
+		])
+	})
+
+	it('compound path (merged curves)', () => {
+		const p = Path.merge([
+			Path.line([0, 0], [1, 0]),
+			Path.line([5, 5], [6, 10]),
+		])
+		expect(Path.bounds(p)).toEqual([
+			[0, 0],
+			[6, 10],
+		])
+	})
+
+	it('Paper.js Item_Bounds.js open path (Rectangle as min/max)', () => {
+		const min: [number, number] = [121, 275.068]
+		const max: [number, number] = [121 + 149.49305, 275.068 + 145.87682]
+		expectRectClose(Path.bounds(PAPER_PATH_BOUNDS_OPEN_FIXTURE), min, max, 2)
 	})
 })
 
