@@ -1,6 +1,13 @@
 /**
  * {@link CubicBezier} only — no Bezier.js or Paper.js runtime calls.
- * Some expected values trace to Bezier-js or Paper.js test vectors (golden inputs only).
+ *
+ * Some fixtures and expected values are adapted from third-party test suites (golden
+ * vectors only). Attributions:
+ *
+ * - **Bezier.js** (bezier-js): scenarios / numeric expectations informed by
+ *   https://github.com/Pomax/bezierjs/tree/master/test — MIT License, see
+ *   `BEZIER_JS_MIT_LICENSE` at the bottom of this file.
+ * - **Paper.js**: golden fixtures from Curve tests — MIT, see section comment below.
  */
 import {describe, expect, it, test} from 'vitest'
 
@@ -354,3 +361,37 @@ describe('CubicBezier point / tangent / normal (circle quadrant, Paper.js Curve#
 		})
 	}
 })
+
+/*
+ * -----------------------------------------------------------------------------
+ * MIT License — Bezier.js (bezier-js)
+ *
+ * Repository: https://github.com/Pomax/bezierjs
+ * SPDX-License-Identifier: MIT (see upstream package.json "license": "MIT")
+ *
+ * Upstream source headers credit the library to Pomax and state MIT licensing.
+ * The following is the standard MIT license text for reproduction as required by
+ * the license when distributing derivative notices.
+ *
+ * Copyright (c) Pomax
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ * -----------------------------------------------------------------------------
+ * (End Bezier.js MIT notice — identifier: BEZIER_JS_MIT_LICENSE)
+ */
