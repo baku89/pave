@@ -1,3 +1,8 @@
+/**
+ * Path tests: some length / bounds / area / flatten expectations are ported from
+ * Paper.js `test/tests/Path.js` (numeric goldens only). See `PAPER_JS_PATH_TEST_MIT`
+ * at the bottom — MIT, https://github.com/paperjs/paper.js
+ */
 import type {Rect} from 'geome'
 import paper from 'paper'
 import {beforeAll, describe, expect, it, test} from 'vitest'
@@ -137,13 +142,40 @@ describe('area', () => {
 	it('right triangle', () => {
 		expect(Path.area(Path.polygon([0, 0], [1, 0], [0, 1]))).toBeCloseTo(0.5, 5)
 	})
+})
 
-	it('10×10 rectangle area 100 (Paper.js Path#area)', () => {
-		expect(Path.area(Path.rect([0, 0], [10, 10]))).toBeCloseTo(100, 10)
+// --- Paper.js test/tests/Path.js (MIT, https://github.com/paperjs/paper.js)
+
+describe('Paper.js Path.js area regressions', () => {
+	it('Path#area — 10×10 rectangle at origin equals 100', () => {
+		expect(Path.area(Path.rect([0, 0], [10, 10]))).toBe(100)
 	})
 
-	it('circle radius 10 area ≈ 100π (Paper.js Path#area)', () => {
-		expect(Path.area(Path.circle([0, 0], 10))).toBeCloseTo(100 * Math.PI, 0)
+	it('Path#area — circle r=10 at origin (QUnit tolerance 0.1)', () => {
+		expect(
+			Math.abs(Path.area(Path.circle([0, 0], 10)) - 100 * Math.PI)
+		).toBeLessThanOrEqual(0.1)
+	})
+})
+
+describe('Paper.js Path.js flatten regressions', () => {
+	it('Path#flatten(maxDistance) — ellipse Path.circle([80,50],35) flatness 5 segment count', () => {
+		const flat = Path.flatten(Path.circle([80, 50], 35), 5)
+		expect(flat.curves).toHaveLength(1)
+		expect(Path.segmentCount(flat)).toBe(8)
+		expect(flat.curves[0].closed).toBe(true)
+		const verts = flat.curves[0].vertices
+		const first = verts[0].point
+		const last = verts[verts.length - 1].point
+		expect(first[0]).not.toBeCloseTo(last[0], 5)
+		expect(first[1]).not.toBeCloseTo(last[1], 5)
+	})
+
+	it('Path#flatten — single-segment degenerate closed cubic (#1338) does not throw', () => {
+		const p = Path.fromSVGString(
+			'm445.26701,223.69688c6.1738,8.7566 -7.05172,14.0468 0,0z'
+		)
+		expect(() => Path.flatten(p)).not.toThrow()
 	})
 })
 
@@ -662,3 +694,33 @@ describe('fromPaperPath', () => {
 		})
 	})
 })
+
+/*
+ * -----------------------------------------------------------------------------
+ * MIT License — Paper.js (test/tests/Path.js numeric fixtures)
+ *
+ * Repository: https://github.com/paperjs/paper.js
+ * SPDX-License-Identifier: MIT (see upstream LICENSE file)
+ *
+ * Copyright (c) 2011 - 2020, Jürg Lehni & Jonathan Puckey
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ * -----------------------------------------------------------------------------
+ * (End Paper.js MIT notice — identifier: PAPER_JS_PATH_TEST_MIT)
+ */

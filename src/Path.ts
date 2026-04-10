@@ -12,6 +12,7 @@ import {CurveGroup} from './CurveGroup'
 import {Iter} from './Iter'
 import {PathLocation, TimePathLocation} from './Location'
 import {ensurePaperScope} from './paperScope'
+import {planarFlattenPath, planarPathArea} from './pathPlanar'
 import {Segment} from './Segment'
 import {memoize, normalizeIndex, normalizeOffset, toFixedSimple} from './utils'
 
@@ -86,6 +87,8 @@ export type VertexA = {
 
 /**
  * A path that consists of multiple curves.
+ *
+ * Values are immutable: do not mutate `curves`, nested curves, or vertices in place. {@link Path} helpers may memoize by reference.
  * @category Types
  */
 export type Path<V extends Vertex = Vertex> = {
@@ -152,7 +155,9 @@ export type SVGCommand =
  * Functions for manipulating paths represented as {@link Path}.
  *
  * For creating new paths, see [Primitives](#primitives). Getting intrinsic properties of paths, see [Properties](#properties).
- * Manipulating existing paths, such as transforming, styling	, deforming, etc., see [Modifiers](#modifiers).
+ * Manipulating existing paths, such as transforming, styling, deforming, etc., see [Modifiers](#modifiers).
+ *
+ * Inputs are never mutated; returned paths are new objects unless noted otherwise.
  *
  * @category Modules
  */
@@ -1152,13 +1157,13 @@ export namespace Path {
 	})
 
 	/**
-	 * Calculates an area of the given path.
+	 * Calculates an area of the given path (absolute value of the Green’s-theorem sum over closed subpaths).
 	 * @param arg The path to calculate
 	 * @returns The area of the path
 	 * @category Properties
 	 */
 	export const area = memoize((path: Path) => {
-		return toPaperPath(path).area
+		return Math.abs(planarPathArea(path))
 	})
 
 	/**
@@ -1895,8 +1900,7 @@ export namespace Path {
 	}
 
 	/**
-	 * Flattens the curves in path to straight lines.
-	 * @see http://paperjs.org/reference/path/#flatten
+	 * Flattens the curves in path to straight lines (recursive midpoint split until chord / hull deviation ≤ `flatness`).
 	 * @param path The path to flatten
 	 * @param flatness The maximum distance between the path and the flattened path
 	 * @returns The flattened path consists of only M, L, and Z commands
@@ -1911,9 +1915,7 @@ export namespace Path {
 	 * ```
 	 */
 	export function flatten(path: Path, flatness = 0.25): Path {
-		const paperPath = toPaperPath(path).clone() as paper.PathItem
-		paperPath.flatten(flatness)
-		return fromPaperPath(paperPath)
+		return planarFlattenPath(path, flatness)
 	}
 
 	/**

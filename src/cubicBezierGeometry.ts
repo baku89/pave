@@ -255,19 +255,41 @@ function minMaxAlongDim(
 }
 
 /**
+ * ∫₀¹ f(t) dt via the same 24-point Gauss–Legendre rule as arc length / Green integrals.
+ */
+export function integrateOnUnitInterval(fn: (t: number) => number): number {
+	const z = 0.5
+	let sum = 0
+	for (let i = 0; i < LG_T.length; i++) {
+		const t = z * LG_T[i] + z
+		sum += LG_C[i] * fn(t)
+	}
+	return z * sum
+}
+
+/**
  * Euclidean arc length ∫₀¹ ‖B′(t)‖ dt via Gauss–Legendre quadrature on [0, 1].
  * Needed for `CubicBezier.length` without depending on Paper’s numerical length.
  */
 export function cubicArcLength(hull: BareSegmentC): number {
 	const dfn = getCubicDerivativeFn(hull)
-	const z = 0.5
-	let sum = 0
-	for (let i = 0; i < LG_T.length; i++) {
-		const t = z * LG_T[i] + z
+	return integrateOnUnitInterval(t => {
 		const d = dfn(t)
-		sum += LG_C[i] * Math.hypot(d[0], d[1])
-	}
-	return z * sum
+		return Math.hypot(d[0], d[1])
+	})
+}
+
+/**
+ * Green’s theorem edge term for a cubic: ∫₀¹ (x(t)y′(t) − y(t)x′(t)) dt (polynomial × quadrature).
+ * Summed with line/arc terms and halved → signed area of a closed path (see `planarPathArea`).
+ */
+export function cubicGreenPlaneIntegral(hull: BareSegmentC): number {
+	const dfn = getCubicDerivativeFn(hull)
+	return integrateOnUnitInterval(t => {
+		const p = cubicPointAt(hull, t)
+		const v = dfn(t)
+		return p[0] * v[1] - p[1] * v[0]
+	})
 }
 
 function bareHullFromTrim(
