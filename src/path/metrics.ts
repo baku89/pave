@@ -8,7 +8,7 @@ import {Segment} from '../Segment'
 import {memoize} from '../utils'
 
 /**
- * Returns all segmentse
+ * Returns all segments
  * @param arg The path to iterate
  * @category Properties
  */
