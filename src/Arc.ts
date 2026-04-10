@@ -411,7 +411,10 @@ export namespace Arc {
 		const derivativeAtUnit = vec2.dir(angle + 90 * (sweep ? 1 : -1))
 		const xform = mat2d.trs(null, xAxisRotation, radii)
 
-		return vec2.transformMat2d(derivativeAtUnit, xform)
+		const dir = vec2.transformMat2d(derivativeAtUnit, xform)
+		// `time` is linear in angle (degrees); scale from d/d(angle°) to d/dt for t ∈ [0, 1].
+		const dThetaDt = scalar.rad(angles[1] - angles[0])
+		return vec2.scale(dir, dThetaDt)
 	}
 
 	export function tangent(arc: BareSegmentA, loc: SegmentLocation): vec2 {
