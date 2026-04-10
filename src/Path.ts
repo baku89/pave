@@ -1904,7 +1904,7 @@ export namespace Path {
 	 * ```
 	 */
 	export function flatten(path: Path, flatness = 0.25): Path {
-		const paperPath = toPaperPath(path).clone()
+		const paperPath = toPaperPath(path).clone() as paper.PathItem
 		paperPath.flatten(flatness)
 		return fromPaperPath(paperPath)
 	}
