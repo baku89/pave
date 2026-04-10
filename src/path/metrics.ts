@@ -1,4 +1,5 @@
 import {Rect} from 'geome'
+import {scalar} from 'linearly'
 
 import {Curve} from '../Curve'
 import type {Path} from '../Path'
@@ -66,6 +67,42 @@ export const segmentCount = memoize((path: Path) => {
 	return path.curves.reduce((acc, curve) => acc + Curve.segmentCount(curve), 0)
 })
 
+/** Linear segment index where each curve starts (memoized). */
+export const segmentCurveStarts = memoize((path: Path): readonly number[] => {
+	const starts: number[] = []
+	let acc = 0
+	for (const curve of path.curves) {
+		starts.push(acc)
+		acc += Curve.segmentCount(curve)
+	}
+	return starts
+})
+
+/**
+ * Maps a linear segment index (optionally negative from the end) to curve and in-curve indices.
+ */
+export function splitLinearSegmentIndex(
+	path: Path,
+	linearIndex: number
+): {curveIndex: number; segmentIndex: number} {
+	const total = segmentCount(path)
+	if (total <= 0) {
+		throw new Error('Path has no segments')
+	}
+	let k = linearIndex < 0 ? total + linearIndex : linearIndex
+	k = scalar.clamp(k, 0, total - 1)
+	const starts = segmentCurveStarts(path)
+	let lo = 0
+	let hi = starts.length
+	while (lo < hi) {
+		const mid = (lo + hi) >>> 1
+		if (starts[mid]! <= k) lo = mid + 1
+		else hi = mid
+	}
+	const curveIndex = lo - 1
+	return {curveIndex, segmentIndex: k - starts[curveIndex]!}
+}
+
 /**
  * Returns the segment of the path by indices. If the segmentIndex is omitted, the curveIndex is treated as the linear segment index of the whole path. It also supports negative indices, which count from the end of the path or curve.
  * @param path The path that contains the segment
@@ -97,20 +134,15 @@ export function segment(
 
 		return seg
 	} else {
-		// If segmentIndex is omitted,
-		//the linear index is treated as the linear segment index of the whole path
-
-		segmentIndex = curveIndex
-		for (const curve of path.curves) {
-			const segCount = Curve.segmentCount(curve)
-
-			if (segmentIndex < segCount) {
-				return Curve.segments(curve)[segmentIndex]
-			}
-
-			segmentIndex -= segCount
+		const {curveIndex: ci, segmentIndex: si} = splitLinearSegmentIndex(
+			path,
+			curveIndex
+		)
+		const curve = path.curves[ci]
+		const seg = Curve.segments(curve)[si]
+		if (!seg) {
+			throw new Error(`Linear segment index out of range: ${curveIndex}`)
 		}
-
-		throw new Error(`Linear segment index out of range: ${segmentIndex}`)
+		return seg
 	}
 }
