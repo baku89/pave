@@ -6,7 +6,7 @@ import {Iter} from './Iter'
 import {SegmentLocation, UnitSegmentLocation} from './Location'
 import {Path, VertexA, VertexC} from './Path'
 import {SegmentA} from './Segment'
-import {memoize, normalizeOffset, PartialBy} from './utils'
+import {memoize, normalizeOffset} from './utils'
 
 /**
  * The angle range to check. `startAngle` is always in the range of [-π, π], and the `endAngle` is relative angle considering the rotation direction, with start angle as a reference.
@@ -18,7 +18,7 @@ export type AngleRange = readonly [startAngle: number, endAngle: number]
  * Almost equivalent to {@link SegmentA}, but the redundant `command` field can be omitted. Used for the argument of Arc functions.
  * @category Types
  */
-export type SimpleSegmentA = PartialBy<SegmentA, 'command'>
+export type BareSegmentA = Omit<SegmentA, 'command'>
 
 /**
  * A collection of functions to handle arcs represented with {@link SegmentA}.
@@ -46,7 +46,7 @@ export namespace Arc {
 	 * https://observablehq.com/@awhitty/svg-2-elliptical-arc-to-canvas-path2d
 	 * @category Utilities
 	 * */
-	export const toCenterParameterization = memoize((arc: SimpleSegmentA) => {
+	export const toCenterParameterization = memoize((arc: BareSegmentA) => {
 		const {
 			start,
 			point,
@@ -145,7 +145,7 @@ export namespace Arc {
 	})
 
 	export function approximateByCubicBeziers(
-		arc: SimpleSegmentA,
+		arc: BareSegmentA,
 		angle: number
 	): VertexC[] {
 		angle = angle === 0 ? 90 : Math.abs(angle)
@@ -227,7 +227,7 @@ export namespace Arc {
 	 * stroke(Path.rect(...bound), 'tomato')
 	 * ```
 	 */
-	export const bounds = memoize((arc: SimpleSegmentA): Rect => {
+	export const bounds = memoize((arc: BareSegmentA): Rect => {
 		const {start, point} = arc
 		const {center, radii, angles, xAxisRotation} = toCenterParameterization(arc)
 
@@ -283,7 +283,7 @@ export namespace Arc {
 	 * Transforms the given arc segment with the given matrix.
 	 * @see https://gist.github.com/timo22345/9413158#file-flatten-js-L443-L547
 	 */
-	export function transform(arc: SimpleSegmentA, matrix: mat2d): SegmentA {
+	export function transform(arc: BareSegmentA, matrix: mat2d): SegmentA {
 		// eslint-disable-next-line prefer-const
 		let [[rx, ry], offsetRot, largeArc, sweep] = arc.args
 
@@ -374,12 +374,12 @@ export namespace Arc {
 		}
 	}
 
-	export const length = memoize((arc: SimpleSegmentA): number => {
+	export const length = memoize((arc: BareSegmentA): number => {
 		const {radii, angles} = toCenterParameterization(arc)
 		return ellipticArcLength(radii, angles)
 	})
 
-	export function toTime(arc: SimpleSegmentA, loc: SegmentLocation): number {
+	export function toTime(arc: BareSegmentA, loc: SegmentLocation): number {
 		if (typeof loc === 'number') {
 			loc = {unit: loc}
 		}
@@ -394,7 +394,7 @@ export namespace Arc {
 		}
 	}
 
-	export function point(arc: SimpleSegmentA, loc: SegmentLocation): vec2 {
+	export function point(arc: BareSegmentA, loc: SegmentLocation): vec2 {
 		const time = toTime(arc, loc)
 		const {center, radii, angles, xAxisRotation} = toCenterParameterization(arc)
 		const angle = scalar.lerp(...angles, time)
@@ -403,7 +403,7 @@ export namespace Arc {
 		return vec2.transformMat2d(vec2.dir(angle), xform)
 	}
 
-	export function derivative(arc: SimpleSegmentA, loc: SegmentLocation): vec2 {
+	export function derivative(arc: BareSegmentA, loc: SegmentLocation): vec2 {
 		const time = toTime(arc, loc)
 		const {radii, angles, xAxisRotation, sweep} = toCenterParameterization(arc)
 
@@ -414,16 +414,16 @@ export namespace Arc {
 		return vec2.transformMat2d(derivativeAtUnit, xform)
 	}
 
-	export function tangent(arc: SimpleSegmentA, loc: SegmentLocation): vec2 {
+	export function tangent(arc: BareSegmentA, loc: SegmentLocation): vec2 {
 		return vec2.normalize(derivative(arc, loc))
 	}
 
-	export function normal(arc: SimpleSegmentA, loc: SegmentLocation): vec2 {
+	export function normal(arc: BareSegmentA, loc: SegmentLocation): vec2 {
 		return vec2.rotate(tangent(arc, loc), 90)
 	}
 
 	export function trim(
-		arc: SimpleSegmentA,
+		arc: BareSegmentA,
 		start: SegmentLocation,
 		end: SegmentLocation
 	): SegmentA {
@@ -453,7 +453,7 @@ export namespace Arc {
 	}
 
 	export function divideAtTimes(
-		arc: SimpleSegmentA,
+		arc: BareSegmentA,
 		times: Iterable<number>
 	): VertexA[] {
 		const [, xAxisRotation, , sweep] = arc.args
@@ -486,12 +486,12 @@ export namespace Arc {
 	/**
 	 * Returns true if the length of arc segment is zero.
 	 */
-	export const isZero = memoize((arc: SimpleSegmentA): boolean => {
+	export const isZero = memoize((arc: BareSegmentA): boolean => {
 		const {start, point} = arc
 		return vec2.approx(start, point)
 	})
 
-	export function isStraight(arc: SimpleSegmentA): boolean {
+	export function isStraight(arc: BareSegmentA): boolean {
 		if (isZero(arc)) {
 			return true
 		}
@@ -527,7 +527,7 @@ export namespace Arc {
 	}
 
 	export function offset(
-		arc: SimpleSegmentA,
+		arc: BareSegmentA,
 		distance: number,
 		unarcAngle = 90
 	): Path {
@@ -633,7 +633,7 @@ function crossAtAngle(angle: number, [startAngle, endAngle]: AngleRange) {
 }
 
 function unitToTime(
-	arc: SimpleSegmentA,
+	arc: BareSegmentA,
 	unitLocation: UnitSegmentLocation
 ): number {
 	const targetUnit = normalizeOffset(

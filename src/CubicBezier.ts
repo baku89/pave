@@ -7,16 +7,16 @@ import {SegmentLocation} from './Location'
 import {ensurePaperScope} from './paperScope'
 import {Path, VertexC} from './Path'
 import {SegmentC} from './Segment'
-import {memoize, normalizeOffset, PartialBy} from './utils'
+import {memoize, normalizeOffset} from './utils'
 
 /**
- * Almost equivalent to {@link SegmentC}, but the redundant `command` field can be ommited. Used for the argument of CubicBezier functions.
+ * Same shape as {@link SegmentC} but without the path `command` field. Used for CubicBezier function arguments.
  * @category Types
  */
-export type SimpleSegmentC = PartialBy<SegmentC, 'command'>
+export type BareSegmentC = Omit<SegmentC, 'command'>
 
 /**
- * A collection of functions to handle a cubic bezier represented with {@link SimpleSegmentC}.
+ * A collection of functions to handle a cubic bezier represented with {@link BareSegmentC}.
  * @category Modules
  */
 export namespace CubicBezier {
@@ -29,7 +29,7 @@ export namespace CubicBezier {
 		return {command: 'C', start, args: [control1, control2], point}
 	}
 
-	export const toPaperBezier = memoize((beizer: SimpleSegmentC) => {
+	export const toPaperBezier = memoize((beizer: BareSegmentC) => {
 		ensurePaperScope()
 		const {
 			start: [x0, y0],
@@ -108,7 +108,7 @@ export namespace CubicBezier {
 	 * Parameter values in [0, 1] where the planar cubic has a curvature inflection.
 	 * Matches {@link https://github.com/Pomax/bezierjs/blob/master/src/utils.js utils.inflections} for cubics.
 	 */
-	export function inflections(bezier: SimpleSegmentC): number[] {
+	export function inflections(bezier: BareSegmentC): number[] {
 		const {
 			start: p0,
 			args: [p1, p2],
@@ -153,7 +153,7 @@ export namespace CubicBezier {
 	/**
 	 * Calculates the length of the Bezier curve. Length is calculated using numerical approximation, specifically the Legendre-Gauss quadrature algorithm.
 	 */
-	export const length = memoize((bezier: SimpleSegmentC): number => {
+	export const length = memoize((bezier: BareSegmentC): number => {
 		const bezierJS = toBezierJS(bezier)
 		return bezierJS.length()
 	})
@@ -161,7 +161,7 @@ export namespace CubicBezier {
 	/**
 	 * Calculates the rect of this Bezier curve.
 	 */
-	export const bounds = memoize((bezier: SimpleSegmentC): [vec2, vec2] => {
+	export const bounds = memoize((bezier: BareSegmentC): [vec2, vec2] => {
 		const bezierJS = toBezierJS(bezier)
 		const {x, y} = bezierJS.bbox()
 
@@ -171,7 +171,7 @@ export namespace CubicBezier {
 		]
 	})
 
-	export function toTime(bezier: SimpleSegmentC, loc: SegmentLocation): number {
+	export function toTime(bezier: BareSegmentC, loc: SegmentLocation): number {
 		if (typeof loc === 'number') {
 			loc = {unit: loc}
 		}
@@ -193,7 +193,7 @@ export namespace CubicBezier {
 	/**
 	 * Calculates the point on the curve at the specified `t` value.
 	 */
-	export function point(bezier: SimpleSegmentC, loc: SegmentLocation): vec2 {
+	export function point(bezier: BareSegmentC, loc: SegmentLocation): vec2 {
 		const t = toTime(bezier, loc)
 
 		const {
@@ -219,7 +219,7 @@ export namespace CubicBezier {
 	 * Calculates the curve tangent at the specified `t` value. Note that this yields a not-normalized vector.
 	 */
 	export function derivative(
-		bezier: SimpleSegmentC,
+		bezier: BareSegmentC,
 		loc: SegmentLocation
 	): vec2 {
 		const time = toTime(bezier, loc)
@@ -232,14 +232,14 @@ export namespace CubicBezier {
 	/**
 	 * Calculates the curve tangent at the specified `t` value. Unlike {@link derivative}, this yields a normalized vector.
 	 */
-	export function tangent(bezier: SimpleSegmentC, loc: SegmentLocation): vec2 {
+	export function tangent(bezier: BareSegmentC, loc: SegmentLocation): vec2 {
 		return vec2.normalize(derivative(bezier, loc))
 	}
 
 	/**
 	 * Calculates the curve normal at the specified `t` value. Note that this yields a normalized vector.
 	 */
-	export function normal(bezier: SimpleSegmentC, loc: SegmentLocation): vec2 {
+	export function normal(bezier: BareSegmentC, loc: SegmentLocation): vec2 {
 		return vec2.rotate(tangent(bezier, loc), 90)
 	}
 
@@ -247,7 +247,7 @@ export namespace CubicBezier {
 	 * Finds the on-curve point closest to the specific off-curve point
 	 */
 	export function project(
-		bezier: SimpleSegmentC,
+		bezier: BareSegmentC,
 		origin: vec2
 	): {position: vec2; t?: number; distance?: number} {
 		const bezierJS = toBezierJS(bezier)
@@ -256,7 +256,7 @@ export namespace CubicBezier {
 	}
 
 	export function trim(
-		bezier: SimpleSegmentC,
+		bezier: BareSegmentC,
 		start: SegmentLocation,
 		end: SegmentLocation
 	): SegmentC {
@@ -296,7 +296,7 @@ export namespace CubicBezier {
 	}
 
 	export function divideAtTimes(
-		segment: SimpleSegmentC,
+		segment: BareSegmentC,
 		times: Iterable<number>
 	): VertexC[] {
 		times = [0, ...times, 1]
@@ -312,7 +312,7 @@ export namespace CubicBezier {
 		return vertices
 	}
 
-	export function isZero(bezier: SimpleSegmentC) {
+	export function isZero(bezier: BareSegmentC) {
 		const {
 			start,
 			args: [c1, c2],
@@ -325,7 +325,7 @@ export namespace CubicBezier {
 		)
 	}
 
-	export function isStraight(bezier: SimpleSegmentC) {
+	export function isStraight(bezier: BareSegmentC) {
 		if (isZero(bezier)) {
 			return true
 		}
@@ -361,7 +361,7 @@ export namespace CubicBezier {
 		)
 	}
 
-	export function offset(bezier: SimpleSegmentC, distance: number): Path {
+	export function offset(bezier: BareSegmentC, distance: number): Path {
 		const bezierJS = toBezierJS(bezier)
 		const offsetBeziers = bezierJS.offset(distance) as BezierJS[]
 
@@ -433,7 +433,7 @@ function toPoint([x, y]: vec2): Point {
 	return {x, y}
 }
 
-const getDerivativeFn = memoize((bezier: SimpleSegmentC) => {
+const getDerivativeFn = memoize((bezier: BareSegmentC) => {
 	// https://github.com/paperjs/paper.js/blob/develop/src/path/Curve.js#L1403-L1424
 
 	// Calculate the coefficients of a Bezier derivative.
@@ -459,7 +459,7 @@ const getDerivativeFn = memoize((bezier: SimpleSegmentC) => {
 })
 
 function splitCubicBezierAtTime(
-	bezier: SimpleSegmentC,
+	bezier: BareSegmentC,
 	time: number
 ): [
 	newControl1: vec2,
@@ -486,7 +486,7 @@ function splitCubicBezierAtTime(
 	return [newControl1, inControl, midPoint, outControl, newControl2]
 }
 
-const toBezierJS = memoize((bezier: SimpleSegmentC): BezierJS => {
+const toBezierJS = memoize((bezier: BareSegmentC): BezierJS => {
 	const {
 		start,
 		args: [control1, control2],
@@ -508,7 +508,7 @@ const toBezierJS = memoize((bezier: SimpleSegmentC): BezierJS => {
  * Internal function to trim a bezier curve between given times range. It must be guaranteed that `0 <= from <= to <= 1`.
  */
 function trimBetweenTimes(
-	bezier: SimpleSegmentC,
+	bezier: BareSegmentC,
 	from: number,
 	to: number
 ): [start: vec2, c1: vec2, c2: vec2, point: vec2] {

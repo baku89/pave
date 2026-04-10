@@ -4,13 +4,13 @@ import {mat2d, vec2} from 'linearly'
 import {SegmentLocation} from './Location'
 import {Path, PathL, VertexL} from './Path'
 import {SegmentL} from './Segment'
-import {normalizeOffset, PartialBy} from './utils'
+import {normalizeOffset} from './utils'
 
 /**
  * Almost equivalent to {@link SegmentL}, but the redundant `command` field can be omitted. Used for the argument of Line functions.
  * @category Types
  */
-export type SimpleSegmentL = PartialBy<SegmentL, 'command'>
+export type BareSegmentL = Omit<SegmentL, 'command'>
 
 /**
  * A collection of functions to handle a line represented with {@link SegmentL}.
@@ -21,38 +21,35 @@ export namespace Line {
 		return {command: 'L', start, point}
 	}
 
-	export function bounds(line: SimpleSegmentL): Rect {
+	export function bounds(line: BareSegmentL): Rect {
 		const {start, point} = line
 		return Rect.fromPoints(start, point)
 	}
 
-	export function point(line: SimpleSegmentL, loc: SegmentLocation): vec2 {
+	export function point(line: BareSegmentL, loc: SegmentLocation): vec2 {
 		const time = toTime(line, loc)
 		return vec2.lerp(line.start, line.point, time)
 	}
 
-	export function derivative(line: SimpleSegmentL): vec2 {
+	export function derivative(line: BareSegmentL): vec2 {
 		return vec2.sub(line.point, line.start)
 	}
 
-	export function length(line: SimpleSegmentL): number {
+	export function length(line: BareSegmentL): number {
 		return vec2.distance(line.start, line.point)
 	}
 
-	export function tangent(line: SimpleSegmentL): vec2 {
+	export function tangent(line: BareSegmentL): vec2 {
 		return vec2.normalize(derivative(line))
 	}
 
-	export function normal(line: SimpleSegmentL): vec2 {
+	export function normal(line: BareSegmentL): vec2 {
 		return vec2.rotate90(tangent(line))
 	}
 
 	export const curvature = 0
 
-	export function orientation(
-		line: SimpleSegmentL,
-		loc: SegmentLocation
-	): mat2d {
+	export function orientation(line: BareSegmentL, loc: SegmentLocation): mat2d {
 		const p = point(line, loc)
 		const xAxis = tangent(line)
 		const yAxis = vec2.rotate90(xAxis)
@@ -60,7 +57,7 @@ export namespace Line {
 	}
 
 	export function trim(
-		line: SimpleSegmentL,
+		line: BareSegmentL,
 		start: SegmentLocation,
 		end: SegmentLocation
 	): SegmentL {
@@ -74,7 +71,7 @@ export namespace Line {
 	}
 
 	export function divideAtTimes(
-		line: SimpleSegmentL,
+		line: BareSegmentL,
 		times: Iterable<number>
 	): VertexL[] {
 		return [...times, 1].map(t => {
@@ -85,11 +82,11 @@ export namespace Line {
 	/**
 	 * Returns true if the length of line segment is zero.
 	 */
-	export function isZero(line: SimpleSegmentL) {
+	export function isZero(line: BareSegmentL) {
 		return vec2.approx(line.start, line.point)
 	}
 
-	export function offset(line: SimpleSegmentL, distance: number): PathL {
+	export function offset(line: BareSegmentL, distance: number): PathL {
 		const n = normal(line)
 		const offset = vec2.scale(n, distance)
 
@@ -102,7 +99,7 @@ export namespace Line {
 	 * @param loc
 	 * @returns
 	 */
-	export function toTime(line: SimpleSegmentL, loc: SegmentLocation): number {
+	export function toTime(line: BareSegmentL, loc: SegmentLocation): number {
 		if (typeof loc !== 'number') {
 			if ('time' in loc) {
 				loc = loc.time

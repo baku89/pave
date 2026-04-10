@@ -45,7 +45,6 @@ describe('toCenterParameterization', () => {
 		const ret = Arc.toCenterParameterization({
 			start: [90, 50],
 			point,
-			command: 'A',
 			args: [[40, 40], 0, false, true],
 		})
 
@@ -156,7 +155,6 @@ describe('toCenterParameterization', () => {
 		const ret = Arc.toCenterParameterization({
 			start: [100 / Math.sqrt(2), 100 / Math.sqrt(2)],
 			point: [-50 / Math.sqrt(2), 50 / Math.sqrt(2)],
-			command: 'A',
 			args: [[100, 50], 45, false, true],
 		})
 
