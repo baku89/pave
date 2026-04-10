@@ -48,7 +48,7 @@ export type ArcOptions = {
 export interface FormulaOptions {
 	/**
 	 * The delta value for calculating the derivative of the formula
-	 * @default 10e-6
+	 * @default 1e-6
 	 */
 	delta?: number
 }
@@ -320,7 +320,7 @@ export function circleFromPoints(
 /**
  * Creates an ellipse path from the given center and radius.
  * @param center The center of the ellipse
- * @param radius The radius of the ellipse
+ * @param radius The horizontal and vertical radii (rx, ry)
  * @returns The newly created path
  * @category Primitives
  * @example
@@ -358,8 +358,8 @@ export function ellipse(center: vec2, radius: vec2): Path {
  * Creates an arc path.
  * @param center The center of the arc
  * @param radius The radius of the arc
- * @param startAngle The start angle in radians
- * @param endAngle The end angle in radians
+ * @param startAngle The start angle in degrees (Y-down: 0° = +X, increasing clockwise)
+ * @param endAngle The end angle in degrees
  * @returns The newly created path
  * @category Primitives
  * @example
@@ -575,8 +575,8 @@ export function arcByPointsAngle(start: vec2, end: vec2, angle: number): Path {
  * @param center The center of the fan
  * @param innerRadius The inner radius of the fan
  * @param outerRadius The outer radius of the fan
- * @param startAngle The start angle in radians
- * @param endAngle The end angle in radians
+ * @param startAngle The start angle in degrees (see {@link arc})
+ * @param endAngle The end angle in degrees
  * @returns The newly created path
  * @category Primitives
  * @example
@@ -851,7 +851,7 @@ export function nBezier(points: vec2[]): Path {
 export function formula(
 	f: (t: number) => vec2,
 	iter: Iterable<number>,
-	{delta = 10e-6}: FormulaOptions = {}
+	{delta = 1e-6}: FormulaOptions = {}
 ): Path {
 	const ts = Array.isArray(iter) ? iter : [...iter]
 
