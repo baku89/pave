@@ -1,6 +1,6 @@
 import type p5 from 'p5'
 
-import type {Path} from '../Path'
+import type {Path, Vertex} from '../Path'
 import {memoize} from '../utils'
 import {unarc} from './modifiers'
 import {drawToRenderingContext} from './renderContext'
@@ -48,6 +48,12 @@ export function drawToP5(path: Path, p5Instance: p5 | Window = window): void {
 	// For compound paths, call beginShape() only once
 	p5.beginShape()
 
+	const drawVertex = (v: Vertex) => {
+		if (v.command === 'L') p5.vertex(...v.point)
+		else if (v.command === 'C')
+			p5.bezierVertex(...v.args[0], ...v.args[1], ...v.point)
+	}
+
 	for (const [i, {vertices, closed}] of unarced.curves.entries()) {
 		// For curves after the first one, call beginContour()
 		if (i > 0) {
@@ -60,23 +66,12 @@ export function drawToP5(path: Path, p5Instance: p5 | Window = window): void {
 			p5.vertex(...first.point)
 		}
 
-		for (const {point, command, args} of vertices.slice(1)) {
-			if (command === 'L') {
-				p5.vertex(...point)
-			} else if (command === 'C') {
-				p5.bezierVertex(...args[0], ...args[1], ...point)
-			}
+		for (const v of vertices.slice(1)) {
+			drawVertex(v)
 		}
 
-		if (closed) {
-			if (first) {
-				const {point, command, args} = first
-				if (command === 'L') {
-					p5.vertex(...point)
-				} else if (command === 'C') {
-					p5.bezierVertex(...args[0], ...args[1], ...point)
-				}
-			}
+		if (closed && first) {
+			drawVertex(first)
 		}
 
 		// For curves after the first one, call endContour()
