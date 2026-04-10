@@ -4,6 +4,7 @@ import paper from 'paper'
 
 import {Iter} from './Iter'
 import {SegmentLocation} from './Location'
+import {ensurePaperScope} from './paperScope'
 import {Path, VertexC} from './Path'
 import {SegmentC} from './Segment'
 import {memoize, normalizeOffset, PartialBy} from './utils'
@@ -23,6 +24,7 @@ export namespace CubicBezier {
 	}
 
 	export const toPaperBezier = memoize((beizer: SimpleSegmentC) => {
+		ensurePaperScope()
 		const {
 			start: [x0, y0],
 			args: [[x1, y1], [x2, y2]],

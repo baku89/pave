@@ -11,10 +11,9 @@ import {Curve, CurveL} from './Curve'
 import {CurveGroup} from './CurveGroup'
 import {Iter} from './Iter'
 import {PathLocation, TimePathLocation} from './Location'
+import {ensurePaperScope} from './paperScope'
 import {Segment} from './Segment'
 import {memoize, normalizeIndex, normalizeOffset, toFixedSimple} from './utils'
-
-paper.setup(document.createElement('canvas'))
 
 /**
  * Arguments for cubic Bézier curve (`C`) command.
@@ -2594,6 +2593,7 @@ export namespace Path {
 	 * @category Converters
 	 */
 	export function toPaperPath(path: Path): paper.Path | paper.CompoundPath {
+		ensurePaperScope()
 		const paperPaths = path.curves.map(({vertices, closed}) => {
 			const paperPath = new paper.Path()
 			let prev: vec2 | undefined

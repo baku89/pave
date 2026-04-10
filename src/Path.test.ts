@@ -1,7 +1,12 @@
 import paper from 'paper'
-import {describe, expect, it, test} from 'vitest'
+import {beforeAll, describe, expect, it, test} from 'vitest'
 
+import {ensurePaperScope} from './paperScope'
 import {Path} from './Path'
+
+beforeAll(() => {
+	ensurePaperScope()
+})
 
 describe('area', () => {
 	it('compute the area of a simple path as 0', () => {
