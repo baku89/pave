@@ -5,7 +5,13 @@ import type {PathLocation, TimePathLocation} from '../Location'
 import type {Path} from '../Path'
 import {Segment} from '../Segment'
 import {normalizeIndex, normalizeOffset} from '../utils'
-import {length, segment as pickSegment, segmentCount, segments} from './metrics'
+import {
+	length,
+	segment as pickSegment,
+	segmentCount,
+	segments,
+	splitLinearSegmentIndex,
+} from './metrics'
 
 /**
  * Retrieves the segment location information from the given path and path-based signed location.
@@ -18,13 +24,14 @@ export function toTime(
 	path: Path,
 	location: PathLocation
 ): Required<TimePathLocation> & {segment: Segment} {
-	// TODO: Fix this
-
 	if (typeof location === 'number') {
 		location = {unit: location}
 	}
 
 	const pathSegmentCount = segmentCount(path)
+	if (pathSegmentCount <= 0) {
+		throw new Error('Cannot resolve location on a path with no segments')
+	}
 
 	let curveIndex = location.curveIndex ?? null
 	let segmentIndex = location.segmentIndex ?? null
@@ -48,7 +55,7 @@ export function toTime(
 
 	if (curveIndex !== null && segmentIndex === null) {
 		// Location in the specific curve
-		curveIndex = normalizeOffset(curveIndex, path.curves.length)
+		curveIndex = normalizeIndex(curveIndex, path.curves.length)
 
 		const curve = path.curves[curveIndex]
 
@@ -136,24 +143,7 @@ export function unlinearSegmentIndex(
 	path: Path,
 	linearSegmentIndex: number
 ): {curveIndex: number; segmentIndex: number} {
-	let segmentIndex = linearSegmentIndex
-	let curveIndex = 0
-
-	if (segmentIndex < 0) {
-		segmentIndex = segmentCount(path) + segmentIndex
-	}
-
-	// TODO: Refactor this to avoid O(n) search
-	for (const curve of path.curves) {
-		const segmentCount = Curve.segmentCount(curve)
-		if (segmentIndex < segmentCount) {
-			break
-		}
-		curveIndex++
-		segmentIndex -= segmentCount
-	}
-
-	return {curveIndex, segmentIndex}
+	return splitLinearSegmentIndex(path, linearSegmentIndex)
 }
 
 /**
