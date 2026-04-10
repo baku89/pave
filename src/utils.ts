@@ -27,13 +27,10 @@ export function memoize<Arg extends object, ReturnType>(
 	const cache = new WeakMap<Arg, ReturnType>()
 
 	return (arg: Arg) => {
-		if (cache.has(arg)) {
-			return cache.get(arg)!
-		} else {
-			const result = f(arg)
-			cache.set(arg, result)
-			return result
-		}
+		if (cache.has(arg)) return cache.get(arg)!
+		const result = f(arg)
+		cache.set(arg, result)
+		return result
 	}
 }
 

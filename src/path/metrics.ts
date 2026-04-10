@@ -1,8 +1,5 @@
 import {Rect} from 'geome'
-import {vec2} from 'linearly'
 
-import {Arc} from '../Arc'
-import {CubicBezier} from '../CubicBezier'
 import {Curve} from '../Curve'
 import type {Path} from '../Path'
 import {planarPathArea} from '../pathPlanar'
@@ -24,19 +21,11 @@ export const segments = memoize((path: Path): Segment[] => {
  * @category Properties
  */
 export const length = memoize((path: Path): number => {
-	let length = 0
-
+	let total = 0
 	for (const seg of segments(path)) {
-		if (seg.command === 'L') {
-			length += vec2.distance(seg.start, seg.point)
-		} else if (seg.command === 'C') {
-			length += CubicBezier.length(seg)
-		} else {
-			length += Arc.length(seg)
-		}
+		total += Segment.length(seg)
 	}
-
-	return length
+	return total
 })
 
 /**
