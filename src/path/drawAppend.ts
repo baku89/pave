@@ -212,6 +212,11 @@ export class Pen {
 
 	current: {curve: Curve; point: vec2; lastHandle?: vec2} | undefined
 
+	#reflectedControl(): vec2 {
+		const {point, lastHandle} = this.current!
+		return lastHandle ? vec2.sub(point, lastHandle) : point
+	}
+
 	moveTo(point: vec2) {
 		this.current = {
 			curve: {vertices: [{point, command: 'L'}], closed: false},
@@ -378,11 +383,7 @@ export class Pen {
 			throw new Error('The pen is not moved yet')
 		}
 
-		const control = this.current.lastHandle
-			? vec2.sub(this.current.point, this.current.lastHandle)
-			: this.current.point
-
-		this.quadraticCurveTo(control, point)
+		this.quadraticCurveTo(this.#reflectedControl(), point)
 
 		return this
 	}
@@ -396,13 +397,9 @@ export class Pen {
 			throw new Error('The pen is not moved yet')
 		}
 
-		const control = this.current.lastHandle
-			? vec2.sub(this.current.point, this.current.lastHandle)
-			: this.current.point
-
 		const point = vec2.add(this.current.point, delta)
 
-		this.quadraticCurveTo(control, point)
+		this.quadraticCurveTo(this.#reflectedControl(), point)
 
 		return this
 	}
@@ -454,11 +451,7 @@ export class Pen {
 			throw new Error('The pen is not moved yet')
 		}
 
-		const control1 = this.current.lastHandle
-			? vec2.sub(this.current.point, this.current.lastHandle)
-			: this.current.point
-
-		this.cubicBezierTo(control1, control2, point)
+		this.cubicBezierTo(this.#reflectedControl(), control2, point)
 
 		return this
 	}
@@ -472,10 +465,7 @@ export class Pen {
 			throw new Error('The pen is not moved yet')
 		}
 
-		const control1 = this.current.lastHandle
-			? vec2.sub(this.current.point, this.current.lastHandle)
-			: this.current.point
-
+		const control1 = this.#reflectedControl()
 		const control2 = vec2.add(control1, deltaControl2)
 		const point = vec2.add(control2, deltaPoint)
 
@@ -530,7 +520,7 @@ export class Pen {
 			throw new Error('The pen is not moved yet')
 		}
 
-		const point = vec2.add(radii, deltaPoint)
+		const point = vec2.add(this.current.point, deltaPoint)
 
 		this.arcTo(radii, xAxisRotation, largeArcFlag, sweepFlag, point)
 
