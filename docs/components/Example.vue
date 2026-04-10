@@ -35,7 +35,7 @@ watch(
 	<ClientOnly>
 		<div class="Example">
 			<Editor v-model:code="editingCode" class="editor" :autoHeight="true" />
-			<PaveRenderer :code="code" class="renderer" />
+			<PaveRenderer :code="editingCode" class="renderer" />
 		</div>
 	</ClientOnly>
 </template>
