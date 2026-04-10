@@ -22,7 +22,7 @@ import {Path} from '@baku89/pave'
 const circle = Path.circle([0, 0], 100)
 
 // For SVG's path element
-const d = Path.toSVG(circle)
+const d = Path.toSVGString(circle)
 svgPathElement.setAttribute('d', d)
 
 // For Canvas API
@@ -35,9 +35,10 @@ context.stroke(path2d)
 Pave is functional programming-oriented library and all data is plain and immutable. Information associated with a path, such as the length of the path or its bounding box, is obtained using functions instead of accessing it as a property of the path data itself.
 
 ```ts
+const rect = Path.rectangle([0, 0], [100, 100])
 const length = Path.length(rect)
 const bounds = Path.bounds(rect)
-const normal = Path.normalAtTime(rect, 0.5)
+const normal = Path.normal(rect, 0.5)
 ```
 
 These functions are appropriately memoized, so even if called multiple times for the same path, not all calculations are re-executed. However, if you make destructive changes to the path data and then call these functions, you may not get the correct results.
@@ -53,10 +54,10 @@ Therefore, when you want to perform procedural operations such as modifying path
 let p = Path.moveTo(Path.empty, [10, 10])
 p = Path.lineTo(p, [20, 20])
 p = Path.cubicBezierTo(p, [80, 30], [0, 40], [50, 50])
-p = Path.closePath(p)
+p = Path.close(p)
 
 // 2. Use Path.pen()
-const p = Path.pen()
+const fromPen = Path.pen()
 	.moveTo([10, 10])
 	.lineTo([20, 20])
 	.cubicBezierTo([80, 30], [0, 40], [50, 50])
@@ -67,17 +68,6 @@ const p = Path.pen()
 import {produce} from 'immer'
 
 const pathA = Path.arc([50, 50], 40, 0, 90)
-const pathB = produce(pathA, draft => {
-	draft.curves[0].closed = true
-})
-```
-
-Or use a library for manipulating immutable data structures such as [immer](https://immerjs.github.io/immer/):
-
-```ts
-import {produce} from 'immer'
-
-const pathA = Path.arc([50, 50], 40, 0, 180)
 const pathB = produce(pathA, draft => {
 	draft.curves[0].closed = true
 })
@@ -100,7 +90,7 @@ const t = Path.transform(c, mat2d.fromTranslation([50, 50]))
 
 ## Path Data Structure
 
-In Pave, the representation of paths is not a sequence of drawing commands against a stateful context like the SVG 'd' attribute or Canvas API, but always based on vertices. This means there are no operations like `moveTo` (the `M` command in SVG) or closePath (the `Z` in SVG); paths are always composed of a list of **tuples of vertex positions and interpolation commands from the last vertex**.
+In Pave, stored path data is not a mutable command stream like the SVG `d` attribute or Canvas path state, but a plain object built from vertices. The path value itself has no `moveTo` method; instead you build or change paths with functions such as [`Path.moveTo`](./api/modules/Path.html#moveto), [`Path.lineTo`](./api/modules/Path.html#lineto), and [`Path.close`](./api/modules/Path.html#close), which each return new data. Under the hood, a path is a list of **vertex end positions together with the interpolation command from the previous vertex**.
 
 Also, the path data structure has the following hierarchy, similar to how in 3D data, meshes consist of collections of polygons, and polygons are formed from collections of vertices.
 
@@ -108,33 +98,33 @@ Also, the path data structure has the following hierarchy, similar to how in 3D 
 
 - [**Path**](./api/interfaces/Path): A single Curve or a compound path composed of multiple Curves. It is the most common type to represent shapes in Pave.
 - [**Curve**](./api/interfaces/Curve): Represents a open or closed single stroke.
-- [**Vertex**](./api/#vertex): Each vertex that makes up the stroke, which consists of end point, command type, and argments for the interpolation.
+- [**Vertex**](./api/#vertex): Each vertex that makes up the stroke, which consists of end point, command type, and arguments for the interpolation.
 - [**Command**](./api#command): Arguments of interpolation commands excluding the end point.
 
 If you are familiar with TypeScript, it might be easier to understand by looking at the type definitions.
 
 ```ts
-type Path = {paths: Curves[]; fillRule: 'nonzero' | 'evenodd'}
-type Curve = {vertices: Vertex[]; closed: boolean}
+type Path<V extends Vertex = Vertex> = {readonly curves: Curve<V>[]}
+type Curve<V extends Vertex = Vertex> = {readonly vertices: V[]; readonly closed: boolean}
 
 type Vertex = VertexL | VertexC | VertexA
-type VertexL = {point: vec2; command: 'L'}
+type VertexL = {readonly point: vec2; readonly command: 'L'}
 type VertexC = {
-	point: vec2
-	command: 'C'
-	args: [control1: vec2, control2: vec2]
+	readonly point: vec2
+	readonly command: 'C'
+	readonly args: [control1: vec2, control2: vec2]
 }
 type VertexA = {
-	point: vec2
-	command: 'A'
-	args: [radii: vec2, xRot: vec2, largeArc: boolean, sweep: boolean]
+	readonly point: vec2
+	readonly command: 'A'
+	readonly args: [radii: vec2, xAxisRotation: number, largeArcFlag: boolean, sweepFlag: boolean]
 }
 ```
 
 In addition to the above hierarchy, there is also a type called **[Segment](./api/interfaces/Segment)**, which is a cut-out part of a Curve corresponding to a single command. Unlike Vertex, it includes the start position of interpolation.
 
 ```ts
-type Segment = Vertex & {start: vec2}
+type Segment<V extends Vertex = Vertex> = V & {readonly start: vec2}
 ```
 
 ### Location Representation on Paths
