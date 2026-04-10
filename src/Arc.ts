@@ -8,6 +8,22 @@ import {Path, VertexA, VertexC} from './Path'
 import {SegmentA} from './Segment'
 import {memoize, normalizeOffset} from './utils'
 
+const nearZero = (x: number) => Math.abs(x) < 1e-16
+
+/**
+ * Ensures radii satisfy the SVG out-of-range correction.
+ * https://svgwg.org/svg2-draft/implnote.html#ArcCorrectionOutOfRangeRadii
+ */
+function correctArcRadii(signedRadii: vec2, p: vec2): vec2 {
+	const [signedRx, signedRy] = signedRadii
+	const [x1p, y1p] = p
+	const prx = Math.abs(signedRx)
+	const pry = Math.abs(signedRy)
+	const A = x1p ** 2 / prx ** 2 + y1p ** 2 / pry ** 2
+	const s = A > 1 ? Math.sqrt(A) : 1
+	return [s * prx, s * pry]
+}
+
 /**
  * The angle range to check. `startAngle` is always in the range of [-π, π], and the `endAngle` is relative angle considering the rotation direction, with start angle as a reference.
  * @category Types
@@ -81,7 +97,7 @@ export namespace Arc {
 				(cosphi * (start[1] - point[1])) / 2,
 		]
 
-		const [rx, ry] = correctRadii(radii, [x1p, y1p])
+		const [rx, ry] = correctArcRadii(radii, [x1p, y1p])
 		const rx2 = rx ** 2
 		const ry2 = ry ** 2
 
@@ -90,8 +106,9 @@ export namespace Arc {
 		const d = rx2 * y1p ** 2 + ry2 * x1p ** 2
 
 		const sign = largeArcFlag !== sweepFlag ? 1 : -1
-		const cxp = (sign * Math.sqrt(Math.abs(n / d)) * (rx * y1p)) / ry
-		const cyp = (sign * Math.sqrt(Math.abs(n / d)) * (-ry * x1p)) / rx
+		const sqrtND = Math.sqrt(Math.abs(n / d))
+		const cxp = (sign * sqrtND * (rx * y1p)) / ry
+		const cyp = (sign * sqrtND * (-ry * x1p)) / rx
 
 		// Step 3: Compute (cx, cy) from (cx', cy')
 		const center: vec2 = [
@@ -123,24 +140,6 @@ export namespace Arc {
 			angles: [startAngle, endAngle] as AngleRange,
 			xAxisRotation,
 			sweep: deltaAngle > 0,
-		}
-
-		/**
-		 * Ensures the radii are large enough
-		 * https://svgwg.org/svg2-draft/implnote.html#ArcCorrectionOutOfRangeRadii
-		 **/
-		function correctRadii(signedRadii: vec2, p: vec2): vec2 {
-			const [signedRx, signedRy] = signedRadii
-			const [x1p, y1p] = p
-			const prx = Math.abs(signedRx)
-			const pry = Math.abs(signedRy)
-
-			const A = x1p ** 2 / prx ** 2 + y1p ** 2 / pry ** 2
-
-			const rx = A > 1 ? Math.sqrt(A) * prx : prx
-			const ry = A > 1 ? Math.sqrt(A) * pry : pry
-
-			return [rx, ry]
 		}
 	})
 
@@ -250,28 +249,17 @@ export namespace Arc {
 			mat2d.rotate(mat2d.fromTranslation(center), xAxisRotation),
 			radii
 		)
+		const at = (deg: number) => vec2.transformMat2d(vec2.direction(deg), xform)
 
 		let xMax = Math.max(start[0], point[0])
 		let xMin = Math.min(start[0], point[0])
 		let yMax = Math.max(start[1], point[1])
 		let yMin = Math.min(start[1], point[1])
 
-		if (crossAtAngle(angleAtXmax, angles)) {
-			const p = vec2.transformMat2d(vec2.direction(angleAtXmax), xform)
-			xMax = p[0]
-		}
-		if (crossAtAngle(angleAtXmin, angles)) {
-			const p = vec2.transformMat2d(vec2.direction(angleAtXmin), xform)
-			xMin = p[0]
-		}
-		if (crossAtAngle(angleAtYmax, angles)) {
-			const p = vec2.transformMat2d(vec2.direction(angleAtYmax), xform)
-			yMax = p[1]
-		}
-		if (crossAtAngle(angleAtYmin, angles)) {
-			const p = vec2.transformMat2d(vec2.direction(angleAtYmin), xform)
-			yMin = p[1]
-		}
+		if (crossAtAngle(angleAtXmax, angles)) xMax = at(angleAtXmax)[0]
+		if (crossAtAngle(angleAtXmin, angles)) xMin = at(angleAtXmin)[0]
+		if (crossAtAngle(angleAtYmax, angles)) yMax = at(angleAtYmax)[1]
+		if (crossAtAngle(angleAtYmin, angles)) yMin = at(angleAtYmin)[1]
 
 		return [
 			[xMin, yMin],
@@ -367,11 +355,6 @@ export namespace Arc {
 			command: 'A',
 			args: [[rx, ry], offsetRot, largeArc, sweep],
 		}
-
-		function nearZero(B: number) {
-			if (Math.abs(B) < 0.0000000000000001) return true
-			else return false
-		}
 	}
 
 	export const length = memoize((arc: BareSegmentA): number => {
@@ -433,8 +416,9 @@ export namespace Arc {
 		const startTime = toTime(arc, start)
 		const endTime = toTime(arc, end)
 
-		const {radii, center, angles, xAxisRotation} = toCenterParameterization(arc)
-		let {sweep} = toCenterParameterization(arc)
+		const p = toCenterParameterization(arc)
+		const {radii, center, angles, xAxisRotation, sweep: baseSweep} = p
+		let sweep = baseSweep
 
 		const xform = mat2d.trs(center, xAxisRotation, radii)
 
@@ -658,7 +642,7 @@ function unitToTime(
 
 	let lowerTime = 0
 	let upperTime = 1
-
+	const totalLen = Arc.length(arc)
 	let time: number
 
 	for (let i = 0; i < 16; i++) {
@@ -666,7 +650,7 @@ function unitToTime(
 		const midAngle = scalar.lerp(startAngle, endAngle, time)
 
 		const unitAtTime =
-			Arc.ellipticArcLength(radii, [startAngle, midAngle]) / Arc.length(arc)
+			Arc.ellipticArcLength(radii, [startAngle, midAngle]) / totalLen
 
 		if (unitAtTime < targetUnit) {
 			lowerTime = time
