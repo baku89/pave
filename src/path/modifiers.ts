@@ -306,25 +306,23 @@ export function trim(
 		} else {
 			return {curves: [Curve.trim(curve, fromLoc, toLoc)]}
 		}
-	} else if (fromLoc.curveIndex !== toLoc.curveIndex) {
-		const invert = fromLoc.curveIndex > toLoc.curveIndex
-
-		if (invert) {
-			;[fromLoc, toLoc] = [toLoc, fromLoc]
-		}
-
-		const trimmedPath = {
-			curves: [
-				Curve.trim(path.curves[fromLoc.curveIndex], fromLoc, 1),
-				...path.curves.slice(fromLoc.curveIndex + 1, toLoc.curveIndex),
-				Curve.trim(path.curves[toLoc.curveIndex], 0, toLoc),
-			],
-		}
-
-		return invert ? reverse(trimmedPath) : trimmedPath
 	}
 
-	throw new Error('Not implemented')
+	const invert = fromLoc.curveIndex > toLoc.curveIndex
+
+	if (invert) {
+		;[fromLoc, toLoc] = [toLoc, fromLoc]
+	}
+
+	const trimmedPath = {
+		curves: [
+			Curve.trim(path.curves[fromLoc.curveIndex], fromLoc, 1),
+			...path.curves.slice(fromLoc.curveIndex + 1, toLoc.curveIndex),
+			Curve.trim(path.curves[toLoc.curveIndex], 0, toLoc),
+		],
+	}
+
+	return invert ? reverse(trimmedPath) : trimmedPath
 }
 
 /**
@@ -489,9 +487,7 @@ export function subdivide(path: Path, division: number): Path {
 
 	if (division <= 1) return path
 
-	const times = Array(division - 1)
-		.fill(0)
-		.map((_, i) => (i + 1) / division)
+	const times = Array.from({length: division - 1}, (_, i) => (i + 1) / division)
 
 	return spawnVertex(path, segment => {
 		return Segment.divideAtTimes(segment, times)
