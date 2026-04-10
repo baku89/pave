@@ -117,9 +117,13 @@ export type PathA = Path<VertexA>
  * A path that does not contain any {@link VertexA}. It can be obtained by {@link Path.unarc}, while approximating arcs to cubic Bézier curves. In some non-affine transformations such as {@link Path.distort} and {@link Path.offset}, all arcs are internally converted to this type of path.
  * @category Types
  */
-type UnarcPath = Path<VertexL | VertexC>
+export type UnarcPath = Path<VertexL | VertexC>
 
-type SVGCommand =
+/**
+ * A token or numeric argument in a sequence passed to {@link Path.fromSVG}.
+ * @category Types
+ */
+export type SVGCommand =
 	| 'M'
 	| 'L'
 	| 'H'
@@ -1109,7 +1113,7 @@ export namespace Path {
 
 	/**
 	 * Returns the length of the given path. The returned value is memoized.
-	 * @param path The path to measure
+	 * @param arg The path to measure
 	 * @returns The length of the path
 	 * @category Properties
 	 */
@@ -1131,7 +1135,7 @@ export namespace Path {
 
 	/**
 	 * Calculates the bound of the given path.
-	 * @param path The path to calculate
+	 * @param arg The path to calculate
 	 * @returns The rect of the path
 	 * @category Properties
 	 * @example
@@ -1149,7 +1153,7 @@ export namespace Path {
 
 	/**
 	 * Calculates an area of the given path.
-	 * @param path The path to calculate
+	 * @param arg The path to calculate
 	 * @returns The area of the path
 	 * @category Properties
 	 */
@@ -1159,7 +1163,7 @@ export namespace Path {
 
 	/**
 	 * Returns the count of segments in the given path.
-	 * @param path The path to measure
+	 * @param arg The path to measure
 	 * @returns The count of segments in the path
 	 * @category Properties
 	 */
@@ -1395,7 +1399,7 @@ export namespace Path {
 	/**
 	 * Calculates the normalized tangent vector of the path at the given location.
 	 * @param path The path to calcuate
-	 * @param lc The location on the path
+	 * @param loc The location on the path
 	 * @returns The tangent vector
 	 * @category Properties
 	 */
@@ -1407,7 +1411,7 @@ export namespace Path {
 	/**
 	 * Calculates the normalized tangent vector of the path at the given location.
 	 * @param path The path to calcuate
-	 * @param lc The location on the path
+	 * @param loc The location on the path
 	 * @returns The tangent vector
 	 * @category Properties
 	 */
@@ -1419,7 +1423,7 @@ export namespace Path {
 	/**
 	 * Calculates the transformation matrix of the path at the given location. The x-axis of the matrix is the tangent vector and the y-axis is the normal vector, and the translation is the point on the path.
 	 * @param path The path to calculate
-	 * @param location The locationon the path
+	 * @param loc The location on the path
 	 * @returns The transformation matrix at the given offset
 	 * @category Properties
 	 */
@@ -2228,7 +2232,7 @@ export namespace Path {
 
 	/**
 	 * Returns all segmentse
-	 * @param path The path to iterate
+	 * @param arg The path to iterate
 	 * @category Properties
 	 */
 	export const segments = memoize((path: Path): Segment[] => {
@@ -2502,7 +2506,7 @@ export namespace Path {
 
 	/**
 	 * Creates a Path2D instance with the given path data.
-	 * @param path The path to convert
+	 * @param arg The path to convert
 	 * @returns The newly created Path2D
 	 * @category Converters
 	 */
@@ -2663,7 +2667,7 @@ export namespace Path {
 
 	/**
 	 * Creates a path from the given paper.Path instance.
-	 * @param paperPath The paper.Path instance to convert
+	 * @param arg The paper.Path instance to convert
 	 * @returns The newly created path
 	 * @category Converters
 	 */
@@ -2729,8 +2733,7 @@ export namespace Path {
 	/**
 	 * Appends the given command to the end of the path.
 	 * @param path The base path
-	 * @param point The newly added point
-	 * @param command The command to append
+	 * @param vertex The vertex to append
 	 * @returns The newely created path
 	 * @category Draw Functions
 	 */

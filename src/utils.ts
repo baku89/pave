@@ -26,7 +26,7 @@ export function memoize<Arg extends object, ReturnType>(
 ): (arg: Arg) => ReturnType {
 	const cache = new WeakMap<Arg, ReturnType>()
 
-	return arg => {
+	return (arg: Arg) => {
 		if (cache.has(arg)) {
 			return cache.get(arg)!
 		} else {
@@ -37,6 +37,10 @@ export function memoize<Arg extends object, ReturnType>(
 	}
 }
 
+/**
+ * Makes the given keys of `T` optional.
+ * @category Types
+ */
 export type PartialBy<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>
 
 // Define the gradient function

@@ -6,7 +6,11 @@ import {Path, PathL, VertexL} from './Path'
 import {SegmentL} from './Segment'
 import {normalizeOffset, PartialBy} from './utils'
 
-type SimpleSegmentL = PartialBy<SegmentL, 'command'>
+/**
+ * Almost equivalent to {@link SegmentL}, but the redundant `command` field can be omitted. Used for the argument of Line functions.
+ * @category Types
+ */
+export type SimpleSegmentL = PartialBy<SegmentL, 'command'>
 
 /**
  * A collection of functions to handle a line represented with {@link SegmentL}.

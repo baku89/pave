@@ -10,10 +10,15 @@ import {memoize, normalizeOffset, PartialBy} from './utils'
 
 /**
  * The angle range to check. `startAngle` is always in the range of [-π, π], and the `endAngle` is relative angle considering the rotation direction, with start angle as a reference.
+ * @category Types
  */
-type AngleRange = readonly [startAngle: number, endAngle: number]
+export type AngleRange = readonly [startAngle: number, endAngle: number]
 
-type SimpleSegmentA = PartialBy<SegmentA, 'command'>
+/**
+ * Almost equivalent to {@link SegmentA}, but the redundant `command` field can be omitted. Used for the argument of Arc functions.
+ * @category Types
+ */
+export type SimpleSegmentA = PartialBy<SegmentA, 'command'>
 
 /**
  * A collection of functions to handle arcs represented with {@link SegmentA}.
@@ -199,7 +204,7 @@ export namespace Arc {
 
 	/**
 	 * Calculates the bound of given arc.
-	 * @param arc The arc segment to calculate
+	 * @param arg The arc segment to calculate
 	 * @returns The bound of the arc
 	 * @example
 	 * ```js:pave

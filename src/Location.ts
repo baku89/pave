@@ -18,7 +18,11 @@ export type CurveLocation =
 	| OffsetCurveLocation
 	| TimeCurveLocation
 
-type CurveLocationIndices = {
+/**
+ * Optional segment index when locating on a {@link Curve}.
+ * @category Types
+ */
+export type CurveLocationIndices = {
 	segmentIndex?: number
 }
 
@@ -26,7 +30,11 @@ export type UnitCurveLocation = number | ({unit: number} & CurveLocationIndices)
 export type OffsetCurveLocation = OffsetSegmentLocation & CurveLocationIndices
 export type TimeCurveLocation = TimeSegmentLocation & CurveLocationIndices
 
-type PathLocationIndices = {
+/**
+ * Optional curve and segment indices when locating on a {@link Path}.
+ * @category Types
+ */
+export type PathLocationIndices = {
 	curveIndex?: number
 	segmentIndex?: number
 }
