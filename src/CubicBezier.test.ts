@@ -9,10 +9,39 @@
  *   `BEZIER_JS_MIT_LICENSE` at the bottom of this file.
  * - **Paper.js**: golden fixtures from Curve tests — MIT, see section comment below.
  */
+import type {vec2} from 'linearly'
 import {describe, expect, it, test} from 'vitest'
 
 import {CubicBezier} from './CubicBezier'
 import {SegmentC} from './Segment'
+
+/**
+ * Bezier.js `utils.derive` style hull for cubics (golden rows from
+ * https://github.com/Pomax/bezierjs/blob/master/test/general/cubic.test.js).
+ */
+function cubicDerivativeHulls(seg: SegmentC): vec2[][] {
+	const p0 = seg.start,
+		p1 = seg.args[0],
+		p2 = seg.args[1],
+		p3 = seg.point
+	const d1: vec2[] = [
+		[3 * (p1[0] - p0[0]), 3 * (p1[1] - p0[1])],
+		[3 * (p2[0] - p1[0]), 3 * (p2[1] - p1[1])],
+		[3 * (p3[0] - p2[0]), 3 * (p3[1] - p2[1])],
+	]
+	const d2: vec2[] = [
+		[2 * (d1[1][0] - d1[0][0]), 2 * (d1[1][1] - d1[0][1])],
+		[2 * (d1[2][0] - d1[1][0]), 2 * (d1[2][1] - d1[1][1])],
+	]
+	const d3: vec2[] = [[d2[1][0] - d2[0][0], d2[1][1] - d2[0][1]]]
+	return [d1, d2, d3]
+}
+
+/** Same layout as Bezier.js `utils.pointsToString` for four control points. */
+function bezierJsPointsString(seg: SegmentC): string {
+	const pts = [seg.start, seg.args[0], seg.args[1], seg.point] as const
+	return '[' + pts.map(([x, y]) => `${x}/${y}`).join(', ') + ']'
+}
 
 const a: SegmentC = {
 	start: [0, 0],
@@ -113,16 +142,6 @@ describe('canonical cubic (0,0)-(0,1)-(1,1)-(1,0)', () => {
 	})
 })
 
-describe('project (quadratic raised with fromQuadraticBezier)', () => {
-	it('closest point and distance for a quarter-like arc', () => {
-		const cubic = CubicBezier.fromQuadraticBezier([0, 0], [100, 0], [100, 100])
-		const projection = CubicBezier.project(cubic, [80, 20])
-		expect(projection.position).toEqual([75, 25])
-		expect(projection.t).toBe(0.5)
-		expect(projection.distance).toBeCloseTo(7.0710678118654755, 12)
-	})
-})
-
 describe('fromQuadraticBezier degree elevation', () => {
 	const cubic = CubicBezier.fromQuadraticBezier([0, 0], [0.5, 1], [1, 0])
 
@@ -161,6 +180,94 @@ describe('fromQuadraticBezier degree elevation', () => {
 			0.4472135954999579,
 			12
 		)
+	})
+})
+
+// --- Bezier.js test/general/cubic.test.js (MIT, https://github.com/Pomax/bezierjs)
+
+describe('Bezier.js cubic.test.js (ported expectations)', () => {
+	describe('constructor curve Bezier(0,0,0,1,1,1,1,0)', () => {
+		const b = CubicBezier.of([0, 0], [0, 1], [1, 1], [1, 0])
+
+		it('serializes like Bezier#toString()', () => {
+			expect(bezierJsPointsString(b)).toBe('[0/0, 0/1, 1/1, 1/0]')
+		})
+
+		it('approximate length', () => {
+			expect(CubicBezier.length(b)).toBeCloseTo(2, 10)
+		})
+
+		it('derivative control hull matches Bezier dpoints', () => {
+			expect(cubicDerivativeHulls(b)).toEqual([
+				[
+					[0, 3],
+					[3, 0],
+					[0, -3],
+				],
+				[
+					[6, -6],
+					[-6, -6],
+				],
+				[[-12, 0]],
+			])
+			expect(CubicBezier.derivative(b, {time: 0})).toEqual([0, 3])
+			expect(CubicBezier.derivative(b, {time: 0.5})).toEqual([1.5, 0])
+			expect(CubicBezier.derivative(b, {time: 1})).toEqual([0, -3])
+		})
+
+		it('normals at t = 0, 0.5, 1', () => {
+			expect(CubicBezier.normal(b, {time: 0})).toEqual([-1, 0])
+			expect(CubicBezier.normal(b, {time: 0.5})).toEqual([0, 1])
+			expect(CubicBezier.normal(b, {time: 1})).toEqual([1, 0])
+		})
+
+		it('no inflections in [0, 1]', () => {
+			expect(CubicBezier.inflections(b)).toEqual([])
+		})
+
+		it('axis-aligned bounding box (min/max match Bezier bbox)', () => {
+			expect(CubicBezier.bounds(b)).toEqual([
+				[0, 0],
+				[1, 0.75],
+			])
+		})
+	})
+
+	describe('complex cubic Bezier(0,0,1,0.25,0,1,1,0)', () => {
+		const b = CubicBezier.of([0, 0], [1, 0.25], [0, 1], [1, 0])
+
+		it('inflection parameters', () => {
+			expect(CubicBezier.inflections(b)).toEqual([0.8, 0.5])
+		})
+	})
+
+	describe('cubicFromPoints (three-point fit)', () => {
+		const M: vec2 = [200 / 3, 100 / 3]
+
+		it('midpoint at t = 0.5 with default tension', () => {
+			const b = CubicBezier.cubicFromPoints([0, 0], M, [100, 100])
+			expectVecClose(CubicBezier.point(b, {time: 0.5}), M, 12)
+			expectVecClose(b.args[0], [55.55555555555557, 11.111111111111121], 12)
+			expectVecClose(b.args[1], [88.88888888888891, 44.44444444444443], 12)
+		})
+
+		it('curve passes through M at t = 0.25 when t is used as reference', () => {
+			const t = 0.25
+			const b = CubicBezier.cubicFromPoints([0, 0], M, [100, 100], t)
+			expectVecClose(CubicBezier.point(b, {time: t}), M, 12)
+		})
+	})
+})
+
+// --- Bezier.js test/functionality/projection.test.js (quadratic as cubic)
+
+describe('Bezier.js projection.test.js (quadratic raised to cubic)', () => {
+	it('projects onto the expected on-curve point', () => {
+		const b = CubicBezier.fromQuadraticBezier([0, 0], [100, 0], [100, 100])
+		const projection = CubicBezier.project(b, [80, 20])
+		expectVecClose(projection.position, [75, 25], 12)
+		expect(projection.t).toBe(0.5)
+		expect(projection.distance).toBeCloseTo(7.0710678118654755, 12)
 	})
 })
 

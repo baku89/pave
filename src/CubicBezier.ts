@@ -11,11 +11,12 @@ import {memoize, normalizeOffset, PartialBy} from './utils'
 
 /**
  * Almost equivalent to {@link SegmentC}, but the redundant `command` field can be ommited. Used for the argument of CubicBezier functions.
+ * @category Types
  */
-type SimpleSegmentC = PartialBy<SegmentC, 'command'>
+export type SimpleSegmentC = PartialBy<SegmentC, 'command'>
 
 /**
- * A collection of functions to handle a cubic bezier represented with {@link SimpleSegment}.
+ * A collection of functions to handle a cubic bezier represented with {@link SimpleSegmentC}.
  * @category Modules
  */
 export namespace CubicBezier {
@@ -53,6 +54,100 @@ export namespace CubicBezier {
 		const control2 = vec2.lerp(point, control, 2 / 3)
 
 		return {command: 'C', start, args: [control1, control2], point}
+	}
+
+	/**
+	 * Fits a cubic Bézier through three points (start, on-curve target at `t`, end).
+	 * Matches {@link https://github.com/Pomax/bezierjs/blob/master/src/bezier.js Bezier.cubicFromPoints}.
+	 */
+	export function cubicFromPoints(
+		start: vec2,
+		mid: vec2,
+		end: vec2,
+		t = 0.5,
+		d1?: number
+	): SegmentC {
+		const abc = getABCCubic(start, mid, end, t)
+		if (d1 === undefined) {
+			d1 = vec2.distance(mid, abc.c)
+		}
+		const d2 = (d1 * (1 - t)) / t
+
+		const selen = vec2.distance(start, end)
+		const lx = (end[0] - start[0]) / selen
+		const ly = (end[1] - start[1]) / selen
+		const bx1 = d1 * lx
+		const by1 = d1 * ly
+		const bx2 = d2 * lx
+		const by2 = d2 * ly
+
+		const e1: vec2 = [mid[0] - bx1, mid[1] - by1]
+		const e2: vec2 = [mid[0] + bx2, mid[1] + by2]
+		const A = abc.a
+		const v1: vec2 = [
+			A[0] + (e1[0] - A[0]) / (1 - t),
+			A[1] + (e1[1] - A[1]) / (1 - t),
+		]
+		const v2: vec2 = [
+			A[0] + (e2[0] - A[0]) / t,
+			A[1] + (e2[1] - A[1]) / t,
+		]
+		const nc1: vec2 = [
+			start[0] + (v1[0] - start[0]) / t,
+			start[1] + (v1[1] - start[1]) / t,
+		]
+		const nc2: vec2 = [
+			end[0] + (v2[0] - end[0]) / (1 - t),
+			end[1] + (v2[1] - end[1]) / (1 - t),
+		]
+
+		return {command: 'C', start, args: [nc1, nc2], point: end}
+	}
+
+	/**
+	 * Parameter values in [0, 1] where the planar cubic has a curvature inflection.
+	 * Matches {@link https://github.com/Pomax/bezierjs/blob/master/src/utils.js utils.inflections} for cubics.
+	 */
+	export function inflections(bezier: SimpleSegmentC): number[] {
+		const {
+			start: p0,
+			args: [p1, p2],
+			point: p3,
+		} = bezier
+		const aligned = alignToChord([p0, p1, p2, p3], p0, p3)
+
+		const ax = aligned[2][0] * aligned[1][1]
+		const bx = aligned[3][0] * aligned[1][1]
+		const cx = aligned[1][0] * aligned[2][1]
+		const dx = aligned[3][0] * aligned[2][1]
+		const v1 = 18 * (-3 * ax + 2 * bx + 3 * cx - dx)
+		const v2 = 18 * (3 * ax - bx - 3 * cx)
+		const v3 = 18 * (cx - ax)
+
+		const bezierEps = 1e-6
+
+		const near0 = (x: number) => Math.abs(x) <= bezierEps
+
+		if (near0(v1)) {
+			if (!near0(v2)) {
+				const t = -v3 / v2
+				return t >= 0 && t <= 1 ? [t] : []
+			}
+			return []
+		}
+
+		const d2 = 2 * v1
+		if (near0(d2)) {
+			return []
+		}
+
+		const trm = v2 * v2 - 4 * v1 * v3
+		if (trm < 0) {
+			return []
+		}
+
+		const sq = Math.sqrt(trm)
+		return [(sq - v2) / d2, -(v2 + sq) / d2].filter(r => r >= 0 && r <= 1)
 	}
 
 	/**
@@ -289,6 +384,49 @@ export namespace CubicBezier {
 
 		return pen.get()
 	}
+}
+
+function alignToChord(points: readonly vec2[], p1: vec2, p2: vec2): vec2[] {
+	const [tx, ty] = p1
+	const a = -Math.atan2(p2[1] - ty, p2[0] - tx)
+	const co = Math.cos(a)
+	const si = Math.sin(a)
+	return points.map(
+		([x, y]): vec2 => [
+			(x - tx) * co - (y - ty) * si,
+			(x - tx) * si + (y - ty) * co,
+		]
+	)
+}
+
+/** u(t) from https://pomax.github.io/bezierinfo/#abc */
+function projectionRatio3(t: number): number {
+	if (t === 0 || t === 1) {
+		return t
+	}
+	const top = (1 - t) ** 3
+	return top / (t ** 3 + top)
+}
+
+/** ratio(t) from https://pomax.github.io/bezierinfo/#abc */
+function abcRatio3(t: number): number {
+	if (t === 0 || t === 1) {
+		return t
+	}
+	const bottom = t ** 3 + (1 - t) ** 3
+	return Math.abs((bottom - 1) / bottom)
+}
+
+function getABCCubic(S: vec2, B: vec2, E: vec2, t: number) {
+	const u = projectionRatio3(t)
+	const um = 1 - u
+	const c: vec2 = [u * S[0] + um * E[0], u * S[1] + um * E[1]]
+	const s = abcRatio3(t)
+	const a: vec2 = [
+		B[0] + (B[0] - c[0]) / s,
+		B[1] + (B[1] - c[1]) / s,
+	]
+	return {a, c}
 }
 
 function toPoint([x, y]: vec2): Point {
