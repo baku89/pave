@@ -8,6 +8,8 @@ import {memoize, normalizeIndex, normalizeOffset} from './utils'
 
 /**
  * A single open or closed stroke represented as an array of vertices. All of the points are represented as tuple `[x: number, y: number]` and the commands are represented in absolute form.
+ *
+ * Values are immutable: do not mutate `vertices` or their elements in place. {@link Curve} helpers may memoize by reference.
  * @category Types
  */
 export type Curve<V extends Vertex = Vertex> = {
@@ -25,7 +27,7 @@ export type CurveC = Curve<VertexC>
 export type CurveA = Curve<VertexA>
 
 /**
- * A collection of functions to handle {@link Curve}.
+ * A collection of functions to handle {@link Curve}. Inputs are never mutated; returned curves are new objects unless noted otherwise.
  * @category Modules
  */
 export namespace Curve {
