@@ -317,6 +317,46 @@ describe('ellipticArcLength', () => {
 
 		expect(ret).toEqual(1.01218)
 	})
+
+	test('should return 0 for a zero-length angle span', () => {
+		expect(Arc.ellipticArcLength([3, 2], [45, 45])).toEqual(0)
+	})
+
+	test('should match for reversed angle order (same geometric arc)', () => {
+		const forward = Arc.ellipticArcLength([2, 1], [0, 180])
+		const backward = Arc.ellipticArcLength([2, 1], [180, 0])
+
+		expect(forward).toEqual(backward)
+	})
+
+	test('should add along adjacent angle ranges', () => {
+		const radii: [number, number] = [2, 3]
+		const whole = Arc.ellipticArcLength(radii, [0, 180])
+		const part =
+			Arc.ellipticArcLength(radii, [0, 60]) +
+			Arc.ellipticArcLength(radii, [60, 120]) +
+			Arc.ellipticArcLength(radii, [120, 180])
+
+		expect(part).toEqual(whole)
+	})
+
+	test('should stay close to a fine Riemann reference on a flat ellipse', () => {
+		const rx = 10
+		const ry = 1
+		const steps = 4000
+		const startDeg = 0
+		const endDeg = 45
+		const startRad = (startDeg * Math.PI) / 180
+		const endRad = (endDeg * Math.PI) / 180
+		const delta = (endRad - startRad) / steps
+		let riemann = 0
+		for (let i = 0; i < steps; i++) {
+			const t = startRad + (i + 0.5) * delta
+			riemann += delta * Math.hypot(rx * Math.sin(t), ry * Math.cos(t))
+		}
+
+		expect(Arc.ellipticArcLength([rx, ry], [startDeg, endDeg])).toEqual(riemann)
+	})
 })
 
 describe('transform', () => {

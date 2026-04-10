@@ -484,34 +484,25 @@ export namespace Arc {
 		const [rx, ry] = radii
 		const [startAngle, endAngle] = angles
 
-		if (rx === ry) {
-			// For a circle
+		if (scalar.approx(rx, ry)) {
 			return scalar.rad(Math.abs(endAngle - startAngle)) * rx
 		}
 
-		// TODO: For an elliptic arc. But it'd be better to optimize the algorithm
-		const minAngle = 0.25
-
 		const angleBetween = Math.abs(endAngle - startAngle)
-
-		const steps = Math.ceil(angleBetween / minAngle)
-
-		const startRad = scalar.rad(startAngle)
-		const endRad = scalar.rad(endAngle)
-		const deltaRad = scalar.rad(angleBetween) / steps
-
-		// The derivative of the ellipse is:
-		// f'(x) = sqrt((rx * sin(t)) ** 2, (ry * sin(t)) ** 2)
-		// So compute the length by integrating the derivative.
-		let length = 0
-
-		for (let i = 0; i < steps; i++) {
-			const a = scalar.lerp(startRad, endRad, (i + 0.5) / steps)
-			length +=
-				deltaRad * Math.sqrt((rx * Math.sin(a)) ** 2 + (ry * Math.cos(a)) ** 2)
+		if (scalar.approx(angleBetween, 0)) {
+			return 0
 		}
 
-		return length
+		// Arc length = ∫ sqrt((rx sin t)² + (ry cos t)²) dt over the centric angle range.
+		// Use Gauss–Legendre quadrature (fixed order) instead of many Riemann steps.
+		const t0 = scalar.rad(startAngle)
+		const t1 = scalar.rad(endAngle)
+		const a = Math.min(t0, t1)
+		const b = Math.max(t0, t1)
+
+		return gaussLegendre16(a, b, t =>
+			Math.hypot(rx * Math.sin(t), ry * Math.cos(t))
+		)
 	}
 
 	export function offset(
@@ -546,6 +537,42 @@ export namespace Arc {
 			toAngle
 		)
 	}
+}
+
+/* eslint-disable no-loss-of-precision --
+   Tabulated Gauss–Legendre quadrature coefficients. */
+/** Abscissae for 16-point Gauss–Legendre quadrature on [-1, 1]. */
+const GL16_X: readonly number[] = [
+	-0.9894009349916499, -0.9445750230732326, -0.8656312023878317,
+	-0.755404408355003, -0.6178762444026437, -0.4580167776572274,
+	-0.2816035507792589, -0.09501250983763744, 0.09501250983763744,
+	0.2816035507792589, 0.4580167776572274, 0.6178762444026437, 0.755404408355003,
+	0.8656312023878317, 0.9445750230732326, 0.9894009349916499,
+]
+
+/** Weights for {@link GL16_X}. */
+const GL16_W: readonly number[] = [
+	0.027152459411754095, 0.06225352393864789, 0.09515851168249247,
+	0.12462897125553387, 0.14959598881657673, 0.16915651939500254,
+	0.18260341504492359, 0.18945061045506845, 0.18945061045506845,
+	0.18260341504492359, 0.16915651939500254, 0.14959598881657673,
+	0.12462897125553387, 0.09515851168249247, 0.06225352393864789,
+	0.027152459411754095,
+]
+/* eslint-enable no-loss-of-precision */
+
+function gaussLegendre16(
+	a: number,
+	b: number,
+	f: (t: number) => number
+): number {
+	const mid = (a + b) * 0.5
+	const half = (b - a) * 0.5
+	let sum = 0
+	for (let i = 0; i < 16; i++) {
+		sum += GL16_W[i]! * f(mid + half * GL16_X[i]!)
+	}
+	return half * sum
 }
 
 /**
