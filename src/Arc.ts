@@ -372,8 +372,12 @@ export namespace Arc {
 		} else if ('unit' in loc) {
 			return unitToTime(arc, loc.unit)
 		} else {
-			const unit = loc.offset / Arc.length(arc)
-			return unitToTime(arc, unit)
+			const len = Arc.length(arc)
+			if (scalar.approx(len, 0)) {
+				return 0
+			}
+			const alen = normalizeOffset(loc.offset, len)
+			return unitToTime(arc, alen / len)
 		}
 	}
 

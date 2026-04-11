@@ -404,3 +404,13 @@ describe('transform', () => {
 		})
 	})
 })
+
+describe('toTime offset', () => {
+	it('interprets negative offset as arc length back from the end', () => {
+		const seg = Arc.of([90, 50], [40, 40], 0, false, true, [50, 90])
+		const len = Arc.length(seg)
+		const tNearEnd = Arc.toTime(seg, {offset: -len * 0.05})
+		expect(tNearEnd).toBeGreaterThan(0)
+		expect(tNearEnd).toBeLessThan(1)
+	})
+})
