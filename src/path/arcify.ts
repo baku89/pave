@@ -26,6 +26,9 @@ export interface ArcifyOptions {
 /** How many times a cubic may be halved while the biarc does not fit. */
 const MAX_DEPTH = 12
 
+/** An arc counts as a line when it stays within this fraction of the tolerance of its chord. */
+const STRAIGHT_RATIO = 0.05
+
 /** The number of parameter values at which the deviation of a biarc is measured. */
 const SAMPLES = 16
 
@@ -148,10 +151,9 @@ function fitRange(
 		return
 	}
 
-	if (Segment.isStraight(sub, tolerance)) {
-		out.push(linePiece(sub.start, sub.point))
-		return
-	}
+	// Only the whole segment is tested for straightness (by the caller): testing every
+	// sub-range would turn any curve into a polyline once the pieces are small enough,
+	// although arcs would follow it far better within the same tolerance.
 
 	const startTangent = polygonTangent(
 		sub.start,
@@ -307,9 +309,14 @@ function reversePiece(piece: Piece): Piece {
 	return arcPiece(seg.point, seg.start, center, radius, largeArc, !sweep)
 }
 
-/** A line in place of an arc that stays within the tolerance of its chord. */
+/**
+ * A line in place of an arc that is straight for all practical purposes: within a small fraction of the tolerance of its chord. Arcs within the full tolerance are kept, since they are a better fit than the chord.
+ */
 function straightenPiece(piece: Piece, tolerance: number): Piece {
-	if (isArcPiece(piece) && Segment.isStraight(piece.seg, tolerance)) {
+	if (
+		isArcPiece(piece) &&
+		Segment.isStraight(piece.seg, tolerance * STRAIGHT_RATIO)
+	) {
 		return linePiece(piece.seg.start, piece.seg.point)
 	}
 	return piece

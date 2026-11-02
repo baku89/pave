@@ -1,61 +1,115 @@
 import {mat2d, vec2} from 'linearly'
 
-import {type Path, Segment, type Vertex} from '../index'
+import {segmentToVertex} from '../attributes'
+import {Curve, type Path, Segment, type Vertex} from '../index'
+import {planarPathArea} from '../pathPlanar'
 import {unite} from './boolean'
 import {fromSegment} from './compound'
-import {segments} from './metrics'
-import {reverse, transform} from './modifiers'
+import {transform} from './modifiers'
 
 /**
- * The region swept by each segment when moved by `matrix`: the segment, its moved copy and the lines between their ends. A segment is first cut where it is tangent to its own motion, so that no piece overhangs its ends and the lines between the ends bound the sweep.
+ * A closed curve tracing an open one there and back, so that it can be swept like a region of no area.
  */
-function sweptPieces(
-	path: Path,
-	matrix: mat2d,
-	cutTimes: (seg: Segment) => number[]
-): Path[] {
-	const pieces: Path[] = []
+function doubled(curve: Curve): Curve {
+	if (curve.closed) return curve
 
-	for (const whole of segments(path)) {
-		if (Segment.isZero(whole)) continue
-
-		let start = whole.start
-		const parts = Segment.divideAtTimes(whole, cutTimes(whole)).map(vertex => {
-			const seg = {...vertex, start} as Segment
-			start = vertex.point
-			return seg
-		})
-
-		for (const seg of parts) {
-			if (Segment.isZero(seg)) continue
-
-			const moved = reverse(transform(fromSegment(seg), matrix))
-			const [movedEnd, movedStart] = moved.curves[0].vertices
-
-			const vertices: Vertex[] = [
-				{point: seg.start, command: 'L'},
-				{point: seg.point, command: seg.command, args: seg.args} as Vertex,
-				{point: movedEnd.point, command: 'L'},
-				movedStart,
-			]
-
-			pieces.push({curves: [{vertices, closed: true}]})
-		}
+	const back = Curve.reverse(curve).vertices
+	const first = back.at(-1)!
+	return {
+		vertices: [
+			{
+				...curve.vertices[0],
+				command: first.command,
+				args: first.args,
+			} as Vertex,
+			...curve.vertices.slice(1),
+			...back.slice(1, -1),
+		],
+		closed: true,
 	}
-
-	return pieces
 }
 
 /**
- * The region the path sweeps when moved by `matrix`, as a closed path: the union of the path, its moved copy and everything in between.
+ * The boundary of the region the curve sweeps under the motion: the pieces of the curve facing the motion are moved to its end, the others stay, and every switch between the two is joined by a straight line. This is the convolution of the curve with the motion, and the swept region is where its winding number is not zero. Each segment is first cut where its tangent is aligned with the motion, so that no piece faces both ways.
  */
+function sweptBoundary(
+	curve: Curve,
+	matrix: mat2d,
+	cutTimes: (seg: Segment) => number[],
+	facing: (point: vec2, normal: vec2) => boolean
+): Curve {
+	const vertices: Vertex[] = []
+	let prevMoved: boolean | null = null
+
+	// The normal of a segment points inwards on curves of positive signed area; the pieces
+	// facing the motion are those whose outward normal goes along it. A doubled open curve
+	// has no area, and either sign moves exactly one of its two passes, which is what is needed.
+	const outward = planarPathArea({curves: [curve]}) > 0 ? -1 : 1
+
+	for (const whole of Curve.segments(doubled(curve))) {
+		if (Segment.isZero(whole)) continue
+
+		let start = whole.start
+		for (const vertex of Segment.divideAtTimes(whole, cutTimes(whole))) {
+			const piece = {...vertex, start} as Segment
+			start = vertex.point
+			if (Segment.isZero(piece)) continue
+
+			const mid = Segment.point(piece, {time: 0.5})
+			const moved = facing(
+				mid,
+				vec2.scale(Segment.normal(piece, {time: 0.5}), outward)
+			)
+
+			if (vertices.length === 0 || moved !== prevMoved) {
+				const from = moved
+					? vec2.transformMat2d(piece.start, matrix)
+					: piece.start
+				vertices.push({point: from, command: 'L'})
+			}
+
+			vertices.push(
+				moved
+					? transform(fromSegment(piece), matrix).curves[0].vertices[1]
+					: segmentToVertex(piece)
+			)
+			prevMoved = moved
+		}
+	}
+
+	// When the sweep ends on the side it started, the last vertex closes the curve itself
+	const first = vertices[0]
+	const last = vertices.at(-1)
+	if (
+		vertices.length > 1 &&
+		first &&
+		last &&
+		vec2.approx(first.point, last.point)
+	) {
+		vertices.pop()
+		vertices[0] = last
+	}
+
+	return {vertices, closed: true}
+}
+
 function sweep(
 	path: Path,
 	matrix: mat2d,
-	cutTimes: (seg: Segment) => number[]
+	cutTimes: (seg: Segment) => number[],
+	facing: (point: vec2, normal: vec2) => boolean
 ): Path {
-	const moved = transform(path, matrix)
-	return unite([path, moved, ...sweptPieces(path, matrix, cutTimes)])
+	const regions = path.curves
+		.filter(curve => curve.vertices.length > 1)
+		.map(curve => ({
+			curves: [sweptBoundary(curve, matrix, cutTimes, facing)],
+		}))
+
+	if (regions.length === 0) return {curves: []}
+
+	// The boolean may leave a curve of no extent where a connector is tangent to the path
+	const {curves} = unite(regions)
+	return {curves: curves.filter(curve => !Curve.isZero(curve))}
 }
 
 /**
@@ -74,8 +128,11 @@ function sweep(
  */
 export function shadow(path: Path, direction: vec2, length: number): Path {
 	const delta = vec2.scale(vec2.normalize(direction), length)
-	return sweep(path, mat2d.fromTranslation(delta), seg =>
-		Segment.tangentTimes(seg, delta)
+	return sweep(
+		path,
+		mat2d.fromTranslation(delta),
+		seg => Segment.tangentTimes(seg, delta),
+		(_, normal) => vec2.dot(normal, delta) > 0
 	)
 }
 
@@ -88,7 +145,10 @@ export function shadow(path: Path, direction: vec2, length: number): Path {
  * @category Modifiers
  */
 export function shadowFrom(path: Path, origin: vec2, scale: number): Path {
-	return sweep(path, mat2d.fromScaling(scale, origin), seg =>
-		Segment.tangentTimesFrom(seg, origin)
+	return sweep(
+		path,
+		mat2d.fromScaling(scale, origin),
+		seg => Segment.tangentTimesFrom(seg, origin),
+		(point, normal) => vec2.dot(normal, vec2.sub(point, origin)) > 0
 	)
 }

@@ -1,3 +1,4 @@
+import {vec2} from 'linearly'
 import {describe, expect, it} from 'vitest'
 
 import {Path} from './index'
@@ -28,5 +29,44 @@ describe('shadow', () => {
 		expect(contains(s, [0, 60])).toBe(false)
 		const b = Path.bounds(s)
 		expect(b[1][1]).toBeCloseTo(240, 2)
+	})
+})
+
+describe('shadow stability', () => {
+	const shape = Path.unite([
+		Path.toCubicBezier(Path.circle([0, 0], 60)),
+		Path.rect([30, -20], [140, 40]),
+	])
+
+	it('stays one region and changes smoothly as the light turns', () => {
+		let prev = 0
+		for (let i = 0; i < 120; i++) {
+			const s = shadow(shape, vec2.dir(i * 3), 100)
+			expect(s.curves).toHaveLength(1)
+			const area = Math.abs(Path.area(s))
+			if (prev) expect(Math.abs(area - prev) / prev).toBeLessThan(0.03)
+			prev = area
+		}
+	})
+
+	it('stays one region as a point light circles the shape', () => {
+		let prev = 0
+		for (let i = 0; i < 120; i++) {
+			const a = (i / 120) * Math.PI * 2
+			const s = shadowFrom(shape, [Math.cos(a) * 250, Math.sin(a) * 250], 1.8)
+			expect(s.curves).toHaveLength(1)
+			const area = Math.abs(Path.area(s))
+			if (prev) expect(Math.abs(area - prev) / prev).toBeLessThan(0.05)
+			prev = area
+		}
+	})
+
+	it('sweeps an open curve too', () => {
+		const arch = Path.cubicBezier([0, 0], [0, 100], [100, 100], [100, 0])
+		const s = shadow(arch, [1, 0], 50)
+		expect(s.curves).toHaveLength(1)
+		// Covered by a translate of the arch, and in the notch under the arch's top
+		expect(contains(s, [90, 70])).toBe(true)
+		expect(contains(s, [75, 10])).toBe(false)
 	})
 })
