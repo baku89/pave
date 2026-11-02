@@ -14,6 +14,10 @@ const monacoEditorPluginDefault = (monacoEditorPlugin as any).default as (
 export default defineUserConfig({
 	title: 'Pave',
 	base: '/pave/',
+	// Dedicated dev port: other local dev servers commonly sit on 8080 (often
+	// only on IPv6 `::1`), which makes http://localhost:8080/pave/ hit a
+	// foreign WebSocket server and answer "426 Upgrade Required".
+	port: 8089,
 	alias: {
 		pave: path.resolve(__dirname, '../../src'),
 	},
