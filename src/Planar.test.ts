@@ -2,6 +2,7 @@ import {vec2} from 'linearly'
 import {describe, expect, it} from 'vitest'
 
 import {CubicBezier, Curve, Path, Segment} from './index'
+import {intersectSegments} from './path/intersections'
 import {windingNumber} from './path/planar'
 import {planarPathArea} from './pathPlanar'
 
@@ -590,9 +591,12 @@ describe('winding numbers on many segments', () => {
 		return Path.polygon(...points)
 	}
 
-	// Having to visit every segment per probe, this would take tens of seconds
+	// Having to visit every segment per probe, this would take more than ten seconds.
+	// A synchronous test outlives the timeout of the runner, so it has to be measured.
 	it('keeps a dense polygon quick to offset', () => {
+		const start = performance.now()
 		const result = Path.offset(circleOf(2000, 100), 10, {lineJoin: 'round'})
+		expect(performance.now() - start).toBeLessThan(5000)
 		expect(Math.abs(Path.area(result))).toBeCloseTo(Math.PI * 110 * 110, -2)
 	})
 
@@ -617,5 +621,64 @@ describe('winding numbers on many segments', () => {
 		expect(Path.contains(united, [75, 0])).toBe(true)
 		expect(Path.contains(united, [0, 0])).toBe(false)
 		expect(Path.contains(united, [120, 0])).toBe(false)
+	})
+})
+
+describe('curves in contact', () => {
+	const SHIFTED_UNION_POINTS: vec2[] = [
+		[567.115, 300],
+		[499.929, 473.082],
+		[329.213, 422.607],
+		[200.523, 300],
+		[290.207, 109.832],
+		[518.118, 95.414],
+	]
+
+	// A cubic tangent to a line at the shared start, crossing it again further along
+	const line = {command: 'L', start: [0, 0], point: [100, 0]} as Segment
+	const cubic = {
+		command: 'C',
+		start: [0, 0],
+		args: [
+			[50, 0],
+			[50, -40],
+		],
+		point: [90, 30],
+	} as Segment
+
+	it('finds the crossing beyond a tangent contact', () => {
+		const hits = intersectSegments(line, cubic, 1e-4)
+		const xs = hits.map(h => h.point[0]).sort((a, b) => a - b)
+
+		expect(xs.length).toBe(2)
+		expect(xs[0]).toBeCloseTo(0, 2)
+		expect(Math.abs(Segment.point(cubic, {time: hits[1].t2})[1])).toBeLessThan(
+			1e-3
+		)
+	})
+
+	it('reports a contact only once', () => {
+		const circle = Path.circle([0, 100], 100)
+		const tangent = {
+			command: 'L',
+			start: [-100, 0],
+			point: [100, 0],
+		} as Segment
+		const hits = Curve.segments(circle.curves[0]).flatMap(seg =>
+			intersectSegments(tangent, seg, 1e-4)
+		)
+		const points = hits.map(h => h.point)
+		for (const p of points) expect(vec2.distance(p, [0, 0])).toBeLessThan(0.1)
+	})
+
+	it('unites a path with a slightly shifted copy of it', () => {
+		const path = Path.spline(SHIFTED_UNION_POINTS, {closed: true})
+		const shifted = Path.translate(path, [-2, -1])
+		const united = Path.unite([path, shifted])
+
+		expect(Math.abs(Path.area(united))).toBeGreaterThan(
+			Math.abs(Path.area(path))
+		)
+		expect(united.curves.length).toBe(1)
 	})
 })

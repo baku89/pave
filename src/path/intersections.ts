@@ -3,12 +3,13 @@
  *
  * Line pairs use the closed form from geome. Every other pair first checks whether the segments
  * overlap (share a stretch of the same curve) by projecting end points, and otherwise
- * falls back to recursive bounding-box subdivision followed by a Newton polish.
+ * falls back to recursive bounding-box subdivision down to flat pieces, whose chords are
+ * compared, followed by a Newton polish.
  */
 import {Rect, Segment as LineSegment} from 'geome'
 import {scalar, vec2} from 'linearly'
 
-import {Segment} from '../index'
+import {Arc, Segment} from '../index'
 import {cross2} from '../parallelCurve'
 import {rangeBounds} from '../segmentBounds'
 
@@ -176,6 +177,84 @@ function newtonPolish(
 	return [t1, t2]
 }
 
+/** The deviation from the chords below which two pieces are compared by their chords. */
+const FLAT_TOLERANCE_RATIO = 1 / 8
+
+/**
+ * The chord of the part of `seg` on [t0, t1], when the part runs along it within `tolerance`.
+ */
+function flatChord(
+	seg: Segment,
+	t0: number,
+	t1: number,
+	tolerance: number
+): [vec2, vec2] | null {
+	const p0 = Segment.point(seg, {time: t0})
+	const p1 = Segment.point(seg, {time: t1})
+
+	if (seg.command === 'L') return [p0, p1]
+
+	if (seg.command === 'A') {
+		if (Arc.isStraight(seg)) return [p0, p1]
+		const {radii, angles} = Arc.toCenterParameterization(seg)
+		const sweep = Math.abs(angles[1] - angles[0]) * (t1 - t0)
+		// Sagitta bound, as in rangeBounds
+		const delta = scalar.rad(sweep)
+		const sagitta = (Math.max(radii[0], radii[1]) * delta * delta) / 8
+		return sweep <= 90 && sagitta <= tolerance ? [p0, p1] : null
+	}
+
+	const dx = p1[0] - p0[0]
+	const dy = p1[1] - p0[1]
+	const length = Math.hypot(dx, dy)
+	if (length === 0) return null
+
+	// The control points of the piece, which has to run along the chord without folding back
+	const third = (t1 - t0) / 3
+	for (const c of [
+		vec2.scaleAndAdd(p0, Segment.derivative(seg, {time: t0}), third),
+		vec2.scaleAndAdd(p1, Segment.derivative(seg, {time: t1}), -third),
+	]) {
+		const along = ((c[0] - p0[0]) * dx + (c[1] - p0[1]) * dy) / length
+		const across = ((c[0] - p0[0]) * dy - (c[1] - p0[1]) * dx) / length
+		if (along < 0 || along > length || Math.abs(across) > tolerance) {
+			return null
+		}
+	}
+	return [p0, p1]
+}
+
+/** The closest parameters on two line segments, and the distance between them there. */
+function closestOnChords(
+	[a0, a1]: [vec2, vec2],
+	[b0, b1]: [vec2, vec2]
+): [u: number, v: number, distance: number] {
+	const ux = a1[0] - a0[0]
+	const uy = a1[1] - a0[1]
+	const vx = b1[0] - b0[0]
+	const vy = b1[1] - b0[1]
+	const wx = a0[0] - b0[0]
+	const wy = a0[1] - b0[1]
+	const uu = ux * ux + uy * uy
+	const uv = ux * vx + uy * vy
+	const vv = vx * vx + vy * vy
+	const uw = ux * wx + uy * wy
+	const vw = vx * wx + vy * wy
+	const det = uu * vv - uv * uv
+
+	let u =
+		det > 1e-12 * uu * vv ? scalar.clamp((uv * vw - vv * uw) / det, 0, 1) : 0.5
+	let v = vv > 0 ? (uv * u + vw) / vv : 0
+	if (v < 0) {
+		v = 0
+		u = uu > 0 ? scalar.clamp(-uw / uu, 0, 1) : 0
+	} else if (v > 1) {
+		v = 1
+		u = uu > 0 ? scalar.clamp((uv - uw) / uu, 0, 1) : 0
+	}
+	return [u, v, Math.hypot(wx + ux * u - vx * v, wy + uy * u - vy * v)]
+}
+
 function subdivide(
 	a: Segment,
 	b: Segment,
@@ -198,6 +277,20 @@ function subdivide(
 		const ba = rangeBounds(a, n.ta0, n.ta1)
 		const bb = rangeBounds(b, n.tb0, n.tb1)
 		if (!Rect.intersects(Rect.offset(ba, tolerance), bb)) continue
+
+		// Once both pieces are flat, their chords tell whether they meet. Curves in contact stay
+		// within the tolerance for long, which would otherwise be walked in steps of it. Each
+		// piece may be off its chord by the flatness, which widens the distance to accept.
+		const flatness = tolerance * FLAT_TOLERANCE_RATIO
+		const chordA = flatChord(a, n.ta0, n.ta1, flatness)
+		const chordB = chordA && flatChord(b, n.tb0, n.tb1, flatness)
+		if (chordA && chordB) {
+			const [u, v, distance] = closestOnChords(chordA, chordB)
+			if (distance <= tolerance + 2 * flatness) {
+				raw.push([n.ta0 + (n.ta1 - n.ta0) * u, n.tb0 + (n.tb1 - n.tb0) * v])
+			}
+			continue
+		}
 
 		const sa = rectExtent(ba)
 		const sb = rectExtent(bb)
