@@ -4,16 +4,35 @@
  * affine map puts the result on any corner.
  *
  * The curve is symmetric about `x = y`, where its point and tangent are known, so only the half
- * up to there is fitted, and the other half is its mirror image. On that half the slope stays
- * within 45° of the axis it runs along, so moving evenly along the axis samples the curve almost
- * evenly by length, for any exponent. Pieces have tangents fixed at both ends: their handle
- * lengths are solved by least squares, and then by a search on the largest distance if needed.
+ * up to there is fitted, and the other half is its mirror image. Using `w = y^e` to sample it
+ * puts the samples on the bend however sharp it is, for any exponent. Pieces
+ * have tangents fixed at both ends: their handle lengths are solved by least squares, and then
+ * by a search on the largest distance if needed.
  */
 import {vec2} from 'linearly'
 
+import type {Path} from '../index'
+import {ellipse, polygon} from './primitives'
+import type {Vertex} from './types'
+
+/**
+ * The options for {@link superellipse}
+ * @category Options
+ */
+export interface SuperellipseOptions {
+	/**
+	 * The largest distance allowed from the exact curve.
+	 * @default 0.05
+	 */
+	tolerance?: number
+}
+
 type Hull = {start: vec2; args: readonly [vec2, vec2]; point: vec2}
 
-const SAMPLE_COUNT = 32
+const SAMPLE_COUNT = 48
+const STRAIGHT_LIMIT = 1e-5
+const OVERSHOOT_SAMPLE_COUNT = 64
+const FIT_MARGIN = 0.98
 const REPARAMETERIZE_ITERATIONS = 8
 const NEAREST_ITERATIONS = 2
 const MAX_DEPTH = 8
@@ -50,36 +69,145 @@ export function superellipseCubics(shape: number, tolerance: number): Hull[] {
 }
 
 /**
- * The half from (1, 0) to the diagonal, for `s` in [0, 1]. A convex curve runs along y and a
- * concave one along x, whichever keeps the slope at most 1.
+ * Creates a closed superellipse, or a squircle with the default shape. Its outline is `|x / rx|^e + |y / ry|^e = 1` with `e = 2^shape`, the same parameter as {@link cornerShape} and the CSS `superellipse()`: `1` is an ellipse, `2` a squircle, `0` a diamond, `Infinity` a rectangle, and the negative values make the sides concave. The first vertex will be placed at the +X axis relative to the center.
+ * @param center The center of the superellipse
+ * @param radius The radii along X and Y
+ * @param shape The shape, as above
+ * @param options The options
+ * @returns The newly created path
+ * @category Primitives
+ * @example
+ * ```js:pave
+ * const p = Path.superellipse([50, 50], [40, 30], 2)
+ * stroke(p)
+ * ```
+ */
+export function superellipse(
+	center: vec2,
+	radius: vec2,
+	shape = 2,
+	{tolerance = 0.05}: SuperellipseOptions = {}
+): Path {
+	const [cx, cy] = center
+	const [rx, ry] = radius
+
+	if (shape === 1) return ellipse(center, radius)
+
+	// The shapes made of straight lines
+	if (shape === 0 || isSuperellipseStraight(shape)) {
+		const toCorner = (x: number, y: number): vec2 => [cx + rx * x, cy + ry * y]
+		if (shape === 0) {
+			return polygon(
+				toCorner(1, 0),
+				toCorner(0, 1),
+				toCorner(-1, 0),
+				toCorner(0, -1)
+			)
+		}
+		return shape > 0
+			? polygon(
+					toCorner(1, 0),
+					toCorner(1, 1),
+					toCorner(0, 1),
+					toCorner(-1, 1),
+					toCorner(-1, 0),
+					toCorner(-1, -1),
+					toCorner(0, -1),
+					toCorner(1, -1)
+				)
+			: polygon(
+					toCorner(1, 0),
+					center,
+					toCorner(0, 1),
+					center,
+					toCorner(-1, 0),
+					center,
+					toCorner(0, -1),
+					center
+				)
+	}
+
+	const cubics = superellipseCubics(
+		shape,
+		tolerance / Math.max(Math.abs(rx), Math.abs(ry))
+	)
+
+	// Each quadrant is the last one turned by 90 degrees in the unit frame
+	const place = ([x, y]: vec2, quadrant: number): vec2 => {
+		const [ux, uy] = QUADRANTS[quadrant]
+		return [cx + rx * (ux * x - uy * y), cy + ry * (uy * x + ux * y)]
+	}
+
+	const vertices: Vertex[] = []
+	for (let quadrant = 0; quadrant < 4; quadrant++) {
+		for (const {args, point} of cubics) {
+			vertices.push({
+				command: 'C',
+				args: [place(args[0], quadrant), place(args[1], quadrant)],
+				point: place(point, quadrant),
+			})
+		}
+	}
+
+	// The last piece ends at the first point, which makes it the closing segment
+	vertices.unshift(vertices.pop()!)
+
+	return {curves: [{vertices, closed: true}]}
+}
+
+const QUADRANTS: vec2[] = [
+	[1, 0],
+	[0, 1],
+	[-1, 0],
+	[0, -1],
+]
+
+/**
+ * Whether the shape can be taken as its limit made of straight lines, a square for a positive
+ * one and a cross for a negative one. They differ the most on the diagonal. This is well below
+ * any tolerance in use, so that the corners do not turn sharp while they still are visible,
+ * and it comes before the powers of the curve lose precision.
+ */
+export function isSuperellipseStraight(shape: number) {
+	const middle = 2 ** (-1 / 2 ** shape)
+	return Math.SQRT2 * (shape > 0 ? 1 - middle : middle) <= STRAIGHT_LIMIT
+}
+
+/**
+ * The half from (1, 0) to the diagonal, for `s` in [0, 1]. A convex curve is flat along Y and
+ * then bends within a width of about `1 / e`, so the first half of `s` runs along Y closing in
+ * on the bend, which it reaches around the middle of that half whatever `e` is, and the second
+ * half moves evenly in `w`. A concave curve only needs the latter, as it bends where it is close
+ * to the center.
  */
 function curveOf(shape: number) {
 	const e = 2 ** shape
-	const middle = 2 ** (-1 / e)
+	const flatEnd = 0.25 ** (1 / e)
+	const closing = shape + 1
 
-	const other = (v: number) => Math.max(1 - v ** e, 0) ** (1 / e)
+	const toW = (s: number) =>
+		shape > 0
+			? s < 0.5
+				? (flatEnd * (1 - (1 - 2 * s) ** closing)) ** e
+				: 0.25 + (s - 0.5) / 2
+			: s / 2
 
-	return shape > 0
-		? {
-				point: (s: number): vec2 => {
-					const y = s * middle
-					return [other(y), y]
-				},
-				tangent: (s: number): vec2 => {
-					const y = s * middle
-					return vec2.normalize([-((y / other(y)) ** (e - 1)), 1])
-				},
-			}
-		: {
-				point: (s: number): vec2 => {
-					const x = 1 - s * (1 - middle)
-					return [x, other(x)]
-				},
-				tangent: (s: number): vec2 => {
-					const x = 1 - s * (1 - middle)
-					return vec2.normalize([-1, (other(x) / x) ** (1 - e)])
-				},
-			}
+	const toPoint = (s: number): vec2 => {
+		const w = toW(s)
+		return [(1 - w) ** (1 / e), w ** (1 / e)]
+	}
+
+	return {
+		point: toPoint,
+		// The slope is `(y / x)^(e - 1)`, where the ratio is 1 at most
+		tangent: (s: number): vec2 => {
+			const [x, y] = toPoint(s)
+			const ratio = y / x
+			return vec2.normalize(
+				e >= 1 ? [-(ratio ** (e - 1)), 1] : [-1, ratio ** (1 - e)]
+			)
+		},
+	}
 }
 
 type HalfCurve = ReturnType<typeof curveOf>
@@ -94,20 +222,65 @@ function fitRange(
 	const samples = Array.from({length: SAMPLE_COUNT + 1}, (_, i) =>
 		curve.point(s0 + ((s1 - s0) * i) / SAMPLE_COUNT)
 	)
+	// Aims a little inside, as the samples only tell the distance at where they are
 	const {hull, error} = fitPiece(
 		samples,
 		curve.tangent(s0),
 		curve.tangent(s1),
-		tolerance
+		tolerance * FIT_MARGIN
 	)
 
-	if (error <= tolerance || depth >= MAX_DEPTH) return [hull]
+	if (
+		depth >= MAX_DEPTH ||
+		(error <= tolerance && overshootOf(hull, samples) <= tolerance)
+	) {
+		return [hull]
+	}
 
 	const middle = (s0 + s1) / 2
 	return [
 		...fitRange(curve, s0, middle, tolerance, depth + 1),
 		...fitRange(curve, middle, s1, tolerance, depth + 1),
 	]
+}
+
+/**
+ * The largest distance from the cubic to the polyline of the samples. Being close to all the
+ * samples does not rule this out: a cubic can pass by them and swing out around a sharp bend.
+ */
+function overshootOf(hull: Hull, samples: vec2[]) {
+	let largest = 0
+
+	for (let i = 1; i < OVERSHOOT_SAMPLE_COUNT; i++) {
+		const [q] = evaluate(hull, i / OVERSHOOT_SAMPLE_COUNT)
+		let nearest = Infinity
+		for (let j = 0; j < samples.length - 1; j++) {
+			nearest = Math.min(
+				nearest,
+				distanceToSegment(q, samples[j], samples[j + 1])
+			)
+		}
+		largest = Math.max(largest, nearest)
+	}
+
+	return largest
+}
+
+function distanceToSegment(q: vec2, a: vec2, b: vec2) {
+	const abx = b[0] - a[0]
+	const aby = b[1] - a[1]
+	const lengthSquared = abx * abx + aby * aby
+	const u =
+		lengthSquared > 0
+			? Math.min(
+					Math.max(
+						((q[0] - a[0]) * abx + (q[1] - a[1]) * aby) / lengthSquared,
+						0
+					),
+					1
+				)
+			: 0
+	return Math.hypot(q[0] - a[0] - abx * u, q[1] - a[1] - aby * u)
 }
 
 /** The position and the first two derivatives of a cubic at a parameter. */

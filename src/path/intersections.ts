@@ -238,6 +238,52 @@ function subdivide(
 		}
 		out.push({t1, t2, point})
 	}
+	return collapseAlongContacts(a, b, out, tolerance)
+}
+
+/**
+ * Whether the segments stay together all the way between the two intersections, rather than
+ * parting and meeting again.
+ */
+function staysTogether(
+	a: Segment,
+	b: Segment,
+	x: SegmentIntersection,
+	y: SegmentIntersection,
+	tolerance: number
+): boolean {
+	const pa = Segment.point(a, {time: (x.t1 + y.t1) / 2})
+	const pb = Segment.point(b, {time: (x.t2 + y.t2) / 2})
+	return vec2.distance(pa, pb) <= 2 * tolerance
+}
+
+/**
+ * Where two curves touch, they run within the tolerance of each other for a while, and any point
+ * on that stretch looks like an intersection. Each such stretch is one contact, not many: keeping
+ * them all would cut the curves into a pile of tiny pieces.
+ */
+function collapseAlongContacts(
+	a: Segment,
+	b: Segment,
+	found: SegmentIntersection[],
+	tolerance: number
+): SegmentIntersection[] {
+	if (found.length < 2) return found
+
+	const sorted = found.slice().sort((x, y) => x.t1 - y.t1)
+	const out: SegmentIntersection[] = []
+
+	let group = [sorted[0]]
+	for (const x of sorted.slice(1)) {
+		if (staysTogether(a, b, group[group.length - 1], x, tolerance)) {
+			group.push(x)
+		} else {
+			out.push(group[group.length >> 1])
+			group = [x]
+		}
+	}
+	out.push(group[group.length >> 1])
+
 	return out
 }
 
@@ -273,7 +319,16 @@ export function intersectSegments(
 
 	const out = [...candidates]
 	for (const x of subdivide(a, b, tolerance)) {
-		if (out.some(o => vec2.distance(o.point, x.point) <= tolerance)) continue
+		// Also when it is on the stretch of a contact starting at an end point
+		if (
+			out.some(
+				o =>
+					vec2.distance(o.point, x.point) <= tolerance ||
+					staysTogether(a, b, o, x, tolerance)
+			)
+		) {
+			continue
+		}
 		out.push(x)
 	}
 	return out

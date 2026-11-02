@@ -11,6 +11,10 @@ export {
 } from './attributes'
 export {unite, subtract, intersect, exclude} from './boolean'
 export {toPath2D, drawToCanvas, drawToP5} from './canvas'
+export {displace} from './displace'
+export type {DisplaceContext, DisplaceOptions} from './displace'
+export {dubins, dubinsTypes} from './dubins'
+export type {DubinsOptions, DubinsType} from './dubins'
 export {fromSegment, merge} from './compound'
 export {wave, twirl, bulge} from './distortions'
 export {
@@ -53,6 +57,7 @@ export {
 	split,
 	distort,
 	chamfer,
+	zigzag,
 	cutCorners,
 	cornerCubic,
 	cornerShape,
@@ -83,12 +88,18 @@ export {
 	polygon,
 	regularPolygon,
 	ngon,
+	star,
+	capsule,
 	grid,
 	cubicBezier,
 	quadraticBezier,
 	nBezier,
 	formula,
 } from './primitives'
+export {spiral, clothoid} from './spirals'
+export type {ClothoidOptions, SpiralOptions} from './spirals'
+export {superellipse} from './superellipse'
+export type {SuperellipseOptions} from './superellipse'
 export {fromSVGString, fromD, toSVGString, toD, fromSVG} from './svg'
 export type {WaveOptions, RadialDistortOptions} from './distortions'
 export type {PathCloseOptions, ReduceOptions} from './drawAppend'
@@ -101,6 +112,7 @@ export type {
 	DistortOptions,
 	ReverseOptions,
 	SpawnOptions,
+	ZigzagOptions,
 } from './modifiers'
 export type {OffsetOptions, OffsetStrokeOptions} from './offset'
 export type {

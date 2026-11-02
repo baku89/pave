@@ -219,6 +219,47 @@ describe('offset', () => {
 	})
 })
 
+describe('offsetStroke at round caps', () => {
+	const shortest = (p: Path) =>
+		Math.min(...Path.segments(p).map(s => Segment.length(s)))
+
+	const curve = Path.cubicBezier([8, 75], [30, -10], [70, 110], [92, 25])
+
+	it.each([2, 8, 16])('leaves no tiny pieces at a width of %d', width => {
+		const o = Path.offsetStroke(curve, width, {
+			lineCap: 'round',
+			lineJoin: 'round',
+		})
+		expect(o.curves.length).toBe(1)
+		expect(Path.segmentCount(o)).toBeLessThan(40)
+		expect(shortest(o)).toBeGreaterThan(0.05)
+	})
+
+	it('leaves no tiny pieces on a subdivided curve', () => {
+		const o = Path.offsetStroke(Path.subdivide(curve, 12), 8, {
+			lineCap: 'round',
+			lineJoin: 'round',
+		})
+		expect(shortest(o)).toBeGreaterThan(0.05)
+	})
+
+	it('covers the same area as a stroke with square caps, plus the caps', () => {
+		const width = 8
+		const butt = Path.area(Path.offsetStroke(curve, width))
+		const round = Path.area(Path.offsetStroke(curve, width, {lineCap: 'round'}))
+		expect(round - butt).toBeCloseTo(Math.PI * 16, 1)
+	})
+
+	it('still finds real crossings between close curves', () => {
+		const a = Path.circle([0, 0], 10)
+		const b = Path.circle([10, 0], 10)
+		expect(Path.intersect([a, b]).curves.length).toBe(1)
+		const near = Path.circle([19.999, 0], 10)
+		expect(Path.intersect([a, near]).curves.length).toBe(1)
+		expect(Path.unite([a, near]).curves.length).toBe(1)
+	})
+})
+
 describe('offset by a tiny distance', () => {
 	const lineAndCubic = Path.close(
 		Path.join([

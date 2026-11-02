@@ -722,6 +722,91 @@ export function regularPolygon(
 export const ngon = regularPolygon
 
 /**
+ * Creates a star, alternating between two radii. The first vertex will be placed at the +X axis relative to the center, on the outer radius.
+ * @param center The center of the star
+ * @param outerRadius The radius of the tips
+ * @param innerRadius The radius of the notches between the tips
+ * @param points The number of the tips, an integer of 2 or more
+ * @returns The newly created path
+ * @category Primitives
+ * @example
+ * ```js:pave
+ * const p = Path.star([50, 50], 40, 18, 5)
+ * stroke(p)
+ * ```
+ */
+export function star(
+	center: vec2,
+	outerRadius: number,
+	innerRadius: number,
+	points: number
+): PathL {
+	if (!Number.isInteger(points) || points < 2) {
+		throw new Error('A star must have an integer of 2 or more points')
+	}
+
+	const angleStep = 180 / points
+	const vertices: vec2[] = []
+
+	for (let i = 0; i < points * 2; i++) {
+		const radius = i % 2 === 0 ? outerRadius : innerRadius
+		vertices.push(vec2.add(center, vec2.rotate([radius, 0], angleStep * i)))
+	}
+
+	return polygon(...vertices)
+}
+
+/**
+ * Creates a capsule, also known as a stadium: the area within a distance from a line segment, with round ends. It is made of two lines and two arcs, so it keeps exact. When the two points are the same it is a circle.
+ * @param start The center of the round end at the start
+ * @param end The center of the round end at the end
+ * @param radius The radius of the round ends, which is the half of the width
+ * @returns The newly created path
+ * @category Primitives
+ * @example
+ * ```js:pave
+ * const p = Path.capsule([25, 70], [75, 30], 15)
+ * stroke(p)
+ * ```
+ */
+export function capsule(start: vec2, end: vec2, radius: number): Path {
+	if (!(radius >= 0)) {
+		throw new Error('The radius of a capsule must not be negative')
+	}
+	if (radius === 0) return line(start, end)
+
+	const distance = vec2.distance(start, end)
+	if (distance === 0) return circle(start, radius)
+
+	// Runs towards increasing angles like the other closed primitives, with `side` on the right
+	// of the travel from the start to the end
+	const dx = (end[0] - start[0]) / distance
+	const dy = (end[1] - start[1]) / distance
+	const side: vec2 = [dy * radius, -dx * radius]
+
+	const args = [[radius, radius], 0, false, true] as [
+		vec2,
+		number,
+		boolean,
+		boolean,
+	]
+
+	return {
+		curves: [
+			{
+				vertices: [
+					{point: vec2.add(start, side), command: 'A', args},
+					{point: vec2.add(end, side), command: 'L'},
+					{point: vec2.sub(end, side), command: 'A', args},
+					{point: vec2.sub(start, side), command: 'L'},
+				],
+				closed: true,
+			},
+		],
+	}
+}
+
+/**
  * @category Primitives
  */
 export function grid(rect: Rect, divs: vec2): PathL {

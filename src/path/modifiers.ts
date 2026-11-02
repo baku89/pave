@@ -3,6 +3,7 @@ import {mat2d, scalar, vec2} from 'linearly'
 import {
 	completeVertexAttrs,
 	interpolateAttrs,
+	interpolateValue,
 	mergeAttrDefs,
 	omit,
 	pushDownCurveAttrs,
@@ -25,12 +26,14 @@ import {
 } from '../index'
 import * as Iter from '../Iter'
 import type {PathLocation} from '../Location'
-import {unitTangentAt} from '../parallelCurve'
+import {unitNormalAt, unitTangentAt} from '../parallelCurve'
 import {planarFlattenPath} from '../pathPlanar'
+import {deleteAttribute, setAttribute} from './attributes'
 import {toTime} from './location'
-import {superellipseCubics} from './superellipse'
+import {isSuperellipseStraight, superellipseCubics} from './superellipse'
 import type {
 	AttributeLike,
+	Attributes,
 	Vertex,
 	VertexC,
 	VertexContext,
@@ -816,6 +819,168 @@ function cutJoints(
 }
 
 /**
+ * @category Options
+ */
+export interface ZigzagOptions {
+	/**
+	 * Draws waves instead of straight zigzags.
+	 * @defaultValue false
+	 */
+	smooth?: boolean
+	/**
+	 * Shifts the zigzag along the path, in periods, so that animating it from 0 to 1 makes a seamless loop. A positive value moves the peaks backwards along the path. An open curve keeps its ends in place only when this is a multiple of 0.5; otherwise they follow the wave, so that no peak pops in or out at the ends.
+	 * @defaultValue 0
+	 */
+	phase?: number
+}
+
+/** The ratio of a cubic's handle to its length, closest to half a period of a sine wave. */
+const WAVE_HANDLE = 0.3642
+
+/**
+ * Makes the path zigzag along its normal. The peaks are evenly spaced along each curve, and a whole number of them fits: open curves keep their ends in place, and closed curves get an even number so that they stay closed.
+ * @param path The path to make zigzag
+ * @param amplitude The distance of the peaks from the path, towards its normal first. It can vary along the path, as the name of an attribute or a function of the vertex; the value between the vertices is interpolated.
+ * @param wavelength The approximate length along the path of one period, of two peaks
+ * @param options The options
+ * @returns The new path
+ * @category Modifiers
+ * @example
+ * ```js:pave
+ * const p = Path.circle([50, 50], 30)
+ * stroke(p, 'skyblue')
+ * stroke(Path.zigzag(p, 5, 12), 'tomato')
+ * stroke(Path.zigzag(Path.circle([50, 50], 15), 3, 12, {smooth: true}), 'gold')
+ * ```
+ */
+export function zigzag(
+	path: Path,
+	amplitude: AttributeLike<number>,
+	wavelength: number,
+	{smooth = false, phase = 0}: ZigzagOptions = {}
+): Path {
+	if (!(wavelength > 0)) return path
+
+	const reads = typeof amplitude !== 'number'
+	const name = '__zigzagAmplitude'
+	const source = reads
+		? setAttribute(completeVertexAttrs(path), name, amplitude)
+		: completeVertexAttrs(path)
+	const def =
+		typeof amplitude === 'string' ? path.attrDefs?.[amplitude] : undefined
+	const attrDefs = source.attrDefs
+
+	const zigzagged = spawnCurve(source, (curve): Curve => {
+		const length = Curve.length(curve)
+		if (length === 0 || Curve.segments(curve).length === 0) return curve
+
+		const count = curve.closed
+			? Math.max(2, 2 * Math.round(length / wavelength))
+			: Math.max(1, Math.round((2 * length) / wavelength))
+		const spacing = length / count
+
+		/** The place at the given unit, moved across the path by the amplitude there. */
+		const placeAt = (unit: number, across: number) => {
+			const {segment, time} = Curve.toTime(curve, {unit})
+			const value = reads
+				? interpolateValue(
+						segment.startAttrs?.[name],
+						segment.attrs?.[name],
+						time,
+						def
+					)
+				: amplitude
+			const distance = (typeof value === 'number' ? value : 0) * across
+			return {
+				point:
+					distance === 0
+						? Segment.point(segment, {time})
+						: vec2.scaleAndAdd(
+								Segment.point(segment, {time}),
+								unitNormalAt(segment, time),
+								distance
+							),
+				tangent: unitTangentAt(segment, time),
+				attrs: segmentAttrsAt(segment, time, attrDefs),
+			}
+		}
+
+		// Peaks sit at (m + 0.5 - 2 * phase) / count for every integer m, alternating sides. On a
+		// closed curve the count is even, so this wraps around seamlessly.
+		const shift = 2 * phase
+		const firstPeak = Math.ceil(shift - 0.5)
+		const peaks = Array.from({length: count + 2}, (_, i) => firstPeak + i)
+			.map(m => ({unit: (m + 0.5 - shift) / count, m}))
+			.filter(({unit}) =>
+				curve.closed ? unit >= 0 && unit < 1 : unit > 1e-9 && unit < 1 - 1e-9
+			)
+			.map(({unit, m}) => placeAt(unit, scalar.mod(m, 2) === 0 ? 1 : -1))
+
+		const carried = (attrs: Attributes | undefined) => (attrs ? {attrs} : {})
+
+		const segmentTo = (
+			prev: {point: vec2; tangent?: vec2},
+			next: {point: vec2; tangent?: vec2; attrs?: Attributes}
+		): Vertex => {
+			if (!smooth) {
+				return {command: 'L', point: next.point, ...carried(next.attrs)}
+			}
+			const h = spacing * WAVE_HANDLE
+			const inHandle = next.tangent
+				? vec2.scaleAndAdd(next.point, next.tangent, -h)
+				: vec2.lerp(next.point, prev.point, 1 / 3)
+			const outHandle = prev.tangent
+				? vec2.scaleAndAdd(prev.point, prev.tangent, h)
+				: vec2.lerp(prev.point, inHandle, 1 / 3)
+			return {
+				command: 'C',
+				args: [
+					outHandle,
+					next.tangent ? inHandle : vec2.lerp(next.point, outHandle, 1 / 3),
+				],
+				point: next.point,
+				...carried(next.attrs),
+			}
+		}
+
+		if (curve.closed) {
+			return {
+				closed: true,
+				vertices: peaks.map((peak, i) =>
+					segmentTo(peaks[(i + peaks.length - 1) % peaks.length], peak)
+				),
+			}
+		}
+
+		// The ends follow the wave: 0 at a whole number of half periods, as when there is no phase
+		const waveAt = (unit: number) => {
+			const x = scalar.mod((unit * count) / 2 + phase, 1)
+			if (smooth) return Math.sin(x * 2 * Math.PI)
+			return x < 0.25 ? 4 * x : x < 0.75 ? 2 - 4 * x : 4 * x - 4
+		}
+		const place = (unit: number) => {
+			const {point, attrs} = placeAt(unit, waveAt(unit))
+			return {point, attrs}
+		}
+		const start = place(0)
+		const end = place(1)
+
+		return {
+			closed: false,
+			vertices: [
+				{command: 'L', point: start.point, ...carried(start.attrs)},
+				...peaks.map((peak, i) =>
+					segmentTo(i === 0 ? start : peaks[i - 1], peak)
+				),
+				segmentTo(peaks.length > 0 ? peaks[peaks.length - 1] : start, end),
+			],
+		}
+	})
+
+	return reads ? deleteAttribute(zigzagged, name, {level: 'vertex'}) : zigzagged
+}
+
+/**
  * Time at the given arc length back from the end of the segment. A negative offset counts
  * from the end, but `-0` is not negative: `{offset: -0}` would give the start instead.
  */
@@ -1067,7 +1232,7 @@ export function cornerShape(
 			// The vertex of the parallelogram opposite to the apex is the center of the superellipse
 			const center = vec2.sub(vec2.add(start, end), apex)
 
-			if (k === Infinity || k === -Infinity) {
+			if (isSuperellipseStraight(k)) {
 				return [
 					{command: 'L', point: k > 0 ? apex : center},
 					{command: 'L', point: end},
