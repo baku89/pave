@@ -14,7 +14,7 @@ import {vec2} from 'linearly'
 
 import {fitCubicsToCurve, type ParametricCurve} from './cubicBezierGeometry'
 import {Arc, CubicBezier, Segment, type SegmentA} from './index'
-import type {Vertex, VertexC} from './path/types'
+import type {Attributes, Vertex, VertexC} from './path/types'
 
 /** Scalar 2D cross product. */
 export function cross2(a: vec2, b: vec2): number {
@@ -187,13 +187,18 @@ export function fitVertices(
 	curve: ParametricCurve,
 	t0: number,
 	t1: number,
-	tolerance: number
+	tolerance: number,
+	attrsAt?: (t: number) => Attributes | undefined
 ): VertexC[] {
-	return fitCubicsToCurve(curve, t0, t1, tolerance).map(h => ({
-		command: 'C',
-		args: h.args,
-		point: h.point,
-	}))
+	return fitCubicsToCurve(curve, t0, t1, tolerance).map(h => {
+		const attrs = attrsAt?.(h.endTime)
+		return {
+			command: 'C',
+			args: h.args,
+			point: h.point,
+			...(attrs ? {attrs} : {}),
+		}
+	})
 }
 
 const HERMITE_SAMPLE_COUNT = 8
@@ -212,6 +217,7 @@ export function hermiteParallelVertices(
 	from: number,
 	to: number,
 	tolerance: number,
+	attrsAt?: (t: number) => Attributes | undefined,
 	depth = 0
 ): VertexC[] {
 	const curve = parallelParametric(seg, s, 1)
@@ -243,13 +249,22 @@ export function hermiteParallelVertices(
 	}
 
 	if (error <= tolerance || depth >= HERMITE_MAX_DEPTH) {
-		return [{command: 'C', args: hull.args, point}]
+		const attrs = attrsAt?.(to)
+		return [{command: 'C', args: hull.args, point, ...(attrs ? {attrs} : {})}]
 	}
 
 	const mid = (from + to) / 2
 	return [
-		...hermiteParallelVertices(seg, s, from, mid, tolerance, depth + 1),
-		...hermiteParallelVertices(seg, s, mid, to, tolerance, depth + 1),
+		...hermiteParallelVertices(
+			seg,
+			s,
+			from,
+			mid,
+			tolerance,
+			attrsAt,
+			depth + 1
+		),
+		...hermiteParallelVertices(seg, s, mid, to, tolerance, attrsAt, depth + 1),
 	]
 }
 

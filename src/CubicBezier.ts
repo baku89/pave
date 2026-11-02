@@ -7,6 +7,7 @@ import {
 	buildArcLengthTable,
 	gaussLegendre,
 	invertArcLength,
+	solveCubic,
 	solveQuadratic,
 } from './numeric'
 import {parallelStart, rawParallelVertices} from './parallelCurve'
@@ -615,12 +616,39 @@ const speedFn = /* @__PURE__ */ memoize(
  */
 const arcLengthTable = /* @__PURE__ */ memoize((hull: BareSegmentC) => {
 	const speed = speedFn(hull)
+	const dips = speedExtremaTimes(hull)
+
 	return buildArcLengthTable(
 		speed,
-		(t0, t1) => (t0 === t1 ? 0 : gaussLegendre(speed, t0, t1)),
+		(t0, t1) => {
+			if (t0 === t1) return 0
+			const lo = Math.min(t0, t1)
+			const hi = Math.max(t0, t1)
+			// The speed has a kink at a cusp and a sharp dip near one, which quadrature only
+			// handles well at the ends of an interval
+			const stops = [lo, ...dips.filter(t => t > lo && t < hi), hi]
+			let sum = 0
+			for (let i = 0; i + 1 < stops.length; i++) {
+				sum += gaussLegendre(speed, stops[i], stops[i + 1])
+			}
+			return t1 > t0 ? sum : -sum
+		},
 		1
 	)
 })
+
+/** The times where the speed stops changing: `B′ · B″ = 0`, a cubic in `t`. */
+function speedExtremaTimes(hull: BareSegmentC): number[] {
+	const [a, b, c] = powerCoefficients(hull)
+	return solveCubic(
+		18 * vec2.dot(a, a),
+		18 * vec2.dot(a, b),
+		4 * vec2.dot(b, b) + 6 * vec2.dot(a, c),
+		2 * vec2.dot(b, c),
+		0,
+		1
+	)
+}
 
 /**
  * Parameter t ∈ [0, 1] whose arc length from the curve start equals `s` (clamped to `total`,

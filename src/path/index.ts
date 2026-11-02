@@ -53,6 +53,9 @@ export {
 	split,
 	distort,
 	chamfer,
+	cutCorners,
+	cornerCubic,
+	cornerShape,
 	fillet,
 } from './modifiers'
 export {offset, offsetStroke} from './offset'
@@ -90,7 +93,15 @@ export {fromSVGString, fromD, toSVGString, toD, fromSVG} from './svg'
 export type {WaveOptions, RadialDistortOptions} from './distortions'
 export type {PathCloseOptions, ReduceOptions} from './drawAppend'
 export type {MirrorAxis} from './mirror'
-export type {DistortOptions, ReverseOptions, SpawnOptions} from './modifiers'
+export type {
+	Corner,
+	CornerCubicOptions,
+	CornerOptions,
+	CornerShapeOptions,
+	DistortOptions,
+	ReverseOptions,
+	SpawnOptions,
+} from './modifiers'
 export type {OffsetOptions, OffsetStrokeOptions} from './offset'
 export type {
 	ArcOptions,

@@ -147,7 +147,7 @@ export function fitCubicsToCurve(
 	t1: number,
 	tolerance: number,
 	depth = 0
-): BareSegmentC[] {
+): (BareSegmentC & {endTime: number})[] {
 	const fit = fitOneCubic(curve, t0, t1)
 
 	if (
@@ -155,7 +155,7 @@ export function fitCubicsToCurve(
 		depth >= FIT_MAX_DEPTH ||
 		Math.abs(t1 - t0) < 1e-10
 	) {
-		return [fit.hull]
+		return [{...fit.hull, endTime: t1}]
 	}
 
 	// Keep splits away from the ends so pieces stay well conditioned

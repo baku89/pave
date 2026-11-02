@@ -14,7 +14,13 @@
  */
 import {scalar, vec2} from 'linearly'
 
-import {completeVertexAttrs, interpolateValue, withCurves} from '../attributes'
+import {
+	completeVertexAttrs,
+	interpolateValue,
+	pushDownCurveAttrs,
+	segmentAttrsAt,
+	withCurves,
+} from '../attributes'
 import {Arc, CubicBezier, Curve, type Path, Segment} from '../index'
 import {
 	arcVertex,
@@ -33,10 +39,16 @@ import {
 	variableParallelBreaks,
 	variableParallelPieces,
 } from '../parallelCurve'
-import {setAttribute} from './attributes'
+import {deleteAttribute, setAttribute} from './attributes'
 import {unite} from './boolean'
 import {planarBoolean, type PlanarCurve, type PlanarOperand} from './planar'
-import type {AttributeDef, AttributeLike, Vertex} from './types'
+import type {
+	AttributeDef,
+	AttributeDefs,
+	AttributeLike,
+	Attributes,
+	Vertex,
+} from './types'
 
 /**
  * @category Options
@@ -96,13 +108,37 @@ const WIDTH_ATTRIBUTE = '__offsetStrokeWidth'
 const TAG_OFFSET = 'offset'
 const TAG_AUX = 'aux'
 
-type ResolvedOptions = Required<OffsetOptions>
+type ResolvedOptions = Required<OffsetOptions> & {attrDefs?: AttributeDefs}
 
-function resolve(options?: OffsetOptions): ResolvedOptions {
+function resolve(
+	options: OffsetOptions | undefined,
+	attrDefs: AttributeDefs | undefined
+): ResolvedOptions {
 	return {
 		lineJoin: options?.lineJoin ?? 'miter',
 		miterLimit: options?.miterLimit ?? 10,
 		tolerance: Math.max(options?.tolerance ?? 0.05, 1e-9),
+		attrDefs,
+	}
+}
+
+/** A vertex with the attributes of the place on the source curve it comes from. */
+function tagged<V extends Vertex>(vertex: V, attrs: Attributes | undefined): V {
+	return attrs ? {...vertex, attrs} : vertex
+}
+
+/** Every vertex of a sheet comes from one place on the source, like a join at a vertex. */
+function taggedSheet(
+	planar: PlanarCurve | null,
+	attrs: Attributes | undefined
+): PlanarCurve | null {
+	if (!planar || !attrs) return planar
+	return {
+		...planar,
+		curve: {
+			...planar.curve,
+			vertices: planar.curve.vertices.map(v => tagged(v, attrs)),
+		},
 	}
 }
 
@@ -119,17 +155,28 @@ function lineSheet(seg: Segment, s: number): PlanarCurve[] {
 	return [
 		sheet(
 			[
-				{command: 'L', point: seg.start},
-				{command: 'L', point: seg.point},
-				{command: 'L', point: vec2.scaleAndAdd(seg.point, n, s)},
-				{command: 'L', point: vec2.scaleAndAdd(seg.start, n, s)},
+				tagged({command: 'L', point: seg.start}, seg.startAttrs),
+				tagged({command: 'L', point: seg.point}, seg.attrs),
+				tagged(
+					{command: 'L', point: vec2.scaleAndAdd(seg.point, n, s)},
+					seg.attrs
+				),
+				tagged(
+					{command: 'L', point: vec2.scaleAndAdd(seg.start, n, s)},
+					seg.startAttrs
+				),
 			],
 			['source', TAG_AUX, TAG_OFFSET, TAG_AUX]
 		),
 	]
 }
 
-function circularArcSheets(seg: Segment, s: number): PlanarCurve[] {
+function circularArcSheets(
+	seg: Segment,
+	s: number,
+	attrDefs?: AttributeDefs
+): PlanarCurve[] {
+	const middle = segmentAttrsAt(seg, 0.5, attrDefs)
 	const {
 		center,
 		radii: [r],
@@ -139,8 +186,8 @@ function circularArcSheets(seg: Segment, s: number): PlanarCurve[] {
 	const tiny = 1e-9 * Math.max(r, Math.abs(s))
 
 	const source: Vertex[] = [
-		{command: 'L', point: seg.start},
-		segmentVertex(seg),
+		tagged({command: 'L', point: seg.start}, seg.startAttrs),
+		tagged(segmentVertex(seg), seg.attrs),
 	]
 
 	if (rp > tiny) {
@@ -148,11 +195,14 @@ function circularArcSheets(seg: Segment, s: number): PlanarCurve[] {
 			sheet(
 				[
 					...source,
-					{
-						command: 'L',
-						point: vec2.scaleAndAdd(center, vec2.direction(a1), rp),
-					},
-					arcVertex(center, rp, a1, a0),
+					tagged(
+						{
+							command: 'L',
+							point: vec2.scaleAndAdd(center, vec2.direction(a1), rp),
+						},
+						seg.attrs
+					),
+					tagged(arcVertex(center, rp, a1, a0), seg.startAttrs),
 				],
 				['source', TAG_AUX, TAG_OFFSET, TAG_AUX]
 			),
@@ -160,7 +210,7 @@ function circularArcSheets(seg: Segment, s: number): PlanarCurve[] {
 	}
 
 	const sector = sheet(
-		[...source, {command: 'L', point: center}],
+		[...source, tagged({command: 'L', point: center}, middle)],
 		['source', TAG_AUX, TAG_AUX]
 	)
 
@@ -173,12 +223,15 @@ function circularArcSheets(seg: Segment, s: number): PlanarCurve[] {
 		sector,
 		sheet(
 			[
-				{command: 'L', point: center},
-				{
-					command: 'L',
-					point: vec2.scaleAndAdd(center, vec2.direction(a0 + 180), ri),
-				},
-				arcVertex(center, ri, a0 + 180, a1 + 180),
+				tagged({command: 'L', point: center}, middle),
+				tagged(
+					{
+						command: 'L',
+						point: vec2.scaleAndAdd(center, vec2.direction(a0 + 180), ri),
+					},
+					seg.startAttrs
+				),
+				tagged(arcVertex(center, ri, a0 + 180, a1 + 180), seg.attrs),
 			],
 			[TAG_AUX, 'inverted', TAG_AUX]
 		),
@@ -192,10 +245,13 @@ function trimOrSelf(seg: Segment, t0: number, t1: number): Segment {
 function curvedSheets(
 	seg: Segment,
 	s: number,
-	userTolerance: number
+	userTolerance: number,
+	attrDefs?: AttributeDefs
 ): PlanarCurve[] {
 	const tolerance = sheetTolerance(s, userTolerance)
 	const out: PlanarCurve[] = []
+	const at = (t: number) => segmentAttrsAt(seg, t, attrDefs)
+	const atReversed = (u: number) => at(-u)
 
 	for (const piece of splitForParallel(seg, s)) {
 		const par = parallelParametric(seg, s, piece.sign)
@@ -205,14 +261,20 @@ function curvedSheets(
 			const q1 = par.point(piece.t1)
 			const parallel =
 				tolerance < userTolerance
-					? hermiteParallelVertices(seg, s, piece.t1, piece.t0, tolerance)
-					: fitVertices(reverseParametric(par), -piece.t1, -piece.t0, tolerance)
+					? hermiteParallelVertices(seg, s, piece.t1, piece.t0, tolerance, at)
+					: fitVertices(
+							reverseParametric(par),
+							-piece.t1,
+							-piece.t0,
+							tolerance,
+							atReversed
+						)
 			out.push(
 				sheet(
 					[
-						{command: 'L', point: src.start},
-						segmentVertex(src),
-						{command: 'L', point: q1},
+						tagged({command: 'L', point: src.start}, at(piece.t0)),
+						tagged(segmentVertex(src), at(piece.t1)),
+						tagged({command: 'L', point: q1}, at(piece.t1)),
 						...parallel,
 					],
 					['source', TAG_AUX, ...parallel.map(() => TAG_OFFSET), TAG_AUX]
@@ -237,26 +299,32 @@ function curvedSheets(
 			const ev = evoluteParametric(seg, evoluteDirectionSign(seg, u0, u1))
 			const e0 = ev.point(u0)
 			const e1 = ev.point(u1)
-			const evolute = fitVertices(ev, u0, u1, tolerance)
-			const evoluteBack = Segment.reverseVertexChain(e0, evolute)
+			const evolute = fitVertices(ev, u0, u1, tolerance, at)
+			const evoluteBack = Segment.reverseVertexChain(e0, evolute, at(u0))
 			const q1 = par.point(u1)
-			const inverted = fitVertices(reverseParametric(par), -u1, -u0, tolerance)
+			const inverted = fitVertices(
+				reverseParametric(par),
+				-u1,
+				-u0,
+				tolerance,
+				atReversed
+			)
 
 			out.push(
 				sheet(
 					[
-						{command: 'L', point: src.start},
-						segmentVertex(src),
-						{command: 'L', point: e1},
+						tagged({command: 'L', point: src.start}, at(u0)),
+						tagged(segmentVertex(src), at(u1)),
+						tagged({command: 'L', point: e1}, at(u1)),
 						...evoluteBack,
 					],
 					['source', TAG_AUX, ...evoluteBack.map(() => TAG_AUX), TAG_AUX]
 				),
 				sheet(
 					[
-						{command: 'L', point: e0},
+						tagged({command: 'L', point: e0}, at(u0)),
 						...evolute,
-						{command: 'L', point: q1},
+						tagged({command: 'L', point: q1}, at(u1)),
 						...inverted,
 					],
 					[
@@ -277,15 +345,16 @@ function curvedSheets(
 function segmentSheets(
 	seg: Segment,
 	s: number,
-	tolerance: number
+	tolerance: number,
+	attrDefs?: AttributeDefs
 ): PlanarCurve[] {
 	if (seg.command === 'L' || Segment.isStraight(seg)) {
 		return lineSheet(seg, s)
 	}
 	if (seg.command === 'A' && Arc.isCircular(seg)) {
-		return circularArcSheets(seg, s)
+		return circularArcSheets(seg, s, attrDefs)
 	}
-	return curvedSheets(seg, s, tolerance)
+	return curvedSheets(seg, s, tolerance, attrDefs)
 }
 
 /**
@@ -416,11 +485,11 @@ export function curveSheets(
 	const out: PlanarCurve[] = []
 
 	segs.forEach((seg, i) => {
-		out.push(...segmentSheets(seg, s, options.tolerance))
+		out.push(...segmentSheets(seg, s, options.tolerance, options.attrDefs))
 		const next =
 			i + 1 < segs.length ? segs[i + 1] : curve.closed ? segs[0] : null
 		if (next) {
-			const join = joinSheet(seg, next, s, options)
+			const join = taggedSheet(joinSheet(seg, next, s, options), seg.attrs)
 			if (join) out.push(join)
 		}
 	})
@@ -449,7 +518,7 @@ function isNegligibleOffset(path: Path, offset: number): boolean {
  *
  * Closed curves are treated as a filled region (non-zero winding): a positive `offset` dilates it and a negative one erodes it, regardless of the curves' orientation. Open curves are offset to the side of their {@link Segment.normal} (positive) or the opposite side (negative), and the parts of the raw parallel curve that fold back are trimmed away.
  *
- * Straight lines and circular arcs are offset exactly, so `A` commands are preserved; cubic Béziers and elliptic arcs are approximated by cubic Béziers within `options.tolerance`.
+ * Straight lines and circular arcs are offset exactly, so `A` commands are preserved; cubic Béziers and elliptic arcs are approximated by cubic Béziers within `options.tolerance`. Attributes follow the place on the source curve, and values on curves move down to the vertices.
  * @param path The path to offset
  * @param offset The signed offset distance
  * @param options The options
@@ -468,25 +537,29 @@ export function offset(
 	offset: number,
 	options?: OffsetOptions
 ): Path {
-	const opts = resolve(options)
+	const {attrDefs} = path
+	const opts = resolve(options, attrDefs)
 	const curves: Curve[] = []
 	const engineTolerance = Math.abs(offset) * ENGINE_TOLERANCE_RATIO
+	const complete = completeVertexAttrs(path)
 
 	if (isNegligibleOffset(path, offset)) {
 		offset = 0
 	}
 
 	// A single vertex is enough for a closed curve: a cubic can leave and return to it
-	const closedCurves = path.curves.filter(
+	const closedCurves = complete.curves.filter(
 		c => c.closed && cleanSegments(c).length > 0
 	)
-	const openCurves = path.curves.filter(
+	const openCurves = complete.curves.filter(
 		c => !c.closed && c.vertices.length >= 2
 	)
 
 	if (closedCurves.length > 0) {
 		// Normalize: no self-intersections, inside on the +normal side
-		const region = unite([{curves: closedCurves}])
+		const region = unite([
+			attrDefs ? {curves: closedCurves, attrDefs} : {curves: closedCurves},
+		])
 
 		if (offset === 0) {
 			curves.push(...region.curves)
@@ -503,6 +576,7 @@ export function offset(
 						: w => w[0] !== 0 && w.slice(1).every(x => x === 0),
 				assemble: 'closed',
 				tolerance: engineTolerance,
+				attrDefs,
 			})
 			curves.push(...result.curves)
 		}
@@ -513,12 +587,16 @@ export function offset(
 			curves.push(curve)
 			continue
 		}
-		const result = planarBoolean(asOperands(curveSheets(curve, offset, opts)), {
-			inside: anyInside,
-			assemble: 'open',
-			tag: TAG_OFFSET,
-			tolerance: engineTolerance,
-		})
+		const result = planarBoolean(
+			asOperands(curveSheets(pushDownCurveAttrs(curve), offset, opts)),
+			{
+				inside: anyInside,
+				assemble: 'open',
+				tag: TAG_OFFSET,
+				tolerance: engineTolerance,
+				attrDefs,
+			}
+		)
 		curves.push(...result.curves)
 	}
 
@@ -547,26 +625,27 @@ export function offsetStroke(
 	width: AttributeLike<number>,
 	options?: OffsetStrokeOptions
 ): Path {
-	const opts = resolve(options)
+	const opts = resolve(options, path.attrDefs)
 	const lineCap = options?.lineCap ?? 'butt'
 
 	// Reading the width as a vertex attribute lets it follow any cut of the segments
+	const readsWidth = typeof width !== 'number'
 	const widthDef =
 		typeof width === 'string' ? path.attrDefs?.[width] : undefined
-	const withWidth = setAttribute(
-		completeVertexAttrs(path),
-		WIDTH_ATTRIBUTE,
-		width
-	)
+	const complete = completeVertexAttrs(path)
+	const withWidth = readsWidth
+		? setAttribute(complete, WIDTH_ATTRIBUTE, width)
+		: complete
 	const halfWidthAt = (vertex: Vertex) => {
-		const value = vertex.attrs?.[WIDTH_ATTRIBUTE]
+		const value = readsWidth ? vertex.attrs?.[WIDTH_ATTRIBUTE] : width
 		return typeof value === 'number' ? Math.abs(value) / 2 : 0
 	}
 
 	const sheets: PlanarCurve[] = []
 	let smallest = Infinity
 
-	for (const curve of withWidth.curves) {
+	for (const source of withWidth.curves) {
+		const curve = pushDownCurveAttrs(source)
 		const segs = cleanSegments(curve)
 		if (segs.length === 0) continue
 
@@ -596,16 +675,22 @@ export function offsetStroke(
 			const endHalf = halfWidthAt(curve.vertices[curve.vertices.length - 1])
 			const startCap =
 				startHalf > 0
-					? capSheet(
-							first.start,
-							vec2.negate(unitTangentAt(first, 0)),
-							startHalf,
-							lineCap
+					? taggedSheet(
+							capSheet(
+								first.start,
+								vec2.negate(unitTangentAt(first, 0)),
+								startHalf,
+								lineCap
+							),
+							curve.vertices[0].attrs
 						)
 					: null
 			const endCap =
 				endHalf > 0
-					? capSheet(last.point, unitTangentAt(last, 1), endHalf, lineCap)
+					? taggedSheet(
+							capSheet(last.point, unitTangentAt(last, 1), endHalf, lineCap),
+							curve.vertices[curve.vertices.length - 1].attrs
+						)
 					: null
 			if (startCap) sheets.push(startCap)
 			if (endCap) sheets.push(endCap)
@@ -620,9 +705,13 @@ export function offsetStroke(
 		inside: anyInside,
 		assemble: 'closed',
 		tolerance: smallest * ENGINE_TOLERANCE_RATIO,
+		attrDefs: path.attrDefs,
 	})
 
-	return withCurves(path, curves)
+	const result = withCurves<Path>(path, curves)
+	return readsWidth
+		? deleteAttribute(result, WIDTH_ATTRIBUTE, {level: 'vertex'})
+		: result
 }
 
 /** The sheets of one side of a curve whose stroke width changes along the way. */
@@ -669,13 +758,15 @@ function variableCurveSheets(
 						unitNormalAt(seg, from),
 						s(from)
 					)
+					const atFrom = segmentAttrsAt(seg, from, options.attrDefs)
+					const atTo = segmentAttrsAt(seg, to, options.attrDefs)
 					out.push({
 						curve: {
 							vertices: [
-								{command: 'L', point: piece.start},
-								segmentVertex(piece),
-								{command: 'L', point: q1},
-								vertex,
+								tagged({command: 'L', point: piece.start}, atTo),
+								tagged(segmentVertex(piece), atFrom),
+								tagged({command: 'L', point: q1}, atFrom),
+								tagged(vertex, atTo),
 							],
 							closed: true,
 						},
@@ -688,7 +779,10 @@ function variableCurveSheets(
 			i + 1 < segs.length ? segs[i + 1] : curve.closed ? segs[0] : null
 		const distance = s(1)
 		if (next && distance !== 0) {
-			const join = joinSheet(seg, next, distance, options)
+			const join = taggedSheet(
+				joinSheet(seg, next, distance, options),
+				seg.attrs
+			)
 			if (join) out.push(join)
 		}
 	})

@@ -2,6 +2,7 @@ import {mat2d, scalar, vec2} from 'linearly'
 
 import {
 	completeVertexAttrs,
+	interpolateAttrs,
 	mergeAttrDefs,
 	omit,
 	pushDownCurveAttrs,
@@ -24,9 +25,17 @@ import {
 } from '../index'
 import * as Iter from '../Iter'
 import type {PathLocation} from '../Location'
+import {unitTangentAt} from '../parallelCurve'
 import {planarFlattenPath} from '../pathPlanar'
 import {toTime} from './location'
-import type {AttributeLike, Vertex, VertexC, VertexL} from './types'
+import {superellipseCubics} from './superellipse'
+import type {
+	AttributeLike,
+	Vertex,
+	VertexC,
+	VertexContext,
+	VertexL,
+} from './types'
 
 /**
  * @category Options
@@ -584,7 +593,7 @@ interface CornerCut {
 /**
  * How much of each adjacent segment a joint may consume, as arc length from the joint.
  * A segment shared with another corner starts out split at its midpoint; whatever the other corner
- * does not use is then released to this one (see {@link cutCorners}).
+ * does not use is then released to this one (see {@link cutJoints}).
  */
 interface CornerBudget {
 	/** Arc length available on the incoming segment, measured back from the joint */
@@ -616,7 +625,7 @@ function jointTurn(seg: Segment, next: Segment): number | null {
  * a path end or a smooth joint is available in full. Joints where `cut` returns `null` are left as
  * they are.
  */
-function cutCorners(
+function cutJoints(
 	path: Path,
 	amount: AttributeLike<number>,
 	{group}: CornerOptions,
@@ -624,7 +633,8 @@ function cutCorners(
 		seg: Segment,
 		next: Segment,
 		budget: CornerBudget,
-		amount: number
+		amount: number,
+		place: {vertex: Vertex; context: VertexContext}
 	) => CornerCut | null
 ): Path {
 	path = completeVertexAttrs(path)
@@ -637,11 +647,17 @@ function cutCorners(
 		const n = segs.length
 		if (n === 0) return curve
 
+		const placeOf = (i: number) => {
+			const index = (i + 1) % curve.vertices.length
+			return {
+				vertex: curve.vertices[index],
+				context: {index, curve, curveIndex, path},
+			}
+		}
+
 		// The amount for the joint at the end of each segment; 0 leaves the joint as it is
 		const amounts = segs.map((_seg, i) => {
-			const index = (i + 1) % curve.vertices.length
-			const vertex = curve.vertices[index]
-			const context = {index, curve, curveIndex, path}
+			const {vertex, context} = placeOf(i)
 			if (readGroup && !readGroup(vertex, context)) return 0
 			const value = readAmount(vertex, context)
 			return typeof value === 'number' && value > 0 ? value : 0
@@ -679,7 +695,7 @@ function cutCorners(
 			const budget = budgets[i]
 			const next = nextIndexOf(i)
 			return budget && next !== null
-				? cut(seg, segs[next], budget, amounts[i])
+				? cut(seg, segs[next], budget, amounts[i], placeOf(i))
 				: null
 		})
 
@@ -706,7 +722,13 @@ function cutCorners(
 					released.after > budget.after + epsilon
 				) {
 					budgets[i] = released
-					const grown = cut(segs[i], segs[next], released, amounts[i])
+					const grown = cut(
+						segs[i],
+						segs[next],
+						released,
+						amounts[i],
+						placeOf(i)
+					)
 					if (grown) {
 						cuts[i] = grown
 						changed = true
@@ -745,12 +767,22 @@ function cutCorners(
 					: segmentAttrsAt(seg, startTime, attrDefs)
 			const nextIndex = nextIndexOf(i)
 			const inserted = cuts[i]?.vertices ?? []
+			// The last inserted vertex lands on the next segment, at the end of the cut;
+			// the ones on the way change evenly unless they say otherwise
+			const cutStartAttrs = startAttrs
+			const cutEndAttrs =
+				nextIndex !== null
+					? segmentAttrsAt(segs[nextIndex], cuts[i]?.v ?? 0, attrDefs)
+					: undefined
 			for (const [k, vertex] of inserted.entries()) {
-				// The last inserted vertex lands on the next segment, at the end of the cut
 				const attrs =
-					k === inserted.length - 1 && nextIndex !== null
-						? segmentAttrsAt(segs[nextIndex], cuts[i]!.v, attrDefs)
-						: undefined
+					vertex.attrs ??
+					interpolateAttrs(
+						cutStartAttrs,
+						cutEndAttrs,
+						(k + 1) / inserted.length,
+						attrDefs
+					)
 				out.push({
 					...vertex,
 					start,
@@ -808,22 +840,270 @@ export function chamfer(
 	distance: AttributeLike<number>,
 	options: CornerOptions = {}
 ): Path {
-	return cutCorners(path, distance, options, (seg, next, budget, distance) => {
-		if (jointTurn(seg, next) === null || !(distance > 0)) return null
+	return cutCorners(path, distance, () => [], options)
+}
 
-		const before = Math.min(distance, budget.before)
-		const after = Math.min(distance, budget.after)
-		const u = timeBeforeEnd(seg, before)
-		const v = Segment.toTime(next, {offset: after})
+/**
+ * A corner being cut, passed to the function that fills the gap in {@link Path.cutCorners}.
+ * @category Types
+ */
+export interface Corner {
+	/** Where the incoming segment now ends */
+	start: vec2
+	/** The unit direction of the incoming segment at `start` */
+	startTangent: vec2
+	/** Where the outgoing segment now starts */
+	end: vec2
+	/** The unit direction of the outgoing segment at `end` */
+	endTangent: vec2
+	/** Where the tangents at `start` and `end` meet. It is the original point between straight segments, and falls back on it when the tangents do not meet ahead. */
+	apex: vec2
+	/** The original point of the corner */
+	joint: vec2
+	/** How much the path turns from `startTangent` to `endTangent`, in degrees */
+	turn: number
+	/** The vertex at the corner */
+	vertex: Vertex
+	/** Where the vertex is */
+	context: VertexContext
+}
 
-		return {
-			u,
-			v,
-			before,
-			after,
-			vertices: [{command: 'L', point: Segment.point(next, {time: v})}],
+function intersectRays(
+	p0: vec2,
+	d0: vec2,
+	p1: vec2,
+	d1: vec2
+): {point: vec2; along0: number; along1: number} | null {
+	const det = d0[0] * d1[1] - d0[1] * d1[0]
+	if (Math.abs(det) < 1e-9) return null
+	const dx = p1[0] - p0[0]
+	const dy = p1[1] - p0[1]
+	const along0 = (dx * d1[1] - dy * d1[0]) / det
+	const along1 = (dx * d0[1] - dy * d0[0]) / det
+	return {point: vec2.scaleAndAdd(p0, d0, along0), along0, along1}
+}
+
+/**
+ * Cuts each corner by the same arc length along both segments, and fills the gap with what the given function returns. Chamfers and other corner shapes can be made on it. Smooth joints are left untouched. How much a corner can cut is capped as in {@link fillet}.
+ * @param path The base path
+ * @param trim The arc length to cut from each side, which can vary per corner
+ * @param fill Returns the vertices from `corner.start` to `corner.end`. The last one is moved onto `corner.end` exactly, and a straight line is drawn when there are none.
+ * @param options The options
+ * @returns The new path
+ * @category Modifiers
+ * @example
+ * ```js:pave
+ * const p = Path.rect([20, 20], [80, 80])
+ * stroke(p, 'skyblue')
+ * const notch = Path.cutCorners(p, 12, ({start, joint, end}) => [
+ *   {command: 'L', point: vec2.lerp(vec2.lerp(start, end, 0.5), joint, -1)},
+ *   {command: 'L', point: end},
+ * ])
+ * stroke(notch, 'tomato')
+ * ```
+ */
+export function cutCorners(
+	path: Path,
+	trim: AttributeLike<number>,
+	fill: (corner: Corner) => Vertex[],
+	options: CornerOptions = {}
+): Path {
+	return cutJoints(
+		path,
+		trim,
+		options,
+		(seg, next, budget, amount, {vertex, context}) => {
+			if (jointTurn(seg, next) === null || !(amount > 0)) return null
+
+			const before = Math.min(amount, budget.before)
+			const after = Math.min(amount, budget.after)
+			const u = timeBeforeEnd(seg, before)
+			const v = Segment.toTime(next, {offset: after})
+
+			const start = Segment.point(seg, {time: u})
+			const end = Segment.point(next, {time: v})
+			const startTangent = unitTangentAt(seg, u)
+			const endTangent = unitTangentAt(next, v)
+
+			const hit = intersectRays(
+				start,
+				startTangent,
+				end,
+				vec2.negate(endTangent)
+			)
+			const ahead = hit !== null && hit.along0 > 0 && hit.along1 > 0
+
+			const vertices = fill({
+				start,
+				startTangent,
+				end,
+				endTangent,
+				apex: ahead ? hit.point : seg.point,
+				joint: seg.point,
+				turn: vec2.angle(startTangent, endTangent),
+				vertex,
+				context,
+			})
+
+			const last = vertices.at(-1)
+			return {
+				u,
+				v,
+				before,
+				after,
+				vertices: last
+					? [...vertices.slice(0, -1), {...last, point: end} as Vertex]
+					: [{command: 'L', point: end}],
+			}
 		}
-	})
+	)
+}
+
+/**
+ * @category Options
+ */
+export interface CornerCubicOptions extends CornerOptions {
+	/**
+	 * The length of the handles, relative to the distance from each cut to the point where the tangents meet. It is 0 for a chamfer, 2/3 for a parabola, 1 for a sharp tip and 2 for a cusp; beyond that the curve makes a loop. By default, it is the value closest to a circular arc, off by 0.03% of the radius at right angles and 0.3% at a turn of 135°.
+	 */
+	handle?: AttributeLike<number>
+}
+
+/**
+ * Rounds corners by a cubic Bézier. Unlike {@link fillet} it is measured by the arc length to cut, and its handle length gives a family of shapes from a chamfer to a loop.
+ * @param path The base path
+ * @param trim The arc length to cut from each side, which can vary per corner
+ * @param options The options
+ * @returns The new path
+ * @category Modifiers
+ * @example
+ * ```js:pave
+ * const p = Path.ngon([50, 50], 40, 5)
+ * stroke(p, 'skyblue')
+ * stroke(Path.cornerCubic(p, 10, {handle: 3}), 'tomato')
+ * ```
+ */
+export function cornerCubic(
+	path: Path,
+	trim: AttributeLike<number>,
+	{handle, group}: CornerCubicOptions = {}
+): Path {
+	const readHandle =
+		handle === undefined ? null : resolveAttribute(handle, path)
+
+	return cutCorners(
+		path,
+		trim,
+		({start, end, apex, turn, vertex, context}) => {
+			const given = readHandle?.(vertex, context)
+			const k =
+				typeof given === 'number' ? given : circularHandle(Math.abs(turn))
+			return [
+				{
+					command: 'C',
+					args: [vec2.lerp(start, apex, k), vec2.lerp(end, apex, k)],
+					point: end,
+				},
+			]
+		},
+		{group}
+	)
+}
+
+/** The ratio of a cubic's handle to the distance to the apex, closest to a circular arc. */
+function circularHandle(turn: number): number {
+	return (4 / 3) * (scalar.tan(turn / 4) / scalar.tan(turn / 2))
+}
+
+/**
+ * @category Options
+ */
+export interface CornerShapeOptions extends CornerOptions {
+	/**
+	 * The maximum deviation allowed when approximating a shape by cubic Béziers
+	 * @defaultValue 0.05
+	 */
+	tolerance?: number
+}
+
+/**
+ * Shapes corners by a superellipse, as `superellipse()` of `corner-shape` in CSS: the curve `x^e + y^e = 1` with `e = 2^shape`, between the cuts, by two to six cubic Béziers per corner at the default tolerance.
+ *
+ * - `0` is a chamfer (`bevel`).
+ * - `1` is an ellipse (`round`), which is a circular arc only at right angles. See {@link fillet} for an exact circle at any angle.
+ * - `2` is a squircle.
+ * - `-1` is a concave curve (`scoop`).
+ * - `Infinity` keeps the corner (`square`), and `-Infinity` cuts it inwards (`notch`).
+ * @param path The base path
+ * @param trim The arc length to cut from each side, which can vary per corner
+ * @param shape The parameter of the superellipse, which can vary per corner
+ * @param options The options
+ * @returns The new path
+ * @category Modifiers
+ * @example
+ * ```js:pave
+ * const p = Path.rect([20, 20], [80, 80])
+ * stroke(p, 'skyblue')
+ * stroke(Path.cornerShape(p, 25, 2), 'tomato')
+ * ```
+ */
+export function cornerShape(
+	path: Path,
+	trim: AttributeLike<number>,
+	shape: AttributeLike<number> = 1,
+	{group, tolerance = 0.05}: CornerShapeOptions = {}
+): Path {
+	const readShape = resolveAttribute(shape, path)
+
+	return cutCorners(
+		path,
+		trim,
+		({start, end, apex, vertex, context}) => {
+			const value = readShape(vertex, context)
+			const k = typeof value === 'number' ? value : 1
+
+			if (k === 0) return []
+
+			// The vertex of the parallelogram opposite to the apex is the center of the superellipse
+			const center = vec2.sub(vec2.add(start, end), apex)
+
+			if (k === Infinity || k === -Infinity) {
+				return [
+					{command: 'L', point: k > 0 ? apex : center},
+					{command: 'L', point: end},
+				]
+			}
+
+			const toStart = vec2.sub(start, center)
+			const toEnd = vec2.sub(end, center)
+
+			if (k === 1) {
+				const {args} = Arc.transform(
+					{start: [1, 0], point: [0, 1], args: [[1, 1], 0, false, true]},
+					[toStart[0], toStart[1], toEnd[0], toEnd[1], center[0], center[1]]
+				)
+				return [{command: 'A', args, point: end}]
+			}
+
+			// The most a distance in the unit frame stretches on the corner: the largest
+			// singular value of the map
+			const aa = vec2.dot(toStart, toStart)
+			const bb = vec2.dot(toEnd, toEnd)
+			const ab = vec2.dot(toStart, toEnd)
+			const stretch = Math.sqrt((aa + bb + Math.hypot(aa - bb, 2 * ab)) / 2)
+			const place = ([x, y]: vec2): vec2 => [
+				center[0] + toStart[0] * x + toEnd[0] * y,
+				center[1] + toStart[1] * x + toEnd[1] * y,
+			]
+
+			return superellipseCubics(k, tolerance / stretch).map(hull => ({
+				command: 'C',
+				args: [place(hull.args[0]), place(hull.args[1])],
+				point: place(hull.point),
+			}))
+		},
+		{group}
+	)
 }
 
 /**
@@ -853,7 +1133,7 @@ export function fillet(
 	radius: AttributeLike<number>,
 	options: CornerOptions = {}
 ): Path {
-	return cutCorners(path, radius, options, (seg, next, budget, radius) =>
+	return cutJoints(path, radius, options, (seg, next, budget, radius) =>
 		filletCorner(seg, next, radius, budget)
 	)
 }
