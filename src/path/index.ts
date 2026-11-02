@@ -111,6 +111,8 @@ export type {
 export type {SetAttributeOptions} from './attributes'
 export {arcify} from './arcify'
 export type {ArcifyOptions} from './arcify'
+export {dash} from './dash'
+export type {DashOptions} from './dash'
 export {
 	convexHull,
 	orientedBounds,
@@ -125,6 +127,24 @@ export type {
 	TangentHit,
 	TangentsOptions,
 } from './hull'
+export {
+	align,
+	blend,
+	blendSeries,
+	distribute,
+	fitInto,
+	repeatAlong,
+	rotate,
+	scale,
+	translate,
+} from './layout'
+export type {
+	AlignMode,
+	AlignOptions,
+	DistributeOptions,
+	FitIntoOptions,
+	RepeatAlongOptions,
+} from './layout'
 export {
 	centroid,
 	contains,
@@ -145,3 +165,39 @@ export type {
 export {raycast} from './raycast'
 export type {RaycastOptions, RayHit} from './raycast'
 export {shadow, shadowFrom} from './shadow'
+export {
+	breakApart,
+	cleanup,
+	connect,
+	normalizeWinding,
+	orient,
+	setStart,
+} from './structure'
+export type {
+	CleanupOptions,
+	ConnectOptions,
+	NormalizeWindingOptions,
+} from './structure'
+export {fit, simplify, smooth, spline} from './fitting'
+export type {
+	FitOptions,
+	SimplifyOptions,
+	SmoothOptions,
+	SplineOptions,
+} from './fitting'
+export {
+	convertVertex,
+	deleteVertex,
+	insertVertex,
+	moveVertex,
+	setHandle,
+	vertexType,
+} from './vertexEdit'
+export type {
+	ConvertVertexOptions,
+	DeleteVertexOptions,
+	MoveVertexOptions,
+	SetHandleOptions,
+	VertexAddress,
+	VertexType,
+} from './vertexEdit'
