@@ -1,10 +1,10 @@
 import {Rect} from 'geome'
 import {mat2, mat2d, scalar, vec2} from 'linearly'
 
-import {CubicBezier} from './CubicBezier'
 import {Iter} from './Iter'
 import {SegmentLocation, UnitSegmentLocation} from './Location'
 import {gaussLegendre} from './numeric'
+import {parallelStart, rawParallelVertices} from './parallelCurve'
 import {Path, VertexA, VertexC} from './Path'
 import {SegmentA} from './Segment'
 import {memoize, normalizeOffset} from './utils'
@@ -144,16 +144,34 @@ export namespace Arc {
 		}
 	})
 
+	/**
+	 * Largest radial deviation of the standard cubic approximation of a 90° circular arc, relative to its radius.
+	 * The deviation grows with the sixth power of the sweep, so it is `ARC_ERROR_90 * r * (sweep / 90)^6`.
+	 */
+	const ARC_ERROR_90 = 2.7253e-4
+
+	/**
+	 * Approximates the arc by cubic Béziers so that the deviation from the true arc stays within `tolerance`.
+	 * The sweep is split into equal steps of at most 90°, whose size is solved from the sixth-power error law of the cubic arc approximation. For elliptic arcs the larger radius is used, which is conservative.
+	 * @param arc The arc to approximate
+	 * @param tolerance The maximum deviation allowed, in the same unit as the coordinates
+	 * @returns The vertices of the approximating cubics, excluding the start point
+	 */
 	export function approximateByCubicBeziers(
 		arc: BareSegmentA,
-		angle: number
+		tolerance = 0.05
 	): VertexC[] {
-		angle = angle === 0 ? 90 : Math.abs(angle)
-
 		const {center, radii, angles, xAxisRotation, sweep} =
 			toCenterParameterization(arc)
 
 		const [startAngle, endAngle] = angles
+
+		const radius = Math.max(Math.abs(radii[0]), Math.abs(radii[1]))
+		const relativeTolerance = Math.max(tolerance, 1e-9) / radius
+		const angle = Math.min(
+			90,
+			90 * Math.pow(relativeTolerance / ARC_ERROR_90, 1 / 6)
+		)
 
 		const n = Math.ceil(Math.abs(endAngle - startAngle) / angle)
 		const dir = Math.sign(endAngle - startAngle)
@@ -393,10 +411,11 @@ export namespace Arc {
 
 	export function derivative(arc: BareSegmentA, loc: SegmentLocation): vec2 {
 		const time = toTime(arc, loc)
-		const {radii, angles, xAxisRotation, sweep} = toCenterParameterization(arc)
+		const {radii, angles, xAxisRotation} = toCenterParameterization(arc)
 
 		const angle = scalar.lerp(...angles, time)
-		const derivativeAtUnit = vec2.dir(angle + 90 * (sweep ? 1 : -1))
+		// d/dθ of dir(θ) is dir(θ + 90°); the sweep direction is carried by the sign of Δθ below.
+		const derivativeAtUnit = vec2.dir(angle + 90)
 		const xform = mat2d.trs(null, xAxisRotation, radii)
 
 		const dir = vec2.transformMat2d(derivativeAtUnit, xform)
@@ -520,37 +539,63 @@ export namespace Arc {
 		)
 	}
 
+	/**
+	 * Returns true if the arc lies on a circle (equal radii).
+	 */
+	export function isCircular(arc: BareSegmentA): boolean {
+		const [rx, ry] = arc.args[0]
+		return Math.abs(rx - ry) <= 1e-9 * Math.max(Math.abs(rx), Math.abs(ry), 1)
+	}
+
+	/**
+	 * Returns the signed curvature at the given location. Positive when the arc turns towards its {@link normal} side.
+	 */
+	export function curvature(arc: BareSegmentA, loc: SegmentLocation): number {
+		const time = toTime(arc, loc)
+		const {radii, sweep} = toCenterParameterization(arc)
+
+		if (isStraight(arc)) {
+			return 0
+		}
+
+		if (isCircular(arc)) {
+			return (sweep ? 1 : -1) / radii[0]
+		}
+
+		// Elliptic arc: κ = (P′ × P″) / ‖P′‖³ with a numeric second derivative
+		const h = 1e-4
+		const t0 = scalar.clamp(time - h, 0, 1)
+		const t1 = scalar.clamp(time + h, 0, 1)
+		const d = derivative(arc, {time})
+		const d0 = derivative(arc, {time: t0})
+		const d1 = derivative(arc, {time: t1})
+		const dd = vec2.scale(vec2.sub(d1, d0), 1 / (t1 - t0))
+		const speed = vec2.len(d)
+		if (speed < 1e-12) return 0
+		return (d[0] * dd[1] - d[1] * dd[0]) / (speed * speed * speed)
+	}
+
+	/**
+	 * Returns the raw parallel curve of the arc at the given signed distance along its {@link normal}, as an open path. Circular arcs stay circular arcs (`A`); elliptic arcs are approximated by cubic Béziers within `tolerance`.
+	 */
 	export function offset(
 		arc: BareSegmentA,
 		distance: number,
-		unarcAngle = 90
+		tolerance = 0.05
 	): Path {
-		const {
-			center,
-			radii: [rx, ry],
-			angles: [fromAngle, toAngle],
-		} = toCenterParameterization(arc)
-
-		if (!scalar.approx(rx, ry)) {
-			const vertices: VertexC[] = [
-				{point: arc.start, command: 'C', args: [vec2.zero, vec2.zero]},
-				...approximateByCubicBeziers(arc, unarcAngle),
-			]
-
-			const paths = Array.from(Iter.pairwise(vertices)).map(([v0, v1]) =>
-				CubicBezier.offset({start: v0.point, ...v1}, distance)
-			)
-			return Path.join(paths)
+		const seg: SegmentA =
+			'command' in arc ? (arc as SegmentA) : {...arc, command: 'A'}
+		return {
+			curves: [
+				{
+					vertices: [
+						{command: 'L', point: parallelStart(seg, distance)},
+						...rawParallelVertices(seg, distance, tolerance),
+					],
+					closed: false,
+				},
+			],
 		}
-
-		const sweep = fromAngle < toAngle
-
-		return Path.arc(
-			center,
-			rx + distance * (sweep ? -1 : 1),
-			fromAngle,
-			toAngle
-		)
 	}
 }
 
@@ -564,30 +609,18 @@ function normalizeAngle(angle: number) {
 }
 
 /**
- * Checks if the angle range crosses the given angle.
- * @param angle The angle to check. Always in the range of [-π, π].
- * @param angleRange The angle range to check.
+ * Checks if the angle range crosses the given angle (end points excluded).
+ * @param angle The angle to check, in degrees (any representation).
+ * @param angleRange The angle range to check; `endAngle` is relative to `startAngle` in the sweep direction and may lie outside [-180, 180].
  */
 function crossAtAngle(angle: number, [startAngle, endAngle]: AngleRange) {
-	if (startAngle === endAngle) {
+	const delta = endAngle - startAngle
+	if (delta === 0) {
 		return false
-	} else if (startAngle < endAngle) {
-		// Clockwise
-		if (startAngle < angle) {
-			return angle < endAngle
-		} else {
-			// Consider the case when the angle range crosses [-1, 0]
-			return angle < endAngle - 360
-		}
-	} else {
-		// Counterclockwise
-		if (angle < startAngle) {
-			return endAngle < angle
-		} else {
-			// Consider the case when the angle range crosses [0, 1]
-			return angle < endAngle + 360
-		}
 	}
+	// Angular distance from the start to `angle`, measured along the sweep direction
+	const d = scalar.mod(delta > 0 ? angle - startAngle : startAngle - angle, 360)
+	return d > 0 && d < Math.abs(delta)
 }
 
 function unitToTime(

@@ -43,7 +43,7 @@ export type PathC = Path<VertexC>
 export type PathA = Path<VertexA>
 
 /**
- * A path that does not contain any {@link VertexA}. It can be obtained by {@link Path.unarc}, while approximating arcs to cubic Bézier curves. In some non-affine transformations such as {@link Path.distort} and {@link Path.offset}, all arcs are internally converted to this type of path.
+ * A path that does not contain any {@link VertexA}. It can be obtained by {@link Path.unarc}, while approximating arcs to cubic Bézier curves. In some non-affine transformations such as {@link Path.distort}, all arcs are internally converted to this type of path.
  * @category Types
  */
 export type UnarcPath = Path<VertexL | VertexC>
@@ -51,6 +51,11 @@ export type UnarcPath = Path<VertexL | VertexC>
 import * as PBoolean from './path/boolean'
 import * as PCanvas from './path/canvas'
 import * as PCompound from './path/compound'
+import type {
+	RadialDistortOptions as NT_RadialDistortOptions,
+	WaveOptions as NT_WaveOptions,
+} from './path/distortions'
+import * as PDistortions from './path/distortions'
 import type {
 	PathCloseOptions as NT_PathCloseOptions,
 	ReduceOptions as NT_ReduceOptions,
@@ -60,12 +65,15 @@ import * as PLocation from './path/location'
 import * as PMetrics from './path/metrics'
 import type {
 	DistortOptions as NT_DistortOptions,
-	OffsetOptions as NT_OffsetOptions,
-	OffsetStrokeOptions as NT_OffsetStrokeOptions,
 	ReverseOptions as NT_ReverseOptions,
 	SpawnOptions as NT_SpawnOptions,
 } from './path/modifiers'
 import * as PModifiers from './path/modifiers'
+import type {
+	OffsetOptions as NT_OffsetOptions,
+	OffsetStrokeOptions as NT_OffsetStrokeOptions,
+} from './path/offset'
+import * as POffset from './path/offset'
 import * as PPaper from './path/paper'
 import type {
 	ArcOptions as NT_ArcOptions,
@@ -89,6 +97,8 @@ export namespace Path {
 	export type ArcOptions = NT_ArcOptions
 	export type CircleFromPointsOptions = NT_CircleFromPointsOptions
 	export type DistortOptions = NT_DistortOptions
+	export type WaveOptions = NT_WaveOptions
+	export type RadialDistortOptions = NT_RadialDistortOptions
 	export type FormulaOptions = NT_FormulaOptions
 	export type OffsetOptions = NT_OffsetOptions
 	export type OffsetStrokeOptions = NT_OffsetStrokeOptions
@@ -152,19 +162,24 @@ export namespace Path {
 	export const unarc = PModifiers.unarc
 	export const toCubicBezier = PModifiers.toCubicBezier
 	export const toC = PModifiers.toC
-	export const offset = PModifiers.offset
-	export const offsetStroke = PModifiers.offsetStroke
+	export const offset = POffset.offset
+	export const offsetStroke = POffset.offsetStroke
 	export const join = PModifiers.join
 	export const flatten = PModifiers.flatten
 	export const subdivide = PModifiers.subdivide
 	export const subdiv = PModifiers.subdiv
 	export const split = PModifiers.split
 	export const distort = PModifiers.distort
+	export const wave = PDistortions.wave
+	export const twirl = PDistortions.twirl
+	export const bulge = PDistortions.bulge
 	export const chamfer = PModifiers.chamfer
 	export const fillet = PModifiers.fillet
 
 	export const unite = PBoolean.unite
 	export const subtract = PBoolean.subtract
+	export const intersect = PBoolean.intersect
+	export const exclude = PBoolean.exclude
 
 	export const fromSVGString = PSvg.fromSVGString
 	export const fromD = PSvg.fromD

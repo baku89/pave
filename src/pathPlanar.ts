@@ -110,7 +110,7 @@ function distPointToSegment(p: vec2, a: vec2, b: vec2): number {
 
 /**
  * Casteljau-style flatness: max distance of the two interior control points from the chord P₀–P₃.
- * If below `flatness`, the cubic is replaced by a single line in {@link pushCubicFlat}.
+ * If below `tolerance`, the cubic is replaced by a single line in {@link pushCubicFlat}.
  */
 function cubicMaxDeviationFromChord(seg: SegmentC): number {
 	const p0 = seg.start
@@ -125,26 +125,26 @@ function cubicMaxDeviationFromChord(seg: SegmentC): number {
 const FLATTEN_MAX_DEPTH = 64
 
 /**
- * Recursively bisect a cubic at t=½ until the hull is within `flatness` of the chord,
+ * Recursively bisect a cubic at t=½ until the hull is within `tolerance` of the chord,
  * then append the end vertex. Outputs only interior breakpoints + end (caller owns start).
  */
 function pushCubicFlat(
 	seg: SegmentC,
-	flatness: number,
+	tolerance: number,
 	out: vec2[],
 	depth: number
 ): void {
 	if (
 		depth > FLATTEN_MAX_DEPTH ||
-		cubicMaxDeviationFromChord(seg) <= flatness
+		cubicMaxDeviationFromChord(seg) <= tolerance
 	) {
 		out.push(seg.point)
 		return
 	}
 	const left = CubicBezier.trim(seg, {time: 0}, {time: 0.5})
 	const right = CubicBezier.trim(seg, {time: 0.5}, {time: 1})
-	pushCubicFlat(left, flatness, out, depth + 1)
-	pushCubicFlat(right, flatness, out, depth + 1)
+	pushCubicFlat(left, tolerance, out, depth + 1)
+	pushCubicFlat(right, tolerance, out, depth + 1)
 }
 
 /** Midpoint (t=½) deviation from the chord; coarse upper bound on arc–line error for splitting. */
@@ -154,11 +154,11 @@ function arcMidChordDeviation(seg: SegmentA): number {
 }
 
 /**
- * Like {@link pushCubicFlat}: bisect arc with {@link Arc.trim} until straight or chord error ≤ `flatness`.
+ * Like {@link pushCubicFlat}: bisect arc with {@link Arc.trim} until straight or chord error ≤ `tolerance`.
  */
 function pushArcFlat(
 	seg: SegmentA,
-	flatness: number,
+	tolerance: number,
 	out: vec2[],
 	depth: number
 ): void {
@@ -166,14 +166,14 @@ function pushArcFlat(
 		out.push(seg.point)
 		return
 	}
-	if (depth > FLATTEN_MAX_DEPTH || arcMidChordDeviation(seg) <= flatness) {
+	if (depth > FLATTEN_MAX_DEPTH || arcMidChordDeviation(seg) <= tolerance) {
 		out.push(seg.point)
 		return
 	}
 	const left = Arc.trim(seg, {time: 0}, {time: 0.5})
 	const right = Arc.trim(seg, {time: 0.5}, {time: 1})
-	pushArcFlat(left, flatness, out, depth + 1)
-	pushArcFlat(right, flatness, out, depth + 1)
+	pushArcFlat(left, tolerance, out, depth + 1)
+	pushArcFlat(right, tolerance, out, depth + 1)
 }
 
 /**
@@ -181,7 +181,7 @@ function pushArcFlat(
  */
 function flattenCurve(
 	curve: Curve,
-	flatness: number
+	tolerance: number
 ): Curve & {vertices: VertexL[]} {
 	const segs = Curve.segments(curve)
 	if (segs.length === 0) {
@@ -195,13 +195,13 @@ function flattenCurve(
 			verts.push({point: seg.point, command: 'L'})
 		} else if (seg.command === 'C') {
 			const pts: vec2[] = []
-			pushCubicFlat(seg, flatness, pts, 0)
+			pushCubicFlat(seg, tolerance, pts, 0)
 			for (const p of pts) {
 				verts.push({point: p, command: 'L'})
 			}
 		} else {
 			const pts: vec2[] = []
-			pushArcFlat(seg, flatness, pts, 0)
+			pushArcFlat(seg, tolerance, pts, 0)
 			for (const p of pts) {
 				verts.push({point: p, command: 'L'})
 			}
@@ -219,9 +219,9 @@ function flattenCurve(
 	return {vertices: verts, closed: curve.closed}
 }
 
-/** Map every curve through {@link flattenCurve} with shared `flatness`. */
-export function planarFlattenPath(path: Path, flatness: number): Path {
+/** Map every curve through {@link flattenCurve} with shared `tolerance`. */
+export function planarFlattenPath(path: Path, tolerance: number): Path {
 	return {
-		curves: path.curves.map(c => flattenCurve(c, flatness)),
+		curves: path.curves.map(c => flattenCurve(c, tolerance)),
 	}
 }

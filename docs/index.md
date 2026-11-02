@@ -69,5 +69,4 @@ See the full documentation on [API](./api/).
   - [Arc](./api/namespaces/Arc): The arc (`A`) commands functions.
   - [CubicBezier](./api/namespaces/CubicBezier): The cubic Bezier (`C`) commands functions.
   - [Line](./api/namespaces/Line): The line-to (`L`) commands functions.
-- [Distort](./api/namespaces/Distort): The functions for handling distortions.
 - [Type Aliases](./api/#types)

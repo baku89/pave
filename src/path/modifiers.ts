@@ -1,7 +1,7 @@
 import {mat2d, scalar, vec2} from 'linearly'
-import {OffsetOptions as PaperOffsetOptions, PaperOffset} from 'paperjs-offset'
 
 import {Arc} from '../Arc'
+import {type BareSegmentC, CubicBezier} from '../CubicBezier'
 import {Curve} from '../Curve'
 import {Iter} from '../Iter'
 import type {PathLocation} from '../Location'
@@ -9,7 +9,6 @@ import type {Path, PathC, UnarcPath} from '../Path'
 import {planarFlattenPath} from '../pathPlanar'
 import {Segment} from '../Segment'
 import {toTime} from './location'
-import {fromPaperPath, toPaperPath} from './paper'
 import type {Vertex, VertexC, VertexL} from './types'
 
 /**
@@ -38,49 +37,12 @@ export interface ReverseOptions {
 /**
  * @category Options
  */
-export interface OffsetOptions {
-	/**
-	 * The cap style of offset path
-	 */
-	cap?: PaperOffsetOptions['cap']
-	/**
-	 * The join style of offset path
-	 * @defaultValue 'miter'
-	 */
-	lineJoin?: CanvasLineJoin
-	/**
-	 * The limit for miter style
-	 * @see https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/miterLimit
-	 * @defaultValue 10
-	 */
-	miterLimit?: number
-}
-
-/**
- * @category Options
- */
-export interface OffsetStrokeOptions extends OffsetOptions {
-	/**
-	 * The cap style of offset path (`'square'` will be supported in future)
-	 * @defaultValue 'butt'
-	 */
-	lineCap?: 'butt' | 'round'
-}
-
-/**
- * @category Options
- */
 export interface DistortOptions {
 	/**
-	 * The angle step for approximating arc commands with cubic Béziers
-	 * @default 5
+	 * The maximum deviation allowed between the distorted path and the true image of the original path, in the same unit as the coordinates. Segments are subdivided until the fitted cubics stay within it.
+	 * @default 0.05
 	 */
-	unarcAngle?: number
-	/**
-	 * The number of subdivision for each segment
-	 * @default 1 (no subdivision applied)
-	 */
-	subdivide?: number
+	tolerance?: number
 }
 
 export function spawnVertex<
@@ -327,9 +289,9 @@ export function trim(
 
 /**
  *
- * @param path
- * @param angle
- * @returns
+ * @param path The path to convert
+ * @param tolerance The maximum deviation allowed when approximating arcs by cubic Béziers
+ * @returns The new path without arc commands
  * @category Modifiers
  *
  * @example
@@ -340,10 +302,10 @@ export function trim(
  * stroke(pa, 'tomato')
  * ```
  */
-export function unarc(path: Path, angle = 90): UnarcPath {
+export function unarc(path: Path, tolerance = 0.05): UnarcPath {
 	return spawnVertex(path, (seg): (VertexL | VertexC)[] => {
 		if (seg.command === 'A') {
-			return Arc.approximateByCubicBeziers(seg, angle)
+			return Arc.approximateByCubicBeziers(seg, tolerance)
 		} else {
 			return [seg]
 		}
@@ -353,16 +315,16 @@ export function unarc(path: Path, angle = 90): UnarcPath {
 /**
  * Converts all commands in the path to cubic Bézier curve commands.
  * @param path The path to convert
- * @param unarcAngle The angle step for approximating arc commands with cubic Béziers
+ * @param tolerance The maximum deviation allowed when approximating arc commands by cubic Béziers
  * @returns The new path with only cubic Bézier curve commands
  * @category Modifiers
  */
-export function toCubicBezier(path: Path, unarcAngle = 90): PathC {
+export function toCubicBezier(path: Path, tolerance = 0.05): PathC {
 	return spawnVertex(path, (seg): VertexC[] => {
 		if (seg.command === 'C') {
 			return [{point: seg.point, command: 'C', args: seg.args}]
 		} else if (seg.command === 'A') {
-			return Arc.approximateByCubicBeziers(seg, unarcAngle)
+			return Arc.approximateByCubicBeziers(seg, tolerance)
 		} else {
 			const c1 = vec2.lerp(seg.start, seg.point, 1 / 3)
 			const c2 = vec2.lerp(seg.start, seg.point, 2 / 3)
@@ -376,68 +338,6 @@ export function toCubicBezier(path: Path, unarcAngle = 90): PathC {
  * @category Aliases
  */
 export const toC = toCubicBezier
-
-/**
- * Creates an offset path from the given path.
- * @param path The path to offset
- * @param offset The width of offset
- * @param options The options
- * @returns The newly created path
- * @category Modifiers
- * @example
- * ```js:pave
- * const p = Path.ngon([50, 50], 20, 5)
- * stroke(p, 'skyblue')
- * const po = Path.offset(p, 10, {lineJoin: 'round'})
- * stroke(po, 'tomato')
- * ```
- */
-export function offset(
-	path: Path,
-	offset: number,
-	options?: OffsetOptions
-): Path {
-	const paperPath = toPaperPath(path)
-
-	const _options: PaperOffsetOptions = {
-		cap: options?.cap,
-		join: options?.lineJoin,
-		limit: options?.miterLimit,
-	}
-
-	return fromPaperPath(PaperOffset.offset(paperPath, offset, _options))
-}
-
-/**
- * Creates an offset path from the given path.
- * @param path The path to offset
- * @param width The width of stroke
- * @param options The options
- * @returns The newly created path
- * @category Modifiers
- * @example
- * ```js:pave
- * const p = Path.ngon([50, 50], 20, 5)
- * stroke(p, 'skyblue')
- * const po = Path.offsetStroke(p, 20, {lineJoin: 'round'})
- * stroke(po, 'tomato')
- * ```
- */
-export function offsetStroke(
-	path: Path,
-	width: number,
-	options?: OffsetStrokeOptions
-) {
-	const paperPath = toPaperPath(path)
-
-	const _options: PaperOffsetOptions = {
-		join: options?.lineJoin,
-		cap: options?.lineCap,
-		limit: options?.miterLimit,
-	}
-
-	return fromPaperPath(PaperOffset.offsetStroke(paperPath, width / 2, _options))
-}
 
 /**
  * Joins the given paths into a single open paths.
@@ -457,9 +357,9 @@ export function join(paths: Path[]): Path {
 }
 
 /**
- * Flattens the curves in path to straight lines (recursive midpoint split until chord / hull deviation ≤ `flatness`).
+ * Flattens the curves in path to straight lines (recursive midpoint split until chord / hull deviation ≤ `tolerance`).
  * @param path The path to flatten
- * @param flatness The maximum distance between the path and the flattened path
+ * @param tolerance The maximum distance between the path and the flattened path, in the same unit as the coordinates
  * @returns The flattened path consists of only M, L, and Z commands
  * @category Modifiers
  * @example
@@ -471,8 +371,8 @@ export function join(paths: Path[]): Path {
  * stroke(fc, 'purple')
  * ```
  */
-export function flatten(path: Path, flatness = 0.25): Path {
-	return planarFlattenPath(path, flatness)
+export function flatten(path: Path, tolerance = 0.05): Path {
+	return planarFlattenPath(path, tolerance)
 }
 
 /**
@@ -514,49 +414,77 @@ export function split(path: Path, locs: Iterable<PathLocation>): Path[] {
 }
 
 /**
- * Distorts path by the given transformation function.  It assumes that the continuity of transformation is smooth in the spatial domain and has no singularities or cusps.
+ * Distorts path by the given point map. It assumes that the map is smooth in the spatial domain and has no singularities or cusps.
+ *
+ * Every vertex is moved to `map(point)`. Each Bézier handle `h` attached to a point `p` is re-estimated with the central difference `(map(p + h) - map(p - h)) / 2`, so the step is the handle itself and no unit-dependent epsilon is involved. Each segment is then subdivided until the fitted cubic stays within `tolerance` of the true image of the segment, so an affine map yields exactly {@link Path.transform} (with arcs approximated by cubics) without any extra vertices.
  * @param path The path to distort
- * @param transform The distort function that maps a point coordinate to a transformation matrix. The translation component is absolute, and affects points of Bézier curves. The rotation, scaling, and skewing components affect the orientation of two handles.
+ * @param map A function that returns, for any point in the plane, its image after the distortion.
  * @returns The newly created path
  * @category Modifiers
  *
  * @example
  * ```js:pave
- * let p = Path.line([10, 50], [90, 50])
+ * const p = Path.line([10, 50], [90, 50])
  * stroke(p, 'skyblue')
  *
- * const wave = (freq, width) => ([x, y]) => {
- *   const phase = x * freq
- *   return [
- *     1, scalar.cos(phase) * width * freq,
- *     0, 1,
- *     x, y + scalar.sin(phase) * width
- *   ]
- * }
- *
- * debug(Path.distort(p, wave(.2, 10), {subdivide: 10}))
+ * // Any point map works; see also Path.wave, Path.twirl and Path.bulge
+ * const wave = ([x, y]) => [x, y + 8 * scalar.sin(x * 15)]
+ * stroke(Path.distort(p, wave), 'coral')
  * ```
  */
 export function distort(
 	path: Path,
-	transform: (position: vec2) => mat2d,
-	{unarcAngle = 5, subdivide: subdivideN = 1}: DistortOptions = {}
+	map: (position: vec2) => vec2,
+	{tolerance = 0.05}: DistortOptions = {}
 ) {
-	return spawnVertex(
-		toCubicBezier(subdivide(path, subdivideN), unarcAngle),
-		(segment): Vertex[] => {
-			let [c1, c2] = segment.args
-			const startXform = transform(segment.start)
-			const endXform = transform(segment.point)
+	tolerance = Math.max(tolerance, 1e-9)
 
-			c1 = vec2.transformMat2d(vec2.sub(c1, segment.start), startXform)
-			c2 = vec2.transformMat2d(vec2.sub(c2, segment.point), endXform)
+	const mapHandle = (p: vec2, handle: vec2): vec2 => {
+		const forward = map(vec2.add(p, handle))
+		const backward = map(vec2.sub(p, handle))
+		return vec2.scale(vec2.sub(forward, backward), 0.5)
+	}
 
-			const point: vec2 = [endXform[4], endXform[5]]
+	// Each level halves the segment, so 10 levels allow up to 1024 pieces per segment
+	const maxDepth = 10
+	const checkTimes = [0.25, 0.5, 0.75]
 
-			return [{point, command: 'C', args: [c1, c2]}]
+	const fit = (seg: BareSegmentC, depth: number): VertexC[] => {
+		const {start, point} = seg
+		const [c1, c2] = seg.args
+
+		const mappedStart = map(start)
+		const mappedPoint = map(point)
+
+		const fitted: BareSegmentC = {
+			start: mappedStart,
+			point: mappedPoint,
+			args: [
+				vec2.add(mappedStart, mapHandle(start, vec2.sub(c1, start))),
+				vec2.add(mappedPoint, mapHandle(point, vec2.sub(c2, point))),
+			],
 		}
-	)
+
+		if (depth < maxDepth) {
+			const exceeds = checkTimes.some(time => {
+				const expected = map(CubicBezier.point(seg, {time}))
+				const actual = CubicBezier.point(fitted, {time})
+				return vec2.distance(expected, actual) > tolerance
+			})
+
+			if (exceeds) {
+				const [first, second] = CubicBezier.divideAtTimes(seg, [0.5])
+				return [
+					...fit({...first, start}, depth + 1),
+					...fit({...second, start: first.point}, depth + 1),
+				]
+			}
+		}
+
+		return [{command: 'C', point: mappedPoint, args: fitted.args}]
+	}
+
+	return spawnVertex(toCubicBezier(path, tolerance), seg => fit(seg, 0))
 }
 
 /**

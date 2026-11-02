@@ -1,17 +1,9 @@
 import {scalar, vec2} from 'linearly'
 
-import {
-	cubicArcLength,
-	cubicAxisAlignedBounds,
-	cubicOffsetHulls,
-	cubicPointAt,
-	cubicProject,
-	cubicTimeAtArcLength,
-	getCubicDerivativeFn,
-	trimCubicBetweenTimes,
-} from './cubicBezierGeometry'
 import {Iter} from './Iter'
 import {SegmentLocation} from './Location'
+import {gaussLegendre, solveQuadratic} from './numeric'
+import {parallelStart, rawParallelVertices} from './parallelCurve'
 import {Path, VertexC} from './Path'
 import {SegmentC} from './Segment'
 import {memoize, normalizeOffset} from './utils'
@@ -24,6 +16,8 @@ export type BareSegmentC = Omit<SegmentC, 'command'>
 
 /**
  * A collection of functions to handle a cubic Bézier segment represented as {@link BareSegmentC}.
+ *
+ * The projection strategy follows bezier-js (MIT, https://github.com/Pomax/bezierjs).
  * @category Modules
  */
 export namespace CubicBezier {
@@ -51,14 +45,21 @@ export namespace CubicBezier {
 	 * Calculates the length of the Bezier curve. Length is calculated using numerical approximation, specifically the Legendre-Gauss quadrature algorithm.
 	 */
 	export const length = memoize((bezier: BareSegmentC): number => {
-		return cubicArcLength(bezier)
+		return arcLengthBetween(bezier, 0, 1)
 	})
 
 	/**
 	 * Calculates the rect of this Bezier curve.
 	 */
 	export const bounds = memoize((bezier: BareSegmentC): [vec2, vec2] => {
-		return cubicAxisAlignedBounds(bezier)
+		const rx = extremaTimesAlongDim(bezier, 0)
+		const ry = extremaTimesAlongDim(bezier, 1)
+		const [minX, maxX] = minMaxAlongDim(bezier, 0, rx)
+		const [minY, maxY] = minMaxAlongDim(bezier, 1, ry)
+		return [
+			[minX, minY],
+			[maxX, maxY],
+		]
 	})
 
 	export function toTime(bezier: BareSegmentC, loc: SegmentLocation): number {
@@ -70,13 +71,13 @@ export namespace CubicBezier {
 			return normalizeOffset(loc.time, 1)
 		}
 
-		const len = cubicArcLength(bezier)
+		const len = length(bezier)
 		const offset = normalizeOffset(
 			'unit' in loc ? loc.unit * len : loc.offset,
 			len
 		)
 
-		return cubicTimeAtArcLength(bezier, offset)
+		return timeAtArcLength(bezier, offset, len)
 	}
 
 	/**
@@ -84,7 +85,7 @@ export namespace CubicBezier {
 	 */
 	export function point(bezier: BareSegmentC, loc: SegmentLocation): vec2 {
 		const t = toTime(bezier, loc)
-		return cubicPointAt(bezier, t)
+		return pointAt(bezier, t)
 	}
 
 	/**
@@ -92,7 +93,18 @@ export namespace CubicBezier {
 	 */
 	export function derivative(bezier: BareSegmentC, loc: SegmentLocation): vec2 {
 		const time = toTime(bezier, loc)
-		return getCubicDerivativeFn(bezier)(time)
+		return derivativeFn(bezier)(time)
+	}
+
+	/**
+	 * Calculates the second derivative `d²B/dt²` at the specified `t` value.
+	 */
+	export function secondDerivative(
+		bezier: BareSegmentC,
+		loc: SegmentLocation
+	): vec2 {
+		const time = toTime(bezier, loc)
+		return secondDerivativeFn(bezier)(time)
 	}
 
 	/**
@@ -110,14 +122,102 @@ export namespace CubicBezier {
 	}
 
 	/**
+	 * Signed curvature κ = (B′ × B″) / ‖B′‖³ at the specified location. Positive when the curve turns towards its {@link normal} side. Returns 0 where the speed vanishes.
+	 */
+	export function curvature(
+		bezier: BareSegmentC,
+		loc: SegmentLocation
+	): number {
+		const time = toTime(bezier, loc)
+		const d = derivativeFn(bezier)(time)
+		const dd = secondDerivativeFn(bezier)(time)
+		const speed = Math.hypot(d[0], d[1])
+		if (speed < 1e-12) {
+			return 0
+		}
+		return (d[0] * dd[1] - d[1] * dd[0]) / (speed * speed * speed)
+	}
+
+	/**
+	 * Sorted, unique `t` values in (0, 1) where x(t) or y(t) has an extremum. Splitting at these times yields pieces that are monotone along both axes.
+	 */
+	export function extremaTimes(bezier: BareSegmentC): number[] {
+		const ts = [
+			...extremaTimesAlongDim(bezier, 0),
+			...extremaTimesAlongDim(bezier, 1),
+		]
+			.filter(t => t > 1e-9 && t < 1 - 1e-9)
+			.sort((a, b) => a - b)
+		return ts.filter((t, i) => i === 0 || t - ts[i - 1] > 1e-9)
+	}
+
+	/**
+	 * Sorted `t` values in (0, 1) where the curvature changes sign (`B′ × B″ = 0`).
+	 */
+	export function inflectionTimes(bezier: BareSegmentC): number[] {
+		const {
+			start: [x0, y0],
+			args: [[x1, y1], [x2, y2]],
+			point: [x3, y3],
+		} = bezier
+
+		// B′(t) = A t² + B t + C
+		const A: vec2 = [
+			9 * (x1 - x2) + 3 * (x3 - x0),
+			9 * (y1 - y2) + 3 * (y3 - y0),
+		]
+		const B: vec2 = [6 * (x0 + x2) - 12 * x1, 6 * (y0 + y2) - 12 * y1]
+		const C: vec2 = [3 * (x1 - x0), 3 * (y1 - y0)]
+
+		const cross = (p: vec2, q: vec2) => p[0] * q[1] - p[1] * q[0]
+
+		// B′ × B″ = -(A×B) t² + 2 (C×A) t + (C×B)
+		return solveQuadratic(-cross(A, B), 2 * cross(C, A), cross(C, B)).filter(
+			t => t > 1e-9 && t < 1 - 1e-9
+		)
+	}
+
+	/**
 	 * Finds the on-curve point closest to the specific off-curve point
 	 */
 	export function project(
 		bezier: BareSegmentC,
 		origin: vec2
 	): {position: vec2; t?: number; distance?: number} {
-		const {position, t, distance} = cubicProject(bezier, origin)
-		return {position, t, distance}
+		const steps = 100
+		const lut: vec2[] = []
+		for (let i = 0; i <= steps; i++) {
+			lut.push(pointAt(bezier, i / steps))
+		}
+		let mdist = Number.POSITIVE_INFINITY
+		let mpos = 0
+		for (let i = 0; i < lut.length; i++) {
+			const d = vec2.distance(origin, lut[i])
+			if (d < mdist) {
+				mdist = d
+				mpos = i
+			}
+		}
+		const t1 = (mpos - 1) / steps
+		const t2 = (mpos + 1) / steps
+		const fineStep = 0.1 / steps
+		let ft = t1
+		mdist += 1
+		for (let t = t1; t < t2 + fineStep; t += fineStep) {
+			const p = pointAt(bezier, t)
+			const d = vec2.distance(origin, p)
+			if (d < mdist) {
+				mdist = d
+				ft = t
+			}
+		}
+		ft = scalar.clamp(ft, 0, 1)
+		const position = pointAt(bezier, ft)
+		return {
+			position,
+			t: ft,
+			distance: vec2.distance(origin, position),
+		}
 	}
 
 	export function trim(
@@ -141,7 +241,7 @@ export namespace CubicBezier {
 			;[startTime, endTime] = [endTime, startTime]
 		}
 
-		let [newStart, newC1, newC2, newEnd] = trimCubicBetweenTimes(
+		let [newStart, newC1, newC2, newEnd] = trimBetweenTimes(
 			bezier,
 			startTime,
 			endTime
@@ -169,7 +269,7 @@ export namespace CubicBezier {
 		const vertices: VertexC[] = []
 
 		for (const [from, to] of Iter.pairwise(times)) {
-			const [, c1, c2, point] = trimCubicBetweenTimes(segment, from, to)
+			const [, c1, c2, point] = trimBetweenTimes(segment, from, to)
 
 			vertices.push({command: 'C', args: [c1, c2], point})
 		}
@@ -226,22 +326,260 @@ export namespace CubicBezier {
 		)
 	}
 
-	export function offset(bezier: BareSegmentC, distance: number): Path {
-		const offsetHulls = cubicOffsetHulls(bezier, distance)
-
-		const pen = Path.pen()
-
-		if (offsetHulls.length === 0) {
-			throw new Error('Offsetting a bezier curve failed')
+	/**
+	 * Returns the raw parallel curve of the Bézier at the given signed distance along its {@link normal}, as an open path of cubic Béziers fitted within `tolerance`. Where the distance exceeds the radius of curvature the result folds back on itself; use {@link Path.offset} for a trimmed result.
+	 */
+	export function offset(
+		bezier: BareSegmentC,
+		distance: number,
+		tolerance = 0.05
+	): Path {
+		const seg: SegmentC =
+			'command' in bezier ? (bezier as SegmentC) : {...bezier, command: 'C'}
+		return {
+			curves: [
+				{
+					vertices: [
+						{command: 'L', point: parallelStart(seg, distance)},
+						...rawParallelVertices(seg, distance, tolerance),
+					],
+					closed: false,
+				},
+			],
 		}
-
-		const [x0, y0] = offsetHulls[0].start
-		pen.M([x0, y0])
-
-		for (const h of offsetHulls) {
-			pen.C(h.args[0], h.args[1], h.point)
-		}
-
-		return pen.get()
 	}
+}
+
+/**
+ * Evaluates the cubic Bézier at parameter `t` in [0, 1] using the Bernstein basis.
+ */
+function pointAt(hull: BareSegmentC, t: number): vec2 {
+	const {
+		start,
+		args: [c1, c2],
+		point,
+	} = hull
+	const mt = 1 - t
+	const mt2 = mt * mt
+	const t2 = t * t
+	const a = mt2 * mt
+	const b = mt2 * t * 3
+	const c = mt * t2 * 3
+	const d = t * t2
+	return [
+		a * start[0] + b * c1[0] + c * c2[0] + d * point[0],
+		a * start[1] + b * c1[1] + c * c2[1] + d * point[1],
+	]
+}
+
+/**
+ * Returns `t ↦ dB/dt` for the given hull. The derivative is a quadratic in `t`; coefficients
+ * are folded once per hull and reused (memoized) for arc length, normals, and offset.
+ */
+const derivativeFn = memoize((hull: BareSegmentC) => {
+	const {
+		start: [x0, y0],
+		args: [[x1, y1], [x2, y2]],
+		point: [x3, y3],
+	} = hull
+
+	const ax = 9 * (x1 - x2) + 3 * (x3 - x0),
+		bx = 6 * (x0 + x2) - 12 * x1,
+		cx = 3 * (x1 - x0),
+		ay = 9 * (y1 - y2) + 3 * (y3 - y0),
+		by = 6 * (y0 + y2) - 12 * y1,
+		cy = 3 * (y1 - y0)
+
+	return (time: number): vec2 => {
+		const dx = (ax * time + bx) * time + cx
+		const dy = (ay * time + by) * time + cy
+		return [dx, dy]
+	}
+})
+
+/**
+ * Returns `t ↦ d²B/dt²` for the given hull (a linear function of `t`).
+ */
+const secondDerivativeFn = memoize((hull: BareSegmentC) => {
+	const {
+		start: [x0, y0],
+		args: [[x1, y1], [x2, y2]],
+		point: [x3, y3],
+	} = hull
+
+	const ax = 9 * (x1 - x2) + 3 * (x3 - x0),
+		bx = 6 * (x0 + x2) - 12 * x1,
+		ay = 9 * (y1 - y2) + 3 * (y3 - y0),
+		by = 6 * (y0 + y2) - 12 * y1
+
+	return (time: number): vec2 => [2 * ax * time + bx, 2 * ay * time + by]
+})
+
+/**
+ * De Casteljau split at `time`: left/right control nets share the on-curve point at `time`.
+ */
+function splitAtTime(
+	hull: BareSegmentC,
+	time: number
+): [vec2, vec2, vec2, vec2, vec2] {
+	const [c1, c2] = hull.args
+	const newC1 = vec2.lerp(hull.start, c1, time)
+	const p12 = vec2.lerp(c1, c2, time)
+	const newC2 = vec2.lerp(c2, hull.point, time)
+	const inC = vec2.lerp(newC1, p12, time)
+	const outC = vec2.lerp(p12, newC2, time)
+	const mid = vec2.lerp(inC, outC, time)
+	return [newC1, inC, mid, outC, newC2]
+}
+
+/**
+ * Subcurve from `from` to `to` (both in [0, 1]) as a new cubic hull `[start, c1, c2, end]`.
+ */
+function trimBetweenTimes(
+	hull: BareSegmentC,
+	from: number,
+	to: number
+): [vec2, vec2, vec2, vec2] {
+	let newStart: vec2, midC1: vec2, midC2: vec2
+
+	if (from === 0) {
+		newStart = hull.start
+		;[midC1, midC2] = hull.args
+	} else {
+		;[, , newStart, midC1, midC2] = splitAtTime(hull, from)
+	}
+
+	let newC1: vec2, newC2: vec2, newEnd: vec2
+
+	if (to === 1) {
+		newEnd = hull.point
+		;[newC1, newC2] = [midC1, midC2]
+	} else {
+		;[newC1, newC2, newEnd] = splitAtTime(
+			{start: newStart, args: [midC1, midC2], point: hull.point},
+			scalar.invlerp(from, 1, to)
+		)
+	}
+
+	return [newStart, newC1, newC2, newEnd]
+}
+
+/**
+ * Real roots of a quadratic or linear Bernstein polynomial on (0, 1), expressed in t-space.
+ * Used to find where each coordinate of `B(t)` has zero first or second derivative → extrema
+ * for axis-aligned bounding boxes.
+ */
+function droots(p: number[]): number[] {
+	if (p.length === 3) {
+		// a(1-t)² + 2b·t(1-t) + c·t² = (a - 2b + c)t² + 2(b - a)t + a
+		const [a, b, c] = p
+		return solveQuadratic(a - 2 * b + c, 2 * (b - a), a)
+	}
+	if (p.length === 2) {
+		const [a, b] = p
+		return a !== b ? [a / (a - b)] : []
+	}
+	return []
+}
+
+/** Control values of d/dt B_x or d/dt B_y as a quadratic Bernstein poly (three coeffs). */
+function firstDerivScalarControls(hull: BareSegmentC, dim: 0 | 1): number[] {
+	const {
+		start: p0,
+		args: [p1, p2],
+		point: p3,
+	} = hull
+	return [
+		3 * (p1[dim] - p0[dim]),
+		3 * (p2[dim] - p1[dim]),
+		3 * (p3[dim] - p2[dim]),
+	]
+}
+
+/** Second derivative along one axis as a linear Bernstein poly (two coeffs). */
+function secondDerivScalarControls(hull: BareSegmentC, dim: 0 | 1): number[] {
+	const d = firstDerivScalarControls(hull, dim)
+	return [2 * (d[1] - d[0]), 2 * (d[2] - d[1])]
+}
+
+/** Critical t values in [0, 1] where B_x or B_y may attain min/max (interior extrema). */
+function extremaTimesAlongDim(hull: BareSegmentC, dim: 0 | 1): number[] {
+	let roots = droots(firstDerivScalarControls(hull, dim))
+	roots = roots.concat(droots(secondDerivScalarControls(hull, dim)))
+	return roots.filter(t => t >= 0 && t <= 1).sort((a, b) => a - b)
+}
+
+/** Min/max of one coordinate over the hull, sampling endpoints and interior critical times. */
+function minMaxAlongDim(
+	hull: BareSegmentC,
+	dim: 0 | 1,
+	roots: number[]
+): [number, number] {
+	const ts = [0, ...roots, 1].filter((v, i, a) => a.indexOf(v) === i)
+	let minV = Number.POSITIVE_INFINITY,
+		maxV = Number.NEGATIVE_INFINITY
+	for (const t of ts) {
+		const v = pointAt(hull, t)[dim]
+		minV = Math.min(minV, v)
+		maxV = Math.max(maxV, v)
+	}
+	return [minV, maxV]
+}
+
+/** Speed ‖B′(t)‖, the arc-length integrand. */
+function speedAt(hull: BareSegmentC, t: number): number {
+	const d = derivativeFn(hull)(t)
+	return Math.hypot(d[0], d[1])
+}
+
+/**
+ * Arc length ∫ ‖B′(t)‖ dt from parameter `t0` to `t1` by Gauss–Legendre quadrature.
+ * Signed: negative when `t1 < t0`.
+ */
+function arcLengthBetween(hull: BareSegmentC, t0: number, t1: number): number {
+	if (t0 === t1) return 0
+	return gaussLegendre(t => speedAt(hull, t), t0, t1)
+}
+
+/**
+ * Parameter t ∈ [0, 1] whose arc length from the curve start equals `s` (clamped to `total`,
+ * the full length). Newton–Raphson on s(t) − target, whose derivative is the speed ‖B′(t)‖;
+ * each step integrates only the increment from the previous estimate, and bisection bounds
+ * guard against a step leaving the bracket (e.g. near a cusp where the speed vanishes).
+ */
+function timeAtArcLength(hull: BareSegmentC, s: number, total: number): number {
+	if (total <= 1e-15) return 0
+
+	const target = scalar.clamp(s, 0, total)
+	if (target <= 0) return 0
+	if (target >= total) return 1
+
+	const tolerance = total * 1e-12
+
+	let lower = 0
+	let upper = 1
+	let t = target / total
+	let acc = arcLengthBetween(hull, 0, t)
+
+	for (let i = 0; i < 32 && upper - lower > 1e-15; i++) {
+		const err = acc - target
+		if (Math.abs(err) <= tolerance) break
+
+		if (err < 0) {
+			lower = t
+		} else {
+			upper = t
+		}
+
+		const speed = speedAt(hull, t)
+		let next = speed > 0 ? t - err / speed : NaN
+		if (!(next > lower && next < upper)) {
+			next = (lower + upper) * 0.5
+		}
+
+		acc += arcLengthBetween(hull, t, next)
+		t = next
+	}
+
+	return t
 }

@@ -1,6 +1,6 @@
 /**
- * {@link CubicBezier} — tests hit native cubic hull math in `cubicBezierGeometry.ts`
- * (via `CubicBezier.ts`); no bezier-js dependency. Runtime Paper.js is not used; some
+ * {@link CubicBezier} — tests hit the native cubic hull math in `CubicBezier.ts`;
+ * no bezier-js dependency. Runtime Paper.js is not used; some
  * expected lengths are golden values derived from Paper.js unit tests (MIT, see below).
  *
  * Some fixtures and expected values are adapted from third-party test suites (golden
@@ -16,7 +16,6 @@ import type {vec2} from 'linearly'
 import {describe, expect, it, test} from 'vitest'
 
 import {CubicBezier} from './CubicBezier'
-import {cubicArcLengthBetween} from './cubicBezierGeometry'
 import {SegmentC} from './Segment'
 
 /**
@@ -443,7 +442,9 @@ describe('Paper.js Curve.js length regressions', () => {
 			[0.75, 1, 10],
 		]
 		for (const [t0, t1, expected] of parts) {
-			expect(cubicArcLengthBetween(seg, t0, t1)).toBeCloseTo(expected, 10)
+			expect(
+				CubicBezier.length(CubicBezier.trim(seg, {time: t0}, {time: t1}))
+			).toBeCloseTo(expected, 10)
 		}
 	})
 
@@ -571,3 +572,40 @@ describe('CubicBezier point / tangent / normal (circle quadrant, Paper.js Curve#
  * -----------------------------------------------------------------------------
  * (End Bezier.js MIT notice — identifier: BEZIER_JS_MIT_LICENSE)
  */
+
+describe('toTime by arc length', () => {
+	const curves: [string, SegmentC][] = [
+		['gentle', CubicBezier.of([0, 0], [30, 50], [70, 50], [100, 0])],
+		['S-curve', CubicBezier.of([0, 0], [100, 0], [0, 100], [100, 100])],
+		['loop', CubicBezier.of([0, 0], [150, 100], [-50, 100], [100, 0])],
+		['straight', CubicBezier.of([0, 0], [10, 0], [90, 0], [100, 0])],
+	]
+
+	test.each(curves)('inverts the swept arc length on a %s curve', (_, seg) => {
+		const len = CubicBezier.length(seg)
+		let prev = 0
+		for (let unit = 0.02; unit < 1; unit += 0.02) {
+			const time = CubicBezier.toTime(seg, {unit})
+			expect(time).toBeGreaterThan(prev)
+			prev = time
+			const swept = CubicBezier.length(CubicBezier.trim(seg, {time: 0}, {time}))
+			expect(swept / len).toBeCloseTo(unit, 7)
+		}
+	})
+
+	test('accepts offsets, including negative ones measured from the end', () => {
+		const seg = curves[1][1]
+		const len = CubicBezier.length(seg)
+		const fromStart = CubicBezier.toTime(seg, {offset: len * 0.3})
+		const fromEnd = CubicBezier.toTime(seg, {offset: -len * 0.7})
+		expect(fromStart).toBeCloseTo(fromEnd, 10)
+	})
+
+	test('clamps to the ends', () => {
+		const seg = curves[0][1]
+		const len = CubicBezier.length(seg)
+		expect(CubicBezier.toTime(seg, {unit: 0})).toBe(0)
+		expect(CubicBezier.toTime(seg, {unit: 1})).toBe(1)
+		expect(CubicBezier.toTime(seg, {offset: len * 2})).toBe(1)
+	})
+})

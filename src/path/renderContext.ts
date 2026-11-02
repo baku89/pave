@@ -5,10 +5,6 @@ import {Arc} from '../Arc'
 import type {Path} from '../Path'
 import type {CommandArgsA} from './types'
 
-export function paperPointToVec2(point: {x: number; y: number}): vec2 {
-	return [point.x, point.y]
-}
-
 function drawArcToRenderingContext(
 	context:
 		| Path2D

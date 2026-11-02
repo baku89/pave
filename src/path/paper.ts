@@ -1,24 +1,98 @@
-import {vec2} from 'linearly'
-import paper from 'paper'
+/**
+ * Converters between pave paths and Paper.js items.
+ *
+ * pave does not depend on Paper.js at runtime: {@link toPaperPath} takes the `paper` module as an
+ * argument and {@link fromPaperPath} only reads plain properties of the item, so the types below
+ * describe just the parts of Paper.js that are touched. Install `paper` yourself when you use them.
+ */
+import type {vec2} from 'linearly'
 
 import {Arc} from '../Arc'
-import {ensurePaperScope} from '../paperScope'
 import type {Path} from '../Path'
 import {memoize} from '../utils'
-import {paperPointToVec2} from './renderContext'
 import type {Vertex} from './types'
 
 /**
- * Converts the given path to paper.Path
- * @see http://paperjs.org/reference/pathitem/
- * @param path The path to convert
- * @returns The newly created paper.Path instance
+ * The parts of a Paper.js point that the converters read and write.
  * @category Converters
  */
-export function toPaperPath(path: Path): paper.Path | paper.CompoundPath {
-	ensurePaperScope()
+export interface PaperPointLike {
+	x: number
+	y: number
+}
+
+/**
+ * The parts of a `paper.Path` that {@link toPaperPath} writes.
+ * @category Converters
+ */
+export interface PaperPathLike {
+	moveTo(point: PaperPointLike): void
+	lineTo(point: PaperPointLike): void
+	cubicCurveTo(
+		handle1: PaperPointLike,
+		handle2: PaperPointLike,
+		to: PaperPointLike
+	): void
+	closePath(): void
+}
+
+/**
+ * The parts of the `paper` module that {@link toPaperPath} needs. Pass the module itself (`import paper from 'paper'`).
+ * @category Converters
+ */
+export interface PaperNamespace {
+	Point: new (x: number, y: number) => PaperPointLike
+	Path: new (props: {insert: boolean}) => PaperPathLike
+	CompoundPath: new (props: {
+		children: PaperPathLike[]
+		insert: boolean
+	}) => unknown
+}
+
+/**
+ * The parts of a `paper.Curve` that {@link fromPaperPath} reads.
+ * @category Converters
+ */
+export interface PaperCurveLike {
+	point1: PaperPointLike
+	point2: PaperPointLike
+	handle1: PaperPointLike
+	handle2: PaperPointLike
+	isStraight(): boolean
+}
+
+/**
+ * The parts of a `paper.Path` or `paper.CompoundPath` that {@link fromPaperPath} reads.
+ * @category Converters
+ */
+export interface PaperPathItemLike {
+	className: string
+	closed?: boolean
+	curves?: readonly PaperCurveLike[]
+	children?: readonly unknown[]
+}
+
+/**
+ * Converts the given path to a `paper.Path`, or a `paper.CompoundPath` when it has several curves.
+ * The items are created with `insert: false`, so they are not added to the active project.
+ * @see http://paperjs.org/reference/pathitem/
+ * @param path The path to convert
+ * @param paper The `paper` module
+ * @returns The newly created Paper.js item
+ * @category Converters
+ *
+ * @example
+ * ```ts
+ * import paper from 'paper'
+ * const item = Path.toPaperPath(path, paper)
+ * ```
+ */
+export function toPaperPath<P extends PaperNamespace>(
+	path: Path,
+	paper: P
+): InstanceType<P['Path']> | InstanceType<P['CompoundPath']> {
 	const paperPaths = path.curves.map(({vertices, closed}) => {
-		const paperPath = new paper.Path()
+		const paperPath = new paper.Path({insert: false})
 		let prev: vec2 | undefined
 
 		const firstVertex = vertices.at(0)
@@ -44,10 +118,11 @@ export function toPaperPath(path: Path): paper.Path | paper.CompoundPath {
 					toPoint(point)
 				)
 			} else {
-				const beziers = Arc.approximateByCubicBeziers(
-					{start: prev!, point, args},
-					90
-				)
+				const beziers = Arc.approximateByCubicBeziers({
+					start: prev!,
+					point,
+					args,
+				})
 
 				for (const {point, args} of beziers) {
 					paperPath.cubicCurveTo(
@@ -68,60 +143,63 @@ export function toPaperPath(path: Path): paper.Path | paper.CompoundPath {
 		return paperPath
 	})
 
-	// Prevents the memory leak by clearing the project after the conversion
-	setTimeout(() => paper.project.clear(), 0)
-
 	return paperPaths.length > 1
-		? new paper.CompoundPath({children: paperPaths})
-		: paperPaths[0]
+		? (new paper.CompoundPath({
+				children: paperPaths,
+				insert: false,
+			}) as InstanceType<P['CompoundPath']>)
+		: (paperPaths[0] as InstanceType<P['Path']>)
 
-	function toPoint(point: vec2): paper.Point {
+	function toPoint(point: vec2): PaperPointLike {
 		return new paper.Point(point[0], point[1])
 	}
 }
 
 /**
- * Creates a path from the given paper.Path instance.
- * @param arg The paper.Path instance to convert
+ * Creates a path from the given `paper.Path` or `paper.CompoundPath`.
+ * @param item The Paper.js item to convert
  * @returns The newly created path
  * @category Converters
  */
-export const fromPaperPath = memoize((paperPath: paper.PathItem): Path => {
+export const fromPaperPath = memoize((item: PaperPathItemLike): Path => {
 	const paperPaths =
-		paperPath instanceof paper.CompoundPath
-			? (paperPath.children as paper.Path[])
-			: ([paperPath] as paper.Path[])
+		item.className === 'CompoundPath'
+			? ((item.children ?? []) as PaperPathItemLike[])
+			: [item]
 
-	const paths = paperPaths.map(({curves, closed}) => {
+	const curves = paperPaths.map(({curves = [], closed = false}) => {
 		const vertices: Vertex[] = curves.map(curve => {
 			const {point1, point2, handle1, handle2} = curve
 			if (curve.isStraight()) {
-				return {point: paperPointToVec2(point2), command: 'L'}
+				return {point: toVec2(point2), command: 'L'}
 			} else {
 				return {
-					point: paperPointToVec2(point2),
+					point: toVec2(point2),
 					command: 'C',
 					args: [
-						paperPointToVec2(point1.add(handle1)),
-						paperPointToVec2(point2.add(handle2)),
+						[point1.x + handle1.x, point1.y + handle1.y],
+						[point2.x + handle2.x, point2.y + handle2.y],
 					],
 				}
 			}
 		})
 
 		if (closed) {
-			const lastVertex = vertices.at(-1)!
-			vertices.pop()
-			vertices.unshift(lastVertex)
-		} else {
-			vertices.unshift({
-				point: paperPointToVec2(curves[0].point1),
-				command: 'L',
-			})
+			const lastVertex = vertices.at(-1)
+			if (lastVertex) {
+				vertices.pop()
+				vertices.unshift(lastVertex)
+			}
+		} else if (curves.length > 0) {
+			vertices.unshift({point: toVec2(curves[0].point1), command: 'L'})
 		}
 
 		return {vertices, closed}
 	})
 
-	return {curves: paths}
+	return {curves}
+
+	function toVec2(point: PaperPointLike): vec2 {
+		return [point.x, point.y]
+	}
 })

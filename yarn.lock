@@ -2643,10 +2643,10 @@ fsevents@~2.3.2, fsevents@~2.3.3:
   resolved "https://registry.npmjs.org/fsevents/-/fsevents-2.3.3.tgz"
   integrity sha512-5xoDfX+fL7faATnagmWPpbFtwh/R77WmMMqqHGS65C3vvB0YHrgF+B1YmZ3441tMj5n63k0212XNoJwzlhffQw==
 
-geome@^0.0.0:
-  version "0.0.0"
-  resolved "https://registry.yarnpkg.com/geome/-/geome-0.0.0.tgz#a14f00cf2615bd9579c76d747411fdefb3e025ec"
-  integrity sha512-z4zv1VlaLIc7N7wNEpo3QLASecYNWoBxnPA+pbmTCKiue1tDqzhlcZI5tXQaQ7krqn9PC9oQrtUuV3JpWfu54w==
+geome@^0.3.0:
+  version "0.3.0"
+  resolved "https://registry.yarnpkg.com/geome/-/geome-0.3.0.tgz#a2b48e18e182681e529ae158c6e79545426a4644"
+  integrity sha512-hjvSorSVA4CUCqDUlkevg7C3kLzX3QJsonhqBJUtMtLb+WXUgRkzdJ69MTOdlzcOuJJfMy4OcwasSBCtyGEV8Q==
   dependencies:
     linearly "0.32.0"
 
@@ -3502,17 +3502,10 @@ p-locate@^5.0.0:
   dependencies:
     p-limit "^3.0.2"
 
-paper@0.12.4, paper@^0.12.4:
+paper@0.12.4:
   version "0.12.4"
   resolved "https://registry.yarnpkg.com/paper/-/paper-0.12.4.tgz#c6b01fea26cb30d15a4f7abeb3465c45ad7b49ae"
   integrity sha512-KypUqX2uXJZOX2j55RcgnBzK7weau9WKVCB+3e0E1Wa9yxlV7z6BsSrrJxmLNIC0pATbjcy9pJYDutQ7rIhnpQ==
-
-paperjs-offset@^1.0.8:
-  version "1.0.8"
-  resolved "https://registry.npmjs.org/paperjs-offset/-/paperjs-offset-1.0.8.tgz"
-  integrity sha512-rUXMtHH4bTNVrCgDcu+x71qyGoPe+01yZtrPD7bowji4VfWiDWzl4EUdRxiZnG5ooPg7b07mk6jVx33hNSojaA==
-  dependencies:
-    paper "^0.12.4"
 
 parent-module@^1.0.0:
   version "1.0.1"

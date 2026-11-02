@@ -156,19 +156,56 @@ export namespace Segment {
 	}
 
 	/**
-	 * Returns a new path with the segment offset by the given distance.
+	 * Returns the signed curvature at the given location. Positive when the segment turns towards its {@link normal} side.
+	 */
+	export function curvature(seg: Segment, loc: SegmentLocation): number {
+		if (seg.command === 'L') {
+			return 0
+		} else if (seg.command === 'C') {
+			return CubicBezier.curvature(seg, loc)
+		} else {
+			return Arc.curvature(seg, loc)
+		}
+	}
+
+	/**
+	 * Returns the raw parallel curve of the segment at the given signed distance along its {@link normal}, as an open path. Lines and circular arcs are offset exactly; cubic Béziers and elliptic arcs are approximated by cubic Béziers within `tolerance`. Where the distance exceeds the radius of curvature, the parallel curve folds back on itself; use {@link Path.offset} for a trimmed result.
 	 */
 	export function offset(
 		seg: Segment,
 		distance: number,
-		unarcAngle = 90
+		tolerance = 0.05
 	): Path {
 		if (seg.command === 'L') {
 			return Line.offset(seg, distance)
 		} else if (seg.command === 'C') {
-			return CubicBezier.offset(seg, distance)
+			return CubicBezier.offset(seg, distance, tolerance)
 		} else {
-			return Arc.offset(seg, distance, unarcAngle)
+			return Arc.offset(seg, distance, tolerance)
+		}
+	}
+
+	/**
+	 * Returns the segment traversed in the opposite direction.
+	 */
+	export function reverse(seg: Segment): Segment {
+		if (seg.command === 'L') {
+			return {command: 'L', start: seg.point, point: seg.start}
+		} else if (seg.command === 'C') {
+			return {
+				command: 'C',
+				start: seg.point,
+				args: [seg.args[1], seg.args[0]],
+				point: seg.start,
+			}
+		} else {
+			const [radii, xAxisRotation, largeArc, sweep] = seg.args
+			return {
+				command: 'A',
+				start: seg.point,
+				args: [radii, xAxisRotation, largeArc, !sweep],
+				point: seg.start,
+			}
 		}
 	}
 

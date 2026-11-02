@@ -486,3 +486,36 @@ describe('toTime unit on elliptic arcs', () => {
 		expect(Arc.toTime(seg, {unit: 1})).toBe(1)
 	})
 })
+
+describe('derivative direction', () => {
+	it('follows the sweep direction for both flags', () => {
+		// Lower half circle from (3,5) to (7,5), center (5,5)
+		const ccw = Arc.of([3, 5], [2, 2], 0, false, true, [7, 5])
+		const cw = Arc.of([3, 5], [2, 2], 0, false, false, [7, 5])
+
+		// sweep=true passes through (5,3): tangent at start points to -y
+		expect(Arc.tangent(ccw, {time: 0})).toEqual([0, -1])
+		expect(Arc.point(ccw, {time: 0.5})).toEqual([5, 3])
+		// sweep=false passes through (5,7): tangent at start points to +y
+		expect(Arc.tangent(cw, {time: 0})).toEqual([0, 1])
+		expect(Arc.point(cw, {time: 0.5})).toEqual([5, 7])
+	})
+})
+
+describe('bounds with perturbed 180° arcs', () => {
+	it('keeps the half-circle on the sweep side', () => {
+		// End points carry floating-point noise, which can flip the start angle to -180°
+		const noisy = Arc.of(
+			[-10, 9.387105746808683e-14],
+			[10, 10],
+			0,
+			false,
+			false,
+			[10, 9.42499576350777e-14]
+		)
+		const [[minX, minY], [maxX, maxY]] = Arc.bounds(noisy)
+		expect([minX, maxX]).toEqual([-10, 10])
+		expect(minY).toBeCloseTo(0, 9)
+		expect(maxY).toBeCloseTo(10, 9)
+	})
+})

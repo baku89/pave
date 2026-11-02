@@ -4,14 +4,16 @@
  * at the bottom — MIT, https://github.com/paperjs/paper.js
  */
 import type {Rect} from 'geome'
+import {mat2d, vec2} from 'linearly'
 import paper from 'paper'
 import {beforeAll, describe, expect, it, test} from 'vitest'
 
-import {ensurePaperScope} from './paperScope'
+import {Curve} from './Curve'
 import {Path} from './Path'
+import {Segment} from './Segment'
 
 beforeAll(() => {
-	ensurePaperScope()
+	paper.setup(new paper.Size(1, 1))
 })
 
 function expectRectClose(
@@ -159,7 +161,7 @@ describe('Paper.js Path.js area regressions', () => {
 })
 
 describe('Paper.js Path.js flatten regressions', () => {
-	it('Path#flatten(maxDistance) — ellipse Path.circle([80,50],35) flatness 5 segment count', () => {
+	it('Path#flatten(maxDistance) — ellipse Path.circle([80,50],35) tolerance 5 segment count', () => {
 		const flat = Path.flatten(Path.circle([80, 50], 35), 5)
 		expect(flat.curves).toHaveLength(1)
 		expect(Path.segmentCount(flat)).toBe(8)
@@ -558,7 +560,7 @@ describe('toPaperPath', () => {
 				},
 			],
 		}
-		const paperPath = Path.toPaperPath(testPath) as paper.Path
+		const paperPath = Path.toPaperPath(testPath, paper) as paper.Path
 
 		expect(paperPath).toBeInstanceOf(paper.Path)
 		expect(paperPath.closed).toBe(false)
@@ -587,7 +589,7 @@ describe('toPaperPath', () => {
 				},
 			],
 		}
-		const paperPath = Path.toPaperPath(testPath) as paper.Path
+		const paperPath = Path.toPaperPath(testPath, paper) as paper.Path
 
 		expect(paperPath).toBeInstanceOf(paper.Path)
 		expect(paperPath.closed).toBe(false)
@@ -611,7 +613,7 @@ describe('toPaperPath', () => {
 				},
 			],
 		}
-		const paperPath = Path.toPaperPath(testPath)
+		const paperPath = Path.toPaperPath(testPath, paper)
 
 		expect(paperPath).toBeInstanceOf(paper.Path)
 		expect(paperPath.closed).toBe(true)
@@ -635,14 +637,14 @@ describe('toPaperPath', () => {
 				},
 			],
 		}
-		const paperPath1 = Path.toPaperPath(testPath) as paper.Path
+		const paperPath1 = Path.toPaperPath(testPath, paper) as paper.Path
 		expect(paperPath1.segments.length).toBeGreaterThan(0)
 
 		await new Promise<void>(resolve => {
 			setTimeout(resolve, 0)
 		})
 
-		const paperPath2 = Path.toPaperPath(testPath) as paper.Path
+		const paperPath2 = Path.toPaperPath(testPath, paper) as paper.Path
 		expect(paperPath2.segments.length).toBeGreaterThan(0)
 	})
 })
@@ -758,3 +760,180 @@ describe('chamfer and fillet on curves', () => {
  * -----------------------------------------------------------------------------
  * (End Paper.js MIT notice — identifier: PAPER_JS_PATH_TEST_MIT)
  */
+
+function expectPathClose(got: Path, expected: Path, digits = 10) {
+	expect(got.curves.length).toBe(expected.curves.length)
+	for (const [ci, curve] of got.curves.entries()) {
+		const expectedCurve = expected.curves[ci]
+		expect(curve.closed).toBe(expectedCurve.closed)
+		expect(curve.vertices.length).toBe(expectedCurve.vertices.length)
+		for (const [vi, v] of curve.vertices.entries()) {
+			const ev = expectedCurve.vertices[vi]
+			expect(v.command).toBe(ev.command)
+			expect(v.point[0]).toBeCloseTo(ev.point[0], digits)
+			expect(v.point[1]).toBeCloseTo(ev.point[1], digits)
+			if (v.command === 'C' && ev.command === 'C') {
+				for (const k of [0, 1] as const) {
+					expect(v.args[k][0]).toBeCloseTo(ev.args[k][0], digits)
+					expect(v.args[k][1]).toBeCloseTo(ev.args[k][1], digits)
+				}
+			}
+		}
+	}
+}
+
+describe('distort', () => {
+	const cubic = Path.cubicBezier([10, 10], [30, 80], [70, -20], [90, 50])
+
+	it('with the identity map returns the same cubic', () => {
+		expectPathClose(
+			Path.distort(cubic, p => p),
+			Path.toCubicBezier(cubic)
+		)
+	})
+
+	it('with an affine map matches Path.transform exactly', () => {
+		const m = mat2d.mul(
+			mat2d.translation([12, -7]),
+			mat2d.rotation(37),
+			mat2d.scaling([1.5, 0.6])
+		)
+
+		expectPathClose(
+			Path.distort(cubic, p => vec2.transformMat2d(p, m)),
+			Path.transform(Path.toCubicBezier(cubic), m)
+		)
+	})
+
+	it('keeps in/out handles anti-parallel at a smooth vertex with equal handle lengths', () => {
+		const smooth = Path.fromSVG([
+			'M',
+			[0, 0],
+			'C',
+			[10, 20],
+			[40, 30],
+			[50, 30],
+			'C',
+			[60, 30],
+			[90, 20],
+			[100, 0],
+		])
+
+		const wave = ([x, y]: vec2): vec2 => [
+			x,
+			y + 8 * Math.sin((x / 60) * 2 * Math.PI),
+		]
+		const warped = Path.distort(smooth, wave)
+
+		// Adaptive subdivision inserts vertices, so locate the warped smooth vertex by its position
+		const vertices = warped.curves[0].vertices
+		const i = vertices.findIndex(v => vec2.approx(v.point, wave([50, 30])))
+		const v1 = vertices[i]
+		const v2 = vertices[i + 1]
+		if (v1.command !== 'C' || v2.command !== 'C')
+			throw new Error('expected cubics')
+
+		const hIn = vec2.sub(v1.args[1], v1.point)
+		const hOut = vec2.sub(v2.args[0], v1.point)
+
+		expect(vec2.angle(hIn, vec2.neg(hOut))).toBeCloseTo(0, 10)
+	})
+
+	it('subdivides until the fitted cubics stay within tolerance', () => {
+		const tolerance = 0.01
+		const f = (x: number) => 5 * Math.sin((x / 24) * 2 * Math.PI)
+		const map = ([x, y]: vec2): vec2 => [x, y + f(x)]
+		const out = Path.distort(Path.line([0, 0], [100, 0]), map, {tolerance})
+
+		expect(out.curves[0].vertices.length).toBeGreaterThan(2)
+
+		// The source is the x-axis and the map keeps x, so the true image of a piece
+		// spanning [x0, x1] at parameter t is map([x0 + t (x1 - x0), 0]).
+		for (const seg of Curve.segments(out.curves[0])) {
+			const x0 = seg.start[0]
+			const x1 = seg.point[0]
+			for (let i = 0; i <= 20; i++) {
+				const t = i / 20
+				const expected = map([x0 + t * (x1 - x0), 0])
+				const actual = Segment.point(seg, {time: t})
+				// The fit is checked at three parameters per piece, so allow some margin in between
+				expect(vec2.distance(expected, actual)).toBeLessThanOrEqual(
+					tolerance * 2
+				)
+			}
+		}
+	})
+
+	it('uses fewer pieces when the tolerance is looser', () => {
+		const map = ([x, y]: vec2): vec2 => [x, y + 5 * Math.sin(x / 4)]
+		const line = Path.line([0, 0], [100, 0])
+		const fine = Path.distort(line, map, {tolerance: 0.001}).curves[0].vertices
+		const coarse = Path.distort(line, map, {tolerance: 0.5}).curves[0].vertices
+		expect(fine.length).toBeGreaterThan(coarse.length)
+	})
+})
+
+describe('unarc', () => {
+	it('keeps every point of a large circle within tolerance', () => {
+		const r = 1000
+		const tolerance = 0.01
+		const path = Path.unarc(Path.circle([0, 0], r), tolerance)
+
+		for (const curve of path.curves) {
+			for (const seg of Curve.segments(curve)) {
+				for (let i = 0; i <= 20; i++) {
+					const p = Segment.point(seg, {time: i / 20})
+					expect(Math.abs(vec2.length(p) - r)).toBeLessThanOrEqual(tolerance)
+				}
+			}
+		}
+	})
+
+	it('uses fewer cubics when the tolerance is looser', () => {
+		const circle = Path.circle([0, 0], 1000)
+		const fine = Path.unarc(circle, 0.001).curves[0].vertices.length
+		const coarse = Path.unarc(circle, 1).curves[0].vertices.length
+		expect(fine).toBeGreaterThan(coarse)
+		expect(coarse).toBeGreaterThanOrEqual(4)
+	})
+})
+
+describe('wave / twirl / bulge', () => {
+	it('wave moves every vertex onto the sine curve and bends a plain line', () => {
+		const out = Path.wave(Path.line([0, 0], [100, 0]), 5, 24)
+		const vertices = out.curves[0].vertices
+
+		expect(vertices.length).toBeGreaterThan(2)
+		for (const {
+			point: [x, y],
+		} of vertices) {
+			expect(y).toBeCloseTo(5 * Math.sin((x / 24) * 2 * Math.PI), 10)
+		}
+	})
+
+	it('twirl with a constant ramp is a plain rotation about the center', () => {
+		const rect = Path.rectangle([20, 20], [80, 80])
+		const out = Path.twirl(rect, [50, 50], 1000, 90, {ramp: () => 1})
+		expectPathClose(
+			out,
+			Path.transform(Path.toCubicBezier(rect), mat2d.rotation(90, [50, 50]))
+		)
+	})
+
+	it('bulge with a constant ramp is a uniform scaling about the center', () => {
+		const rect = Path.rectangle([20, 20], [80, 80])
+		const out = Path.bulge(rect, [50, 50], 1000, 0.5, {ramp: () => 1})
+		expectPathClose(
+			out,
+			Path.transform(
+				Path.toCubicBezier(rect),
+				mat2d.scaling([1.5, 1.5], [50, 50])
+			)
+		)
+	})
+
+	it('bulge with zero strength is the identity', () => {
+		const rect = Path.rectangle([20, 20], [80, 80])
+		expectPathClose(Path.bulge(rect, [50, 50], 40, 0), Path.toCubicBezier(rect))
+	})
+})
