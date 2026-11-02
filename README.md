@@ -17,9 +17,9 @@
 
 </div>
 
-Pave is an environment-agnostic toolkit specialized for manipulating SVG/Path2D curves, which includes creating primitives, calculating positions/normals/tangents, offsetting, and resampling paths. All of the API are provided in a functional programming manner, and the path data is represented as an immutable plain object.
+Pave is an environment-agnostic toolkit for manipulating SVG/Path2D paths: primitives, positions/normals/tangents, offsetting and stroking, boolean operations, curve fitting and simplification, node-tool style editing of anchors and handles, dashes, convex hulls, raycasts and shadows, and layout helpers such as align, blend and repeat-along. Every function is pure and the path data is an immutable plain object, so it works the same in the browser, in Node and in any renderer.
 
-Offsetting, stroking and boolean operations are implemented natively, and circular arcs (`A` commands) are preserved through them. [Paper.js](http://paperjs.org) by [Jürg Lehni](https://github.com/lehni) is only used by the `Path.toPaperPath` / `Path.fromPaperPath` converters.
+Offsetting, stroking and boolean operations are implemented natively, and circular arcs (`A` commands) are preserved through them.
 
 ## Development
 
