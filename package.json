@@ -9,7 +9,7 @@
 	"sideEffects": false,
 	"scripts": {
 		"dev": "concurrently npm:dev:*",
-		"dev:api": "typedoc src/index.ts --watch",
+		"dev:api": "typedoc src/index.ts --watch --options ./typedoc.json --tsconfig ./tsconfig.json",
 		"dev:doc": "vuepress dev docs",
 		"dev:test": "vitest",
 		"build": "tsc && tsc-alias -p tsconfig.json",
