@@ -125,14 +125,15 @@ export function isZero(seg: Segment) {
 
 /**
  * Returns true if the segment is a straight line. Also returns true for zero-length segments.
+ * @param tolerance When positive, the segment only has to stay within this distance of its chord
  */
-export function isStraight(seg: Segment) {
+export function isStraight(seg: Segment, tolerance = 0) {
 	if (seg.command === 'L') {
 		return true
 	} else if (seg.command === 'C') {
-		return CubicBezier.isStraight(seg)
+		return CubicBezier.isStraight(seg, tolerance)
 	} else {
-		return Arc.isStraight(seg)
+		return Arc.isStraight(seg, tolerance)
 	}
 }
 
@@ -146,6 +147,34 @@ export function curvature(seg: Segment, loc: SegmentLocation): number {
 		return CubicBezier.curvature(seg, loc)
 	} else {
 		return Arc.curvature(seg, loc)
+	}
+}
+
+/**
+ * Sorted `t` values in (0, 1) where the tangent of the segment is parallel to `direction`. Lines never report any, since their tangent is constant.
+ * @param direction The direction to compare the tangent with. Its length does not matter.
+ */
+export function tangentTimes(seg: Segment, direction: vec2): number[] {
+	if (seg.command === 'L') {
+		return []
+	} else if (seg.command === 'C') {
+		return CubicBezier.tangentTimes(seg, direction)
+	} else {
+		return Arc.tangentTimes(seg, direction)
+	}
+}
+
+/**
+ * Sorted `t` values in (0, 1) where the line from `origin` to the segment is tangent to it. Lines never report any.
+ * @param origin The point the tangents pass through
+ */
+export function tangentTimesFrom(seg: Segment, origin: vec2): number[] {
+	if (seg.command === 'L') {
+		return []
+	} else if (seg.command === 'C') {
+		return CubicBezier.tangentTimesFrom(seg, origin)
+	} else {
+		return Arc.tangentTimesFrom(seg, origin)
 	}
 }
 

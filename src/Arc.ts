@@ -493,14 +493,33 @@ export const isZero = /* @__PURE__ */ memoize((arc: BareSegmentA): boolean => {
 	return vec2.approx(start, point)
 })
 
-export function isStraight(arc: BareSegmentA): boolean {
+export function isStraight(arc: BareSegmentA, tolerance = 0): boolean {
 	if (isZero(arc)) {
 		return true
 	}
 
 	const [rx, ry] = arc.args[0]
 
-	return scalar.approx(rx, 0) || scalar.approx(ry, 0)
+	if (scalar.approx(rx, 0) || scalar.approx(ry, 0)) {
+		return true
+	}
+
+	if (tolerance <= 0) {
+		return false
+	}
+
+	// The sagitta of the arc, using the larger radius so that elliptic arcs are judged conservatively
+	const {radii, angles} = toCenterParameterization(arc)
+	const sweep = Math.abs(angles[1] - angles[0])
+
+	if (sweep >= 180) {
+		return false
+	}
+
+	const r = Math.max(radii[0], radii[1])
+	const sagitta = r * (1 - Math.cos(scalar.rad(sweep / 2)))
+
+	return sagitta <= tolerance
 }
 
 /**
@@ -536,6 +555,67 @@ export function ellipticArcLength(radii: vec2, angles: AngleRange): number {
 export function isCircular(arc: BareSegmentA): boolean {
 	const [rx, ry] = arc.args[0]
 	return Math.abs(rx - ry) <= 1e-9 * Math.max(Math.abs(rx), Math.abs(ry), 1)
+}
+
+/**
+ * Converts an angle on the ellipse to the `t` value of the arc, or `null` when the angle is not swept by the arc. The ends are excluded.
+ */
+function angleToInnerTime(angles: AngleRange, angle: number): number | null {
+	const [a0, a1] = angles
+	const sweep = a1 - a0
+	if (Math.abs(sweep) < 1e-12) return null
+
+	for (const k of [-720, -360, 0, 360, 720]) {
+		const t = (angle + k - a0) / sweep
+		if (t > 1e-9 && t < 1 - 1e-9) return t
+	}
+	return null
+}
+
+/**
+ * Sorted `t` values in (0, 1) where the tangent of the arc is parallel to `direction`.
+ * @param direction The direction to compare the tangent with. Its length does not matter.
+ */
+export function tangentTimes(arc: BareSegmentA, direction: vec2): number[] {
+	if (isStraight(arc)) return []
+
+	const {radii, angles, xAxisRotation} = toCenterParameterization(arc)
+	const [rx, ry] = radii
+
+	// In the frame of the ellipse, the tangent at θ is (-rx sin θ, ry cos θ)
+	const [dx, dy] = vec2.rotate(direction, -xAxisRotation)
+	const theta = scalar.deg(Math.atan2(-ry * dx, rx * dy))
+
+	return [theta, theta + 180]
+		.map(angle => angleToInnerTime(angles, angle))
+		.filter((t): t is number => t !== null)
+		.sort((a, b) => a - b)
+}
+
+/**
+ * Sorted `t` values in (0, 1) where the line from `origin` to the arc is tangent to it. There are none when `origin` lies inside the ellipse.
+ * @param origin The point the tangents pass through
+ */
+export function tangentTimesFrom(arc: BareSegmentA, origin: vec2): number[] {
+	if (isStraight(arc)) return []
+
+	const {center, radii, angles, xAxisRotation} = toCenterParameterization(arc)
+	const [rx, ry] = radii
+
+	// Map the ellipse to the unit circle; tangency is kept by the affine map
+	const [lx, ly] = vec2.rotate(vec2.sub(origin, center), -xAxisRotation)
+	const q: vec2 = [lx / rx, ly / ry]
+	const dist = vec2.len(q)
+
+	if (dist <= 1 + 1e-12) return []
+
+	const alpha = scalar.deg(Math.atan2(q[1], q[0]))
+	const beta = scalar.deg(Math.acos(1 / dist))
+
+	return [alpha - beta, alpha + beta]
+		.map(angle => angleToInnerTime(angles, angle))
+		.filter((t): t is number => t !== null)
+		.sort((a, b) => a - b)
 }
 
 /**

@@ -214,6 +214,77 @@ export function cuspTimes(bezier: BareSegmentC): number[] {
 }
 
 /**
+ * Sorted `t` values in (0, 1) where the tangent is parallel to `direction`. These are the points where a line along `direction` touches the curve, and where the curve is farthest along the perpendicular of `direction`.
+ * @param direction The direction to compare the tangent with. Its length does not matter.
+ */
+export function tangentTimes(bezier: BareSegmentC, direction: vec2): number[] {
+	const [a, b, c] = powerCoefficients(bezier)
+	const cross = (p: vec2, q: vec2) => p[0] * q[1] - p[1] * q[0]
+
+	// B′(t) = 3a t² + 2b t + c, and B′ × d = 0
+	return solveQuadratic(
+		3 * cross(a, direction),
+		2 * cross(b, direction),
+		cross(c, direction)
+	).filter(t => t > 1e-9 && t < 1 - 1e-9)
+}
+
+/**
+ * Sorted `t` values in (0, 1) where the line from `origin` to the curve is tangent to it. The condition `(B(t) − origin) × B′(t) = 0` is a quintic, so the roots are found by bracketing sign changes and bisecting.
+ * @param origin The point the tangents pass through
+ */
+export function tangentTimesFrom(bezier: BareSegmentC, origin: vec2): number[] {
+	const [a, b, c] = powerCoefficients(bezier)
+	const d = vec2.sub(bezier.start, origin)
+
+	const f = (t: number) => {
+		const px = ((a[0] * t + b[0]) * t + c[0]) * t + d[0]
+		const py = ((a[1] * t + b[1]) * t + c[1]) * t + d[1]
+		const vx = (3 * a[0] * t + 2 * b[0]) * t + c[0]
+		const vy = (3 * a[1] * t + 2 * b[1]) * t + c[1]
+		return px * vy - py * vx
+	}
+
+	const samples = 64
+	const roots: number[] = []
+	let prevT = 0
+	let prevF = f(0)
+
+	for (let i = 1; i <= samples; i++) {
+		const t = i / samples
+		const value = f(t)
+
+		if (prevF === 0) {
+			if (prevT > 1e-9) roots.push(prevT)
+		} else if (value !== 0 && Math.sign(value) !== Math.sign(prevF)) {
+			let lo = prevT
+			let hi = t
+			let flo = prevF
+			for (let k = 0; k < 60; k++) {
+				const mid = (lo + hi) / 2
+				const fm = f(mid)
+				if (fm === 0) {
+					lo = hi = mid
+					break
+				}
+				if (Math.sign(fm) === Math.sign(flo)) {
+					lo = mid
+					flo = fm
+				} else {
+					hi = mid
+				}
+			}
+			roots.push((lo + hi) / 2)
+		}
+
+		prevT = t
+		prevF = value
+	}
+
+	return roots.filter(t => t > 1e-9 && t < 1 - 1e-9)
+}
+
+/**
  * Finds the on-curve point closest to the specific off-curve point
  */
 export function project(
@@ -326,9 +397,13 @@ export function isZero(bezier: BareSegmentC) {
 	)
 }
 
-export function isStraight(bezier: BareSegmentC) {
+export function isStraight(bezier: BareSegmentC, tolerance = 0) {
 	if (isZero(bezier)) {
 		return true
+	}
+
+	if (tolerance > 0) {
+		return deviatesFromChordWithin(bezier, tolerance)
 	}
 
 	const {
@@ -366,6 +441,40 @@ export function isStraight(bezier: BareSegmentC) {
 		vec2.len(sc1) < spLen &&
 		vec2.len(sc2) < spLen
 	)
+}
+
+/**
+ * True when both control points lie within `tolerance` of the chord, and their projections fall on it. By the convex hull property the curve then never leaves that band, so it can be replaced by a line within `tolerance`.
+ */
+function deviatesFromChordWithin(
+	{start, point, args: [c1, c2]}: BareSegmentC,
+	tolerance: number
+): boolean {
+	const chord = vec2.sub(point, start)
+	const chordLen = vec2.len(chord)
+
+	if (chordLen <= tolerance) {
+		return (
+			vec2.dist(c1, start) <= tolerance && vec2.dist(c2, start) <= tolerance
+		)
+	}
+
+	const dir = vec2.scale(chord, 1 / chordLen)
+
+	for (const c of [c1, c2]) {
+		const rel = vec2.sub(c, start)
+		const along = vec2.dot(rel, dir)
+		const across = Math.abs(rel[0] * dir[1] - rel[1] * dir[0])
+		if (
+			across > tolerance ||
+			along < -tolerance ||
+			along > chordLen + tolerance
+		) {
+			return false
+		}
+	}
+
+	return true
 }
 
 /**
