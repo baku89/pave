@@ -510,8 +510,8 @@ export function convexHull(
 	}
 
 	const extent = Math.max(...Rect.size(boundsOf(path)), 1)
-	const near = (a: vec2, b: vec2) => vec2.distance(a, b) <= 1e-7 * extent
-	const snap = (t: number) => (t < 1e-6 ? 0 : t > 1 - 1e-6 ? 1 : t)
+	const near = (a: vec2, b: vec2) => vec2.distance(a, b) <= 1e-6 * extent
+	const snap = (t: number) => (t < 1e-5 ? 0 : t > 1 - 1e-5 ? 1 : t)
 
 	const vertices: Vertex[] = []
 	const push = (vertex: Vertex) => {
