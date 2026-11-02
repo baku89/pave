@@ -1,11 +1,13 @@
 import {Rect} from 'geome'
 import {scalar} from 'linearly'
 
+import {CubicBezier} from '../CubicBezier'
 import {Curve} from '../Curve'
 import type {Path} from '../Path'
 import {planarPathArea} from '../pathPlanar'
 import {Segment} from '../Segment'
 import {memoize} from '../utils'
+import {unite} from './boolean'
 
 /**
  * Returns all segments
@@ -48,14 +50,27 @@ export const bounds = memoize((path: Path): Rect => {
 })
 
 /**
- * Calculates an area of the given path (absolute value of the Green’s-theorem sum over closed subpaths).
+ * Calculates an area of the given path (absolute value of the Green’s-theorem sum over closed subpaths). A path containing a cubic Bézier that crosses itself is measured by what gets filled under the non-zero rule, so the overlap of a loop counts once.
  * @param arg The path to calculate
  * @returns The area of the path
  * @category Properties
  */
 export const area = memoize((path: Path) => {
-	return Math.abs(planarPathArea(path))
+	return Math.abs(planarPathArea(hasCubicLoop(path) ? unite([path]) : path))
 })
+
+/**
+ * Green's theorem counts the inside of a loop by its winding number, so a cubic crossing
+ * itself would have its overlap counted twice or subtracted, unlike what gets filled.
+ */
+function hasCubicLoop(path: Path): boolean {
+	return path.curves.some(curve =>
+		Curve.segments(curve).some(
+			seg =>
+				seg.command === 'C' && CubicBezier.selfIntersectionTimes(seg) !== null
+		)
+	)
+}
 
 /**
  * Returns the count of segments in the given path.
@@ -146,3 +161,15 @@ export function segment(
 		return seg
 	}
 }
+
+/**
+ * Cumulative curve lengths: `prefix[i]` is the length before curve `i`, the last entry the total.
+ * Built once per path so that offset lookups are a binary search instead of a scan.
+ */
+export const curveLengthPrefix = memoize((path: Path): Float64Array => {
+	const prefix = new Float64Array(path.curves.length + 1)
+	for (const [i, curve] of path.curves.entries()) {
+		prefix[i + 1] = prefix[i] + Curve.length(curve)
+	}
+	return prefix
+})

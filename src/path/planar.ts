@@ -177,34 +177,6 @@ export function windingNumber(curves: Curve[], q: vec2): number {
 	return Math.round(sum / (2 * Math.PI))
 }
 
-function selfIntersectionTimes(seg: Segment, tolerance: number): number[] {
-	if (seg.command !== 'C') return []
-	const ts = [0, ...CubicBezier.extremaTimes(seg), 1]
-	if (ts.length < 4) return []
-	const pieces = []
-	for (let i = 0; i + 1 < ts.length; i++) {
-		pieces.push({
-			t0: ts[i],
-			t1: ts[i + 1],
-			seg: Segment.trim(seg, {time: ts[i]}, {time: ts[i + 1]}),
-		})
-	}
-	const out: number[] = []
-	for (let i = 0; i < pieces.length; i++) {
-		for (let j = i + 2; j < pieces.length; j++) {
-			for (const x of intersectSegments(
-				pieces[i].seg,
-				pieces[j].seg,
-				tolerance
-			)) {
-				out.push(pieces[i].t0 + x.t1 * (pieces[i].t1 - pieces[i].t0))
-				out.push(pieces[j].t0 + x.t2 * (pieces[j].t1 - pieces[j].t0))
-			}
-		}
-	}
-	return out
-}
-
 /**
  * Runs the planar boolean over the operands and assembles the result.
  */
@@ -258,7 +230,16 @@ export function planarBoolean(
 		const si = sources[i]
 		const maxX = si.bounds[1][0] + tol
 
-		for (const t of selfIntersectionTimes(si.seg, tol)) {
+		// A cubic also has to be cut where it touches itself, and at its cusps, where it has
+		// no normal to probe along
+		const selfTimes =
+			si.seg.command === 'C'
+				? [
+						...(CubicBezier.selfIntersectionTimes(si.seg) ?? []),
+						...CubicBezier.cuspTimes(si.seg),
+					]
+				: []
+		for (const t of selfTimes) {
 			const p = Segment.point(si.seg, {time: t})
 			if (isInterior(si.seg, p)) {
 				si.splits.push({t, node: nodes.add(p)})

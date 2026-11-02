@@ -3,7 +3,7 @@ import {mat2, mat2d, scalar, vec2} from 'linearly'
 
 import {Iter} from './Iter'
 import {SegmentLocation, UnitSegmentLocation} from './Location'
-import {gaussLegendre} from './numeric'
+import {buildArcLengthTable, gaussLegendre, invertArcLength} from './numeric'
 import {parallelStart, rawParallelVertices} from './parallelCurve'
 import {Path, VertexA, VertexC} from './Path'
 import {SegmentA} from './Segment'
@@ -638,54 +638,38 @@ function unitToTime(
 		return targetUnit
 	}
 
-	// For an elliptic arc, solve s(x) = targetUnit * totalLen for x ∈ [0, span],
-	// where s(x) is the arc length swept from the start angle. Newton–Raphson
-	// converges in a few steps since ds/dx is simply the ellipse speed, and
-	// bisection bounds guard against overshooting the bracket.
+	// For an elliptic arc, invert the arc length swept from the start angle. The cumulative
+	// length table is built once per arc; each query brackets, estimates and refines.
+	const totalLen = Arc.length(arc)
+	if (totalLen === 0 || targetUnit <= 0) return 0
+	if (targetUnit >= 1) return 1
+
+	const table = ellipticArcLengthTable(arc)
+	return invertArcLength(table, targetUnit * totalLen) / table.span
+}
+
+/**
+ * Arc-length table over the centric angle x ∈ [0, span] (radians from the start angle, in the
+ * sweep direction), built once per arc.
+ */
+const ellipticArcLengthTable = memoize((arc: BareSegmentA) => {
 	const {
 		radii: [crx, cry],
 		angles: [startAngle, endAngle],
 	} = Arc.toCenterParameterization(arc)
 
-	const totalLen = Arc.length(arc)
-	if (totalLen === 0 || targetUnit <= 0) return 0
-	if (targetUnit >= 1) return 1
-
 	const t0 = scalar.rad(startAngle)
 	const t1 = scalar.rad(endAngle)
 	const span = Math.abs(t1 - t0)
 	const dir = Math.sign(t1 - t0)
-	const target = targetUnit * totalLen
-	const tolerance = totalLen * 1e-12
 
-	let lower = 0
-	let upper = span
-	let x = targetUnit * span
-	let s = dir * ellipticArcLengthRad(crx, cry, t0, t0 + dir * x)
-
-	for (let i = 0; i < 32; i++) {
-		const err = s - target
-		if (Math.abs(err) <= tolerance) break
-
-		if (err < 0) {
-			lower = x
-		} else {
-			upper = x
-		}
-
-		const speed = ellipseSpeed(crx, cry, t0 + dir * x)
-		let next = speed > 0 ? x - err / speed : NaN
-		if (!(next > lower && next < upper)) {
-			next = (lower + upper) * 0.5
-		}
-
-		// Integrate only the increment; the span is small so one piece suffices.
-		s += dir * ellipticArcLengthRad(crx, cry, t0 + dir * x, t0 + dir * next)
-		x = next
-	}
-
-	return x / span
-}
+	return buildArcLengthTable(
+		x => ellipseSpeed(crx, cry, t0 + dir * x),
+		(x0, x1) =>
+			dir * ellipticArcLengthRad(crx, cry, t0 + dir * x0, t0 + dir * x1),
+		span
+	)
+})
 
 /** Speed of the centric-angle parameterization `(rx cos t, ry sin t)`. */
 function ellipseSpeed(rx: number, ry: number, t: number): number {

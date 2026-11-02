@@ -2,10 +2,12 @@ import {mat2d, scalar, vec2} from 'linearly'
 
 import {Curve} from '../Curve'
 import type {PathLocation, TimePathLocation} from '../Location'
+import {searchInterval} from '../numeric'
 import type {Path} from '../Path'
 import {Segment} from '../Segment'
 import {normalizeIndex, normalizeOffset} from '../utils'
 import {
+	curveLengthPrefix,
 	length,
 	segment as pickSegment,
 	segmentCount,
@@ -100,21 +102,19 @@ export function toTime(
 
 			const pathLen = length(path)
 
-			let offset = normalizeOffset(
+			const offset = normalizeOffset(
 				'unit' in location ? location.unit * pathLen : location.offset,
 				pathLen
 			)
 
 			if (offset < pathLen) {
-				for (const [curveIndex, curve] of path.curves.entries()) {
-					const curveLen = Curve.length(curve)
-					if (offset < curveLen) {
-						return {
-							...Curve.toTime(curve, {offset}),
-							curveIndex,
-						}
-					}
-					offset -= curveLen
+				const prefix = curveLengthPrefix(path)
+				const curveIndex = searchInterval(prefix, offset)
+				const curve = path.curves[curveIndex]
+
+				return {
+					...Curve.toTime(curve, {offset: offset - prefix[curveIndex]}),
+					curveIndex,
 				}
 			} else {
 				const segment = segs.at(-1)

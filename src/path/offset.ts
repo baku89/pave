@@ -15,6 +15,7 @@
 import {scalar, vec2} from 'linearly'
 
 import {Arc} from '../Arc'
+import {CubicBezier} from '../CubicBezier'
 import {Curve} from '../Curve'
 import {
 	arcVertex,
@@ -384,8 +385,22 @@ function capSheet(
 	)
 }
 
+/**
+ * The non-degenerate segments of the curve. Cubics are cut at their cusps: a parallel curve
+ * has no tangent to follow there, so the turn back is handled by a join like any corner.
+ */
 function cleanSegments(curve: Curve): Segment[] {
-	return Curve.segments(curve).filter(seg => !Segment.isZero(seg))
+	return Curve.segments(curve)
+		.filter(seg => !Segment.isZero(seg))
+		.flatMap(seg => {
+			const cusps = seg.command === 'C' ? CubicBezier.cuspTimes(seg) : []
+			const stops = [0, ...cusps, 1]
+			return cusps.length === 0
+				? [seg]
+				: stops
+						.slice(1)
+						.map((to, i) => Segment.trim(seg, {time: stops[i]}, {time: to}))
+		})
 }
 
 /** All sheets (segments + joins) for one curve on the `s` side. */
@@ -458,8 +473,9 @@ export function offset(
 		offset = 0
 	}
 
+	// A single vertex is enough for a closed curve: a cubic can leave and return to it
 	const closedCurves = path.curves.filter(
-		c => c.closed && c.vertices.length >= 2
+		c => c.closed && cleanSegments(c).length > 0
 	)
 	const openCurves = path.curves.filter(
 		c => !c.closed && c.vertices.length >= 2
@@ -539,7 +555,6 @@ export function offsetStroke(
 	const sheets: PlanarCurve[] = []
 
 	for (const curve of path.curves) {
-		if (curve.vertices.length < 2) continue
 		const segs = cleanSegments(curve)
 		if (segs.length === 0) continue
 

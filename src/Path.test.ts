@@ -8,6 +8,7 @@ import {mat2d, vec2} from 'linearly'
 import paper from 'paper'
 import {beforeAll, describe, expect, it, test} from 'vitest'
 
+import {CubicBezier} from './CubicBezier'
 import {Curve} from './Curve'
 import {Path} from './Path'
 import {Segment} from './Segment'
@@ -697,37 +698,273 @@ describe('fromPaperPath', () => {
 	})
 })
 
-describe('chamfer and fillet on curves', () => {
-	const cubicLineCorner: Path = {
-		curves: [
-			{
-				closed: false,
-				vertices: [
-					{point: [0, 0], command: 'L'},
-					{
-						point: [50, 40],
-						command: 'C',
-						args: [
-							[20, 0],
-							[40, 20],
-						],
-					},
-					{point: [80, 40], command: 'L'},
-				],
-			},
-		],
+describe('chamfer and fillet', () => {
+	const cubicCubicCorner = Path.fromSVG([
+		'M',
+		[0, 0],
+		'C',
+		[20, -10],
+		[40, 5],
+		[50, 0],
+		'C',
+		[55, 20],
+		[45, 40],
+		[50, 60],
+	])
+
+	/** Asserts `sub` is exactly `orig` trimmed from its start to some time `u` (de Casteljau relations). */
+	function expectTrimmedFromStart(sub: Segment, orig: Segment) {
+		if (sub.command !== 'C' || orig.command !== 'C')
+			throw new Error('expected cubics')
+		const [p0, p1] = [orig.start, orig.args[0]]
+		const u = (sub.args[0][0] - p0[0]) / (p1[0] - p0[0])
+		const expected = CubicBezier.trim(orig, {time: 0}, {time: u})
+		expect(sub.start).toEqual(p0)
+		for (const [got, want] of [
+			[sub.args[0], expected.args[0]],
+			[sub.args[1], expected.args[1]],
+			[sub.point, expected.point],
+		]) {
+			expect(got[0]).toBeCloseTo(want[0], 9)
+			expect(got[1]).toBeCloseTo(want[1], 9)
+		}
 	}
 
-	it('chamfers cubic-to-line joint using arc-length trim', () => {
-		const out = Path.chamfer(cubicLineCorner, 4)
-		expect(out.curves[0].vertices.length).toBeGreaterThan(
-			cubicLineCorner.curves[0].vertices.length
+	/** Asserts `sub` is exactly `orig` trimmed from some time `v` to its end. */
+	function expectTrimmedToEnd(sub: Segment, orig: Segment) {
+		if (sub.command !== 'C' || orig.command !== 'C')
+			throw new Error('expected cubics')
+		const [p2, p3] = [orig.args[1], orig.point]
+		const v = (sub.args[1][0] - p2[0]) / (p3[0] - p2[0])
+		const expected = CubicBezier.trim(orig, {time: v}, {time: 1})
+		expect(sub.point).toEqual(p3)
+		for (const [got, want] of [
+			[sub.start, expected.start],
+			[sub.args[0], expected.args[0]],
+			[sub.args[1], expected.args[1]],
+		]) {
+			expect(got[0]).toBeCloseTo(want[0], 9)
+			expect(got[1]).toBeCloseTo(want[1], 9)
+		}
+	}
+
+	/** Angle in degrees between the end tangent of `a` and the start tangent of `b`. */
+	function joint(a: Segment, b: Segment) {
+		return Math.abs(vec2.angle(Segment.tangent(a, 1), Segment.tangent(b, 0)))
+	}
+
+	it('fillets a square corner with an exact arc of the given radius', () => {
+		const out = Path.fillet(
+			Path.fromSVG(['M', [0, 0], 'L', [50, 0], 'L', [50, 50]]),
+			10
 		)
+		expect(out.curves[0].vertices.map(v => v.command)).toEqual([
+			'L',
+			'L',
+			'A',
+			'L',
+		])
+		const arc = out.curves[0].vertices[2]
+		if (arc.command !== 'A') throw new Error('expected an arc')
+		expect(out.curves[0].vertices[1].point).toEqual([40, 0])
+		expect(arc.point).toEqual([50, 10])
+		expect(arc.args[0]).toEqual([10, 10])
+		expect(Segment.point(Path.segments(out)[1], 0.5)).toEqual([
+			expect.closeTo(40 + 10 * Math.SQRT1_2, 10),
+			expect.closeTo(10 - 10 * Math.SQRT1_2, 10),
+		])
 	})
 
-	it('fillets cubic-to-line joint with a cubic corner', () => {
-		const out = Path.fillet(cubicLineCorner, 6)
-		expect(out.curves[0].vertices.some(v => v.command === 'C')).toBe(true)
+	it('fillets a corner between two cubics tangentially on both sides', () => {
+		const r = 8
+		const [origA, origB] = Path.segments(cubicCubicCorner)
+		const [a, arc, b] = Path.segments(Path.fillet(cubicCubicCorner, r))
+
+		expect(arc.command).toBe('A')
+		expect(joint(a, arc)).toBeLessThan(1e-6)
+		expect(joint(arc, b)).toBeLessThan(1e-6)
+		expect(Math.abs(Segment.curvature(arc, 0.5))).toBeCloseTo(1 / r, 10)
+
+		// The trimmed segments are exact sub-curves of the originals
+		expectTrimmedFromStart(a, origA)
+		expectTrimmedToEnd(b, origB)
+	})
+
+	it('shrinks the radius when it does not fit the segments', () => {
+		// Both segments are 5 long with free far ends, so the corner may consume them whole:
+		// the largest fitting radius is 5 and nothing straight is left.
+		const tiny = Path.fromSVG(['M', [0, 0], 'L', [5, 0], 'L', [5, 5]])
+		const segs = Path.segments(Path.fillet(tiny, 100))
+		expect(segs.map(s => s.command)).toEqual(['A'])
+		const [arc] = segs
+		if (arc.command !== 'A') throw new Error('expected an arc')
+		expect(arc.args[0][0]).toBeCloseTo(5, 9)
+		expect(arc.start).toEqual([expect.closeTo(0, 9), expect.closeTo(0, 9)])
+		expect(arc.point).toEqual([expect.closeTo(5, 9), expect.closeTo(5, 9)])
+		expect(Segment.point(arc, 0.5)).toEqual([
+			expect.closeTo(5 * Math.SQRT1_2, 9),
+			expect.closeTo(5 - 5 * Math.SQRT1_2, 9),
+		])
+	})
+
+	it('shares a short segment between two corners at its midpoint (open path)', () => {
+		const zigzag = Path.fromSVG([
+			'M',
+			[0, 0],
+			'L',
+			[50, 0],
+			'L',
+			[50, 6],
+			'L',
+			[100, 6],
+		])
+		const out = Path.fillet(zigzag, 10)
+		const segs = Path.segments(out)
+		// line, arc, arc, line: the 6-long middle segment is consumed entirely, 3 per corner
+		expect(segs.map(s => s.command)).toEqual(['L', 'A', 'A', 'L'])
+		for (const arc of segs.filter(s => s.command === 'A')) {
+			if (arc.command !== 'A') throw new Error()
+			expect(arc.args[0][0]).toBeCloseTo(3, 6)
+		}
+		expect(joint(segs[0], segs[1])).toBeLessThan(1e-6)
+		expect(joint(segs[1], segs[2])).toBeLessThan(1e-6)
+		expect(joint(segs[2], segs[3])).toBeLessThan(1e-6)
+		expect(segs[1].point).toEqual([expect.closeTo(50, 9), expect.closeTo(3, 9)])
+	})
+
+	it('lets a corner use a whole segment when its other end is a path end', () => {
+		const out = Path.fillet(
+			Path.fromSVG(['M', [0, 0], 'L', [10, 0], 'L', [10, 100]]),
+			20
+		)
+		const segs = Path.segments(out)
+		expect(segs.map(s => s.command)).toEqual(['A', 'L'])
+		if (segs[0].command !== 'A') throw new Error()
+		expect(segs[0].args[0][0]).toBeCloseTo(10, 6)
+		expect(segs[0].start).toEqual([expect.closeTo(0, 9), expect.closeTo(0, 9)])
+	})
+
+	it('turns a small closed square into a circle when the radius is too large', () => {
+		const out = Path.fillet(Path.rectangle([0, 0], [10, 10]), 8)
+		expect(out.curves[0].closed).toBe(true)
+		const segs = Path.segments(out)
+		expect(segs.map(s => s.command)).toEqual(['A', 'A', 'A', 'A'])
+		for (const arc of segs) {
+			if (arc.command !== 'A') throw new Error()
+			expect(arc.args[0][0]).toBeCloseTo(5, 6)
+		}
+		expect(Path.length(out)).toBeCloseTo(2 * Math.PI * 5, 6)
+		expect(Path.area(out)).toBeCloseTo(Math.PI * 25, 6)
+	})
+
+	it.each([0, -0, -1])('leaves curved corners untouched at %d', amount => {
+		const path: Path = {
+			curves: [
+				{
+					vertices: [
+						{command: 'L', point: [20, 20]},
+						{command: 'L', point: [80, 20]},
+						{command: 'C', args: [[96, 40], [50, 60]], point: [72, 82]},
+						{command: 'A', args: [[30, 30], 0, false, true], point: [28, 82]},
+						{command: 'L', point: [50, 50]},
+					],
+					closed: true,
+				},
+			],
+		}
+		for (const out of [Path.chamfer(path, amount), Path.fillet(path, amount)]) {
+			expect(out.curves[0].vertices.map(v => v.command)).toEqual(
+				path.curves[0].vertices.map(v => v.command)
+			)
+			expect(Path.length(out)).toBeCloseTo(Path.length(path), 9)
+		}
+	})
+
+	it('caps the chamfer on each side at what the segment can give', () => {
+		const zigzag = Path.fromSVG([
+			'M',
+			[0, 0],
+			'L',
+			[50, 0],
+			'L',
+			[50, 6],
+			'L',
+			[100, 6],
+		])
+		const segs = Path.segments(Path.chamfer(zigzag, 10))
+		expect(segs.map(s => s.command)).toEqual(['L', 'L', 'L', 'L'])
+		expect(segs[0].point).toEqual([40, 0])
+		expect(segs[1].point).toEqual([50, 3])
+		expect(segs[2].point).toEqual([60, 6])
+	})
+
+	it('gives a corner what its neighbour leaves unused', () => {
+		// The first corner is held to r = 2 by its 2-long free segment, so of the shared
+		// 10-long segment it uses 2 and the second corner may take the remaining 8.
+		const p = Path.fromSVG([
+			'M',
+			[48, 0],
+			'L',
+			[50, 0],
+			'L',
+			[50, 10],
+			'L',
+			[100, 10],
+		])
+		const segs = Path.segments(Path.fillet(p, 10))
+		expect(segs.map(s => s.command)).toEqual(['A', 'A', 'L'])
+		const [a, b] = segs
+		if (a.command !== 'A' || b.command !== 'A') throw new Error()
+		expect(a.args[0][0]).toBeCloseTo(2, 9)
+		expect(b.args[0][0]).toBeCloseTo(8, 9)
+		expect(a.point).toEqual([expect.closeTo(50, 9), expect.closeTo(2, 9)])
+		expect(b.start).toEqual([expect.closeTo(50, 9), expect.closeTo(2, 9)])
+		expect(joint(a, b)).toBeLessThan(1e-6)
+	})
+
+	it('leaves smooth joints untouched', () => {
+		const smooth = Path.fromSVG([
+			'M',
+			[0, 0],
+			'C',
+			[10, 20],
+			[40, 30],
+			[50, 30],
+			'C',
+			[60, 30],
+			[90, 20],
+			[100, 0],
+		])
+		expect(Path.fillet(smooth, 5)).toEqual(smooth)
+		expect(Path.chamfer(smooth, 5)).toEqual(smooth)
+	})
+
+	it('fillets every corner of a closed square, including the closing joint', () => {
+		const out = Path.fillet(Path.rectangle([0, 0], [40, 40]), 5)
+		expect(out.curves[0].closed).toBe(true)
+		const arcs = Path.segments(out).filter(s => s.command === 'A')
+		expect(arcs).toHaveLength(4)
+		for (const arc of arcs) {
+			if (arc.command !== 'A') throw new Error()
+			expect(arc.args[0]).toEqual([5, 5])
+		}
+		expect(Path.length(out)).toBeCloseTo(4 * 30 + 2 * Math.PI * 5, 9)
+	})
+
+	it('chamfers a corner between two cubics, trimming both sides', () => {
+		const [origA, origB] = Path.segments(cubicCubicCorner)
+		const [a, cut, b] = Path.segments(Path.chamfer(cubicCubicCorner, 6))
+
+		expect(cut.command).toBe('L')
+		expect(Segment.length(origA) - Segment.length(a)).toBeCloseTo(6, 6)
+		expect(Segment.length(origB) - Segment.length(b)).toBeCloseTo(6, 6)
+		// The second segment keeps its original geometry at the cut
+		expect(b.start).toEqual(Segment.point(origB, {offset: 6}))
+		expect(
+			Math.abs(
+				vec2.angle(Segment.tangent(b, 0), Segment.tangent(origB, {offset: 6}))
+			)
+		).toBeLessThan(1e-9)
 	})
 })
 
@@ -935,5 +1172,49 @@ describe('wave / twirl / bulge', () => {
 	it('bulge with zero strength is the identity', () => {
 		const rect = Path.rectangle([20, 20], [80, 80])
 		expectPathClose(Path.bulge(rect, [50, 50], 40, 0), Path.toCubicBezier(rect))
+	})
+})
+
+describe('toTime by offset across segments and curves', () => {
+	// Four lines of length 10, 20, 30, 40 in one curve (total 100)
+	const polyline = Path.fromSVG([
+		'M',
+		[0, 0],
+		'L',
+		[10, 0],
+		'L',
+		[30, 0],
+		'L',
+		[60, 0],
+		'L',
+		[100, 0],
+	])
+
+	it('lands in the right segment with the local offset', () => {
+		expect(Path.toTime(polyline, {offset: 35})).toMatchObject({
+			curveIndex: 0,
+			segmentIndex: 2,
+		})
+		expect(Path.toTime(polyline, {offset: 35}).time).toBeCloseTo(5 / 30, 12)
+		expect(Path.toTime(polyline, {offset: 30})).toMatchObject({
+			segmentIndex: 2,
+			time: 0,
+		})
+		expect(Path.toTime(polyline, {offset: 100})).toMatchObject({
+			segmentIndex: 3,
+			time: 1,
+		})
+	})
+
+	it('crosses curve boundaries', () => {
+		const two: Path = {
+			curves: [...polyline.curves, ...Path.line([200, 0], [250, 0]).curves],
+		}
+		expect(Path.toTime(two, {offset: 120})).toMatchObject({
+			curveIndex: 1,
+			segmentIndex: 0,
+		})
+		expect(Path.toTime(two, {offset: 120}).time).toBeCloseTo(20 / 50, 12)
+		expect(Path.point(two, {offset: 120})).toEqual([220, 0])
 	})
 })

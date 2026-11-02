@@ -38,16 +38,18 @@ export function pointAt(seg: Segment, t: number): vec2 {
 
 /** Unit normal (`rotate90` of the unit tangent) at time `t`; falls back to the chord. */
 export function unitNormalAt(seg: Segment, t: number): vec2 {
-	let d = Segment.derivative(seg, {time: clampTime(t)})
-	if (vec2.squaredLength(d) < 1e-24) {
-		d = vec2.sub(seg.point, seg.start)
-	}
-	return vec2.rotate90(vec2.normalize(d))
+	return vec2.rotate90(unitTangentAt(seg, t))
 }
 
 /** Unit tangent at time `t`; falls back to the chord direction for zero speed. */
 export function unitTangentAt(seg: Segment, t: number): vec2 {
-	let d = Segment.derivative(seg, {time: clampTime(t)})
+	const time = clampTime(t)
+	let d = Segment.derivative(seg, {time})
+	if (vec2.squaredLength(d) < 1e-8) {
+		// Near a cusp the direction just inside the segment gives the limit of the tangent
+		const inside = time < 0.5 ? time + 1e-4 : time - 1e-4
+		d = Segment.derivative(seg, {time: inside})
+	}
 	if (vec2.squaredLength(d) < 1e-24) {
 		d = vec2.sub(seg.point, seg.start)
 	}
@@ -273,12 +275,13 @@ export function curvatureExtrema(
  */
 export function evoluteParametric(seg: Segment, sign: 1 | -1): ParametricCurve {
 	return {
-		point: t =>
-			vec2.scaleAndAdd(
-				pointAt(seg, t),
-				unitNormalAt(seg, t),
-				1 / curvatureAt(seg, t)
-			),
+		point: t => {
+			// The curvature is reported as 0 where the speed vanishes: the evolute of a cusp
+			// passes through the cusp itself
+			const curvature = curvatureAt(seg, t)
+			const radius = curvature !== 0 ? 1 / curvature : 0
+			return vec2.scaleAndAdd(pointAt(seg, t), unitNormalAt(seg, t), radius)
+		},
 		direction: t => vec2.scale(unitNormalAt(seg, t), sign),
 	}
 }

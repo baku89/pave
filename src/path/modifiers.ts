@@ -488,70 +488,339 @@ export function distort(
 }
 
 /**
- * Chamfers the path by replacing each internal corner with a straight cut.
- * Distances are measured along segment arc length (line, cubic, or arc).
+ * How a joint between two consecutive segments is cut: the first segment ends at time `u`,
+ * the next one starts at time `v`, and `vertices` connect those two points.
+ */
+interface CornerCut {
+	u: number
+	v: number
+	vertices: Vertex[]
+	/** Arc length consumed on the incoming segment, measured back from the joint */
+	before: number
+	/** Arc length consumed on the outgoing segment, measured forward from the joint */
+	after: number
+}
+
+/**
+ * How much of each adjacent segment a joint may consume, as arc length from the joint.
+ * A segment shared with another corner starts out split at its midpoint; whatever the other corner
+ * does not use is then released to this one (see {@link cutCorners}).
+ */
+interface CornerBudget {
+	/** Arc length available on the incoming segment, measured back from the joint */
+	before: number
+	/** Arc length available on the outgoing segment, measured forward from the joint */
+	after: number
+}
+
+/**
+ * Signed turn angle at a joint in degrees, or `null` when the joint is smooth (nothing to cut)
+ * or reverses onto itself (no corner to speak of).
+ */
+function jointTurn(seg: Segment, next: Segment): number | null {
+	const turn = vec2.angle(Segment.tangent(seg, 1), Segment.tangent(next, 0))
+	if (!Number.isFinite(turn) || Math.abs(turn) < 1e-6) return null
+	if (180 - Math.abs(turn) < 1e-6) return null
+	return turn
+}
+
+/**
+ * Rebuilds every curve by cutting its joints (including the closing joint of a closed curve):
+ * each segment is trimmed to `[v of the previous joint, u of the next joint]`, so both sides of a
+ * corner keep their exact geometry, and the cut vertices are inserted between.
+ *
+ * A segment with corners at both ends is shared between them. Each corner first gets half of it;
+ * then, in relaxation passes, a corner that is held back is allowed to use whatever its neighbour
+ * actually leaves (`length − neighbour's consumption`). Consumption never shrinks in those passes,
+ * so cuts never overlap and the process settles after a few passes. A segment whose other end is
+ * a path end or a smooth joint is available in full. Joints where `cut` returns `null` are left as
+ * they are.
+ */
+function cutCorners(
+	path: Path,
+	cut: (seg: Segment, next: Segment, budget: CornerBudget) => CornerCut | null
+): Path {
+	return spawnCurve(path, (curve): Curve => {
+		const segs = Curve.segments(curve)
+		const n = segs.length
+		if (n === 0) return curve
+
+		const lengths = segs.map(seg => Segment.length(seg))
+		const nextIndexOf = (i: number): number | null =>
+			i + 1 < n ? i + 1 : curve.closed ? 0 : null
+		const prevIndexOf = (i: number): number | null =>
+			i > 0 ? i - 1 : curve.closed ? n - 1 : null
+
+		// Which joints are corners decides how the segments between them are shared.
+		// Joint i sits between segment i and segment nextIndexOf(i).
+		const isCorner = segs.map((seg, i) => {
+			const next = nextIndexOf(i)
+			return next !== null && jointTurn(seg, segs[next]) !== null
+		})
+		const cornerAtStart = (i: number) => {
+			const prev = prevIndexOf(i)
+			return prev !== null && isCorner[prev]
+		}
+
+		// Pass 0: split shared segments at their midpoints
+		const budgets: (CornerBudget | null)[] = segs.map((_seg, i) => {
+			const next = nextIndexOf(i)
+			if (next === null || !isCorner[i]) return null
+			return {
+				before: lengths[i] * (cornerAtStart(i) ? 0.5 : 1),
+				after: lengths[next] * (isCorner[next] ? 0.5 : 1),
+			}
+		})
+		const cuts: (CornerCut | null)[] = segs.map((seg, i) => {
+			const budget = budgets[i]
+			const next = nextIndexOf(i)
+			return budget && next !== null ? cut(seg, segs[next], budget) : null
+		})
+
+		// Relaxation: release what each neighbour leaves unused
+		const epsilon = 1e-9 * Math.max(...lengths, 1)
+		for (let pass = 0; pass < n + 1; pass++) {
+			let changed = false
+
+			for (let i = 0; i < n; i++) {
+				const budget = budgets[i]
+				const next = nextIndexOf(i)
+				if (!budget || next === null) continue
+
+				const prev = prevIndexOf(i)
+				const prevCut = prev !== null ? cuts[prev] : null
+				const nextCut = cuts[next]
+				const released: CornerBudget = {
+					before: prevCut ? lengths[i] - prevCut.after : lengths[i],
+					after: nextCut ? lengths[next] - nextCut.before : lengths[next],
+				}
+
+				if (
+					released.before > budget.before + epsilon ||
+					released.after > budget.after + epsilon
+				) {
+					budgets[i] = released
+					const grown = cut(segs[i], segs[next], released)
+					if (grown) {
+						cuts[i] = grown
+						changed = true
+					}
+				}
+			}
+
+			if (!changed) break
+		}
+
+		const out: Segment[] = []
+		for (const [i, seg] of segs.entries()) {
+			const prev = prevIndexOf(i)
+			const prevCut = prev !== null ? cuts[prev] : null
+			const startTime = prevCut?.v ?? 0
+			const endTime = cuts[i]?.u ?? 1
+			const trimmed = Segment.trim(seg, {time: startTime}, {time: endTime})
+
+			// Two corners meeting leave nothing in between
+			if (Segment.length(trimmed) > 1e-6 * lengths[i]) {
+				out.push(trimmed)
+			}
+
+			let start =
+				out.length > 0
+					? out[out.length - 1].point
+					: Segment.point(seg, {time: startTime})
+			for (const vertex of cuts[i]?.vertices ?? []) {
+				out.push({...vertex, start} as Segment)
+				start = vertex.point
+			}
+		}
+
+		if (out.length === 0) return curve
+
+		const toVertex = ({command, args, point}: Segment): Vertex =>
+			({command, args, point}) as Vertex
+
+		const vertices: Vertex[] = curve.closed
+			? [
+					{...toVertex(out[out.length - 1]), point: out[0].start} as Vertex,
+					...out.slice(0, -1).map(toVertex),
+				]
+			: [{point: out[0].start, command: 'L'}, ...out.map(toVertex)]
+
+		return {vertices, closed: curve.closed}
+	})
+}
+
+/**
+ * Time at the given arc length back from the end of the segment. A negative offset counts
+ * from the end, but `-0` is not negative: `{offset: -0}` would give the start instead.
+ */
+function timeBeforeEnd(seg: Segment, distance: number): number {
+	return distance > 0 ? Segment.toTime(seg, {offset: -distance}) : 1
+}
+
+/**
+ * Chamfers the path by replacing each corner with a straight cut.
+ * Distances are measured along segment arc length (line, cubic, or arc) from the joint, and both
+ * segments are trimmed there, so curved segments keep their exact shape up to the cut. The cut
+ * on each side is capped at what the segment can give (see {@link fillet} for the sharing rule).
+ * Smooth joints are left untouched.
  * @param path The path to chamfer
  * @param distance The distance of chamfer along each segment from the joint
  * @returns The newly created path
  * @category Modifiers
  */
 export function chamfer(path: Path, distance: number): Path {
-	return spawnVertex(path, (seg, index, curve) => {
-		const next = Curve.nextSegment(curve, index)
+	return cutCorners(path, (seg, next, budget) => {
+		if (jointTurn(seg, next) === null || !(distance > 0)) return null
 
-		if (!next || index === -1) {
-			return seg
+		const before = Math.min(distance, budget.before)
+		const after = Math.min(distance, budget.after)
+		const u = timeBeforeEnd(seg, before)
+		const v = Segment.toTime(next, {offset: after})
+
+		return {
+			u,
+			v,
+			before,
+			after,
+			vertices: [{command: 'L', point: Segment.point(next, {time: v})}],
 		}
-
-		const point = Segment.point(next, {offset: distance})
-
-		return [Segment.trim(seg, 0, {offset: -distance}), {command: 'L', point}]
 	})
 }
 
 /**
- * Fillets internal corners with a cubic that approximates a circular arc of the given radius.
- * Trims are arc-length along each segment; the wedge angle is refit once using tangents at
- * the trim points so curved segments behave better than a pure vertex-tangent estimate.
+ * Fillets corners with a circular arc of the given radius, tangent to both segments.
+ * For each corner the two tangent points are solved exactly, also on curved segments, by
+ * finding the circle of the given radius that touches both; the segments are trimmed there and
+ * the arc is emitted as an `A` command. When the radius does not fit, the largest radius that fits
+ * is used instead: a corner may consume a whole adjacent segment when its other end is a path end
+ * or a smooth joint; when that end is another corner, the two share the segment, each taking what
+ * the other leaves (half each when both are held back), so neighbouring fillets never overlap.
+ * Smooth joints are left untouched.
  * @param path The path to fillet
  * @param radius The radius of fillet
  * @returns The newly created path
  * @category Modifiers
+ *
+ * @example
+ * ```js:pave
+ * const p = Path.fromSVG(['M', [10, 90], 'C', [30, 80], [50, 30], [50, 10], 'L', [90, 90]])
+ * stroke(p, 'skyblue')
+ * stroke(Path.fillet(p, 15), 'tomato')
+ * ```
  */
 export function fillet(path: Path, radius: number): Path {
-	return spawnVertex(path, (seg, index, curve) => {
-		const next = Curve.nextSegment(curve, index)
+	return cutCorners(path, (seg, next, budget) =>
+		filletCorner(seg, next, radius, budget)
+	)
+}
 
-		if (!next || index === -1) {
-			return seg
+function filletCorner(
+	seg: Segment,
+	next: Segment,
+	radius: number,
+	budget: CornerBudget
+): CornerCut | null {
+	const turn = jointTurn(seg, next)
+	if (turn === null || !(radius > 0)) return null
+
+	// Tangent points must stay within the arc length each segment can give to this joint
+	const uMin = timeBeforeEnd(seg, budget.before)
+	const vMax = Segment.toTime(next, {offset: budget.after})
+
+	// The arc sits on the inner side of the turn: left of the tangent for a left turn.
+	const side = Math.sign(turn)
+
+	/** Center of the circle of radius `r` tangent to `s` at `time`, on the inner side. */
+	const centerAt = (s: Segment, time: number, r: number): vec2 =>
+		vec2.scaleAndAdd(
+			Segment.point(s, {time}),
+			vec2.rotate(Segment.tangent(s, {time}), 90 * side),
+			r
+		)
+
+	/** ∂center/∂time by a central difference kept inside [0, 1]. */
+	const centerDerivative = (s: Segment, time: number, r: number): vec2 => {
+		const h = 1e-6
+		const lo = Math.max(time - h, 0)
+		const hi = Math.min(time + h, 1)
+		return vec2.scale(
+			vec2.sub(centerAt(s, hi, r), centerAt(s, lo, r)),
+			1 / (hi - lo)
+		)
+	}
+
+	/**
+	 * Solves for the tangent times (u on `seg`, v on `next`) where one circle of radius `r`
+	 * touches both, by Newton–Raphson on the difference of the two implied centers. Returns
+	 * `null` when it does not converge or the tangent points leave the budget.
+	 */
+	const solve = (r: number) => {
+		// Start from the straight-line construction: tangent points at r·tan(θ/2) from the joint
+		const trim = r * scalar.tan(Math.abs(turn) / 2)
+		let u = Segment.toTime(seg, {offset: -trim})
+		let v = Segment.toTime(next, {offset: trim})
+
+		for (let i = 0; i < 32; i++) {
+			const f = vec2.sub(centerAt(seg, u, r), centerAt(next, v, r))
+			if (vec2.length(f) <= r * 1e-12) {
+				// Converged; it only counts when the tangent points respect the budget
+				if (u < uMin - 1e-12 || v > vMax + 1e-12) return null
+				return {u, v, center: centerAt(seg, u, r)}
+			}
+
+			const fu = centerDerivative(seg, u, r)
+			const fv = vec2.neg(centerDerivative(next, v, r))
+			const det = fu[0] * fv[1] - fu[1] * fv[0]
+			if (!(Math.abs(det) > 1e-18)) return null
+
+			const du = (f[0] * fv[1] - f[1] * fv[0]) / det
+			const dv = (fu[0] * f[1] - fu[1] * f[0]) / det
+			const nu = u - du
+			const nv = v - dv
+			// A solution beyond the budget means the radius does not fit this joint
+			if (nu < uMin - 1e-12 || nu > 1 + 1e-12) return null
+			if (nv < -1e-12 || nv > vMax + 1e-12) return null
+			u = scalar.clamp(nu, uMin, 1)
+			v = scalar.clamp(nv, 0, vMax)
 		}
 
-		const tJoint0 = Segment.tangent(seg, 1)
-		const tJoint1 = Segment.tangent(next, 0)
-		let angle = Math.abs(vec2.angle(tJoint0, tJoint1))
-		let trimLength = radius * scalar.tan(angle / 2)
+		return null
+	}
 
-		angle = Math.abs(
-			vec2.angle(
-				Segment.tangent(seg, {offset: -trimLength}),
-				vec2.neg(Segment.tangent(next, {offset: trimLength}))
-			)
-		)
-		trimLength = radius * scalar.tan(angle / 2)
+	let r = radius
+	let solution = solve(r)
 
-		const start = Segment.point(seg, {offset: -trimLength})
-		const end = Segment.point(next, {offset: trimLength})
-		const startTangent = Segment.tangent(seg, {offset: -trimLength})
-		const endTangent = Segment.tangent(next, {offset: trimLength})
+	if (!solution) {
+		// Shrink to the largest radius that fits, by bisection
+		let lo = 0
+		let hi = radius
+		for (let i = 0; i < 40; i++) {
+			const mid = (lo + hi) / 2
+			const candidate = solve(mid)
+			if (candidate) {
+				lo = mid
+				solution = candidate
+				r = mid
+			} else {
+				hi = mid
+			}
+		}
+		if (!solution) return null
+	}
 
-		const handleLength = (4 / 3) * scalar.tan(angle / 4) * radius
+	const {u, v, center} = solution
+	const from = Segment.point(seg, {time: u})
+	const to = Segment.point(next, {time: v})
+	const fromDeg = vec2.angle(vec2.sub(from, center))
+	const toDeg = vec2.angle(vec2.sub(to, center))
+	const delta = ((((toDeg - fromDeg) % 360) + 540) % 360) - 180
 
-		const c1 = vec2.scaleAndAdd(start, startTangent, handleLength)
-		const c2 = vec2.scaleAndAdd(end, endTangent, -handleLength)
-
-		return [
-			Segment.trim(seg, 0, {offset: -trimLength}),
-			{command: 'C', args: [c1, c2], point: end},
-		]
-	})
+	return {
+		u,
+		v,
+		before: Segment.length(Segment.trim(seg, {time: u}, {time: 1})),
+		after: Segment.length(Segment.trim(next, {time: 0}, {time: v})),
+		vertices: [{command: 'A', args: [[r, r], 0, false, delta > 0], point: to}],
+	}
 }

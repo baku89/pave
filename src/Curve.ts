@@ -2,6 +2,7 @@ import {Rect} from 'geome'
 import {scalar, vec2} from 'linearly'
 
 import {CurveLocation, TimeCurveLocation} from './Location'
+import {searchInterval} from './numeric'
 import {Vertex, VertexA, VertexC, VertexL} from './Path'
 import {Segment} from './Segment'
 import {memoize, normalizeIndex, normalizeOffset} from './utils'
@@ -353,25 +354,37 @@ export namespace Curve {
 
 		const curveLength = length(curve)
 
-		let offset = normalizeOffset(
+		const offset = normalizeOffset(
 			'unit' in location ? location.unit * curveLength : location.offset,
 			curveLength
 		)
 
 		const segs = segments(curve)
-
-		for (const [segmentIndex, segment] of segs.entries()) {
-			const segLength = Segment.length(segment)
-			if (offset < segLength || segmentIndex === segs.length - 1) {
-				return {
-					segment,
-					segmentIndex,
-					time: Segment.toTime(segment, {offset}),
-				}
-			}
-			offset -= segLength
+		if (segs.length === 0) {
+			throw new Error('Location is out of bounds')
 		}
 
-		throw new Error('Location is out of bounds')
+		const prefix = lengthPrefix(curve)
+		const segmentIndex = searchInterval(prefix, offset)
+		const segment = segs[segmentIndex]
+
+		return {
+			segment,
+			segmentIndex,
+			time: Segment.toTime(segment, {offset: offset - prefix[segmentIndex]}),
+		}
 	}
+
+	/**
+	 * Cumulative segment lengths: `prefix[i]` is the length before segment `i`, the last entry the total.
+	 * Built once per curve so that offset lookups are a binary search instead of a scan.
+	 */
+	const lengthPrefix = memoize((curve: Curve): Float64Array => {
+		const segs = segments(curve)
+		const prefix = new Float64Array(segs.length + 1)
+		for (const [i, seg] of segs.entries()) {
+			prefix[i + 1] = prefix[i] + Segment.length(seg)
+		}
+		return prefix
+	})
 }

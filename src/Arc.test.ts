@@ -2,6 +2,7 @@ import {mat2d, vec2} from 'linearly'
 import {describe, expect, it, test} from 'vitest'
 
 import {Arc} from './Arc'
+import {gaussLegendre} from './numeric'
 import {SegmentA} from './Segment'
 
 describe('toCenterParameterization', () => {
@@ -517,5 +518,47 @@ describe('bounds with perturbed 180° arcs', () => {
 		expect([minX, maxX]).toEqual([-10, 10])
 		expect(minY).toBeCloseTo(0, 9)
 		expect(maxY).toBeCloseTo(10, 9)
+	})
+})
+
+describe('toTime by arc length on elliptic arcs', () => {
+	const arcs: Omit<SegmentA, 'command'>[] = [
+		{start: [40, 0], args: [[40, 15], 0, false, true], point: [-40, 0]},
+		{start: [40, 0], args: [[40, 15], 30, true, false], point: [0, 15]},
+		{start: [100, 0], args: [[100, 10], 0, true, true], point: [-100, 0]},
+	]
+
+	/** Reference arc length from the start up to `time`, by fine piecewise quadrature over the centric angle. */
+	function refLength(arc: Omit<SegmentA, 'command'>, time: number) {
+		const {
+			radii: [rx, ry],
+			angles: [a0, a1],
+		} = Arc.toCenterParameterization(arc)
+		const t0 = (a0 * Math.PI) / 180
+		const t1 = t0 + ((a1 - a0) * Math.PI * time) / 180
+		const speed = (t: number) => Math.hypot(rx * Math.sin(t), ry * Math.cos(t))
+		const n = 2000
+		let sum = 0
+		for (let i = 0; i < n; i++) {
+			sum += gaussLegendre(
+				speed,
+				t0 + ((t1 - t0) * i) / n,
+				t0 + ((t1 - t0) * (i + 1)) / n
+			)
+		}
+		return Math.abs(sum)
+	}
+
+	it.each(arcs)('round-trips offset → time → length %#', arc => {
+		const len = Arc.length(arc)
+		expect(Math.abs(len - refLength(arc, 1))).toBeLessThanOrEqual(len * 1e-9)
+		let prevT = 0
+		for (let i = 0; i <= 20; i++) {
+			const s = (len * i) / 20
+			const t = Arc.toTime(arc, {offset: s})
+			expect(t).toBeGreaterThanOrEqual(prevT)
+			prevT = t
+			expect(Math.abs(refLength(arc, t) - s)).toBeLessThanOrEqual(len * 1e-9)
+		}
 	})
 })

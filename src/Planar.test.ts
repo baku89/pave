@@ -1,8 +1,12 @@
+import {vec2} from 'linearly'
 import {describe, expect, it} from 'vitest'
 
+import {CubicBezier} from './CubicBezier'
 import {Curve} from './Curve'
 import {Path} from './Path'
+import {windingNumber} from './path/planar'
 import {planarPathArea} from './pathPlanar'
+import {Segment} from './Segment'
 
 const area = (p: Path) => Math.abs(Path.area(p))
 const commands = (p: Path) =>
@@ -331,5 +335,210 @@ describe('offsetStroke', () => {
 		const s = Path.offsetStroke(p, 40)
 		expect(finite(s)).toBe(true)
 		expect(s.curves.length).toBe(1)
+	})
+})
+
+describe('cubic Béziers crossing themselves', () => {
+	/** The corner cubic P0 → P1 around `apex`, with handles of `k` times the distance to it. */
+	const cornerHandles = (p0: vec2, apex: vec2, p1: vec2, k: number) =>
+		[vec2.lerp(p0, apex, k), vec2.lerp(p1, apex, k)] as const
+
+	const corner = (k: number) =>
+		CubicBezier.of(
+			[20, 50],
+			...cornerHandles([20, 50], [50, 50], [50, 20], k),
+			[50, 20]
+		)
+
+	const closedCorner = (k: number): Path => ({
+		curves: [
+			{
+				vertices: [
+					{command: 'L', point: [20, 80]},
+					{command: 'L', point: [20, 50]},
+					{command: 'C', args: corner(k).args, point: [50, 20]},
+					{command: 'L', point: [80, 20]},
+					{command: 'L', point: [80, 80]},
+				],
+				closed: true,
+			},
+		],
+	})
+
+	const teardrop: Path = {
+		curves: [
+			{
+				vertices: [
+					{
+						command: 'C',
+						args: [
+							[90, 10],
+							[10, 10],
+						],
+						point: [50, 70],
+					},
+				],
+				closed: true,
+			},
+		],
+	}
+
+	const shapes: [string, Path][] = [
+		['a cusp', closedCorner(2)],
+		['a tiny loop', closedCorner(2.01)],
+		['a loop', closedCorner(3)],
+		['a large loop', closedCorner(5)],
+		['a reversed loop', Path.reverse(closedCorner(3))],
+		['a teardrop', teardrop],
+	]
+
+	const grid: vec2[] = []
+	for (let i = 0; i < 36; i++) {
+		for (let j = 0; j < 36; j++) {
+			grid.push([-10 + (120 * (i + 0.37)) / 36, -10 + (120 * (j + 0.61)) / 36])
+		}
+	}
+
+	/** Distance to the boundary of the path, by a fine polyline. */
+	const distanceTo = (path: Path) => {
+		const pts = Path.segments(path).flatMap(seg =>
+			Array.from({length: 121}, (_, i) => Segment.point(seg, {time: i / 120}))
+		)
+		return (q: vec2) => Math.min(...pts.map(p => vec2.distance(p, q)))
+	}
+
+	const inside = (path: Path, q: vec2) => windingNumber(path.curves, q) !== 0
+
+	/** Compares with the expected region, away from its boundary where it is undecided. */
+	const expectRegion = (
+		result: Path,
+		expected: (q: vec2) => boolean | null
+	) => {
+		expect(result.curves.every(c => c.closed)).toBe(true)
+		for (const q of grid) {
+			const want = expected(q)
+			if (want !== null) expect(inside(result, q)).toBe(want)
+		}
+	}
+
+	it.each(shapes)('fills the same region after unite on %s', (_, p) => {
+		expectRegion(Path.unite([p]), q => inside(p, q))
+	})
+
+	it.each(shapes)('measures %s by what gets filled', (_, p) => {
+		expect(Path.area(p)).toBeCloseTo(Path.area(Path.unite([p])), 6)
+	})
+
+	it('counts the overlap of a loop once', () => {
+		const p = closedCorner(5)
+		const signed = Math.abs(planarPathArea(p))
+		expect(signed - Path.area(p)).toBeGreaterThan(100)
+	})
+
+	it.each(shapes)('applies boolean operations to %s', (_, p) => {
+		const box = Path.rect([35, 35], [65, 65])
+		const inBox = (q: vec2) => inside(box, q)
+		expectRegion(Path.subtract(p, [box]), q => inside(p, q) && !inBox(q))
+		expectRegion(Path.intersect([p, box]), q => inside(p, q) && inBox(q))
+		expectRegion(Path.exclude([p, box]), q => inside(p, q) !== inBox(q))
+	})
+
+	it.each(shapes)('offsets %s', (_, p) => {
+		const distance = distanceTo(Path.unite([p]))
+		const away = (q: vec2) => {
+			const x = distance(q)
+			return Math.abs(x - 3) < 1 ? null : x
+		}
+		expectRegion(Path.offset(p, 3, {lineJoin: 'round'}), q => {
+			const x = away(q)
+			return x === null ? null : inside(p, q) || x < 3
+		})
+		expectRegion(Path.offset(p, -3, {lineJoin: 'round'}), q => {
+			const x = away(q)
+			return x === null ? null : inside(p, q) && x > 3
+		})
+	})
+
+	it.each(shapes)('strokes %s along the whole curve', (_, p) => {
+		const distance = distanceTo(p)
+		expectRegion(Path.offsetStroke(p, 6, {lineJoin: 'round'}), q => {
+			const x = distance(q)
+			return Math.abs(x - 3) < 1 ? null : x < 3
+		})
+	})
+
+	it.each([2, 2.01, 3, 5])('strokes an open curve with k = %d', k => {
+		const p: Path = {
+			curves: [
+				{
+					vertices: [
+						{command: 'L', point: [20, 50]},
+						{command: 'C', args: corner(k).args, point: [50, 20]},
+					],
+					closed: false,
+				},
+			],
+		}
+		const distance = distanceTo(p)
+		const o = Path.offsetStroke(p, 6, {lineJoin: 'round', lineCap: 'round'})
+		expectRegion(o, q => {
+			const x = distance(q)
+			return Math.abs(x - 3) < 1 ? null : x < 3
+		})
+		expect(Path.offset(p, 3).curves.length).toBeGreaterThan(0)
+		expect(Path.offset(p, -3).curves.length).toBeGreaterThan(0)
+	})
+
+	describe('CubicBezier.selfIntersectionTimes', () => {
+		it('finds where a loop crosses itself', () => {
+			const seg = corner(3)
+			const times = CubicBezier.selfIntersectionTimes(seg)!
+			expect(times[0]).toBeLessThan(times[1])
+			expect(
+				vec2.distance(
+					CubicBezier.point(seg, {time: times[0]}),
+					CubicBezier.point(seg, {time: times[1]})
+				)
+			).toBeLessThan(1e-9)
+		})
+
+		it('finds the ends of a curve returning to its start', () => {
+			const seg = CubicBezier.of([50, 70], [90, 10], [10, 10], [50, 70])
+			expect(CubicBezier.selfIntersectionTimes(seg)).toEqual([0, 1])
+		})
+
+		it.each([0, 0.55, 1, 2])('finds no loop when k = %d', k => {
+			expect(CubicBezier.selfIntersectionTimes(corner(k))).toBeNull()
+		})
+
+		it('ignores a loop outside the curve', () => {
+			// The same cubic, cut off before its loop closes
+			const seg = CubicBezier.trim(corner(3), {time: 0}, {time: 0.5})
+			expect(CubicBezier.selfIntersectionTimes(seg)).toBeNull()
+		})
+	})
+
+	describe('CubicBezier.cuspTimes', () => {
+		it('finds the cusp at exactly k = 2', () => {
+			const times = CubicBezier.cuspTimes(corner(2))
+			expect(times.length).toBe(1)
+			expect(times[0]).toBeCloseTo(0.5, 9)
+		})
+
+		it.each([1, 1.9, 2.1, 3])('finds none when k = %d', k => {
+			expect(CubicBezier.cuspTimes(corner(k))).toEqual([])
+		})
+	})
+
+	describe('CubicBezier.isStraight', () => {
+		it('does not take a curve returning to its start for a line', () => {
+			const loop = CubicBezier.of([50, 70], [90, 10], [10, 10], [50, 70])
+			expect(CubicBezier.isStraight(loop)).toBe(false)
+		})
+
+		it('still takes an out-and-back curve for a line', () => {
+			const flat = CubicBezier.of([0, 0], [10, 10], [20, 20], [0, 0])
+			expect(CubicBezier.isStraight(flat)).toBe(true)
+		})
 	})
 })

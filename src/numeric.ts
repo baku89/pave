@@ -175,3 +175,145 @@ function refineBracketedRoot(
 	}
 	return x
 }
+
+/**
+ * Largest index `i` in `[0, prefix.length - 2]` with `prefix[i] <= value`, by binary search.
+ * `prefix` must be non-decreasing; it is the usual shape of a cumulative-length table, where
+ * `prefix[i]` is the length before interval `i` and the last entry is the total.
+ */
+export function searchInterval(
+	prefix: ArrayLike<number>,
+	value: number
+): number {
+	let lo = 0
+	let hi = prefix.length - 2
+	while (lo < hi) {
+		const mid = (lo + hi + 1) >> 1
+		if (prefix[mid] <= value) {
+			lo = mid
+		} else {
+			hi = mid - 1
+		}
+	}
+	return Math.max(lo, 0)
+}
+
+/**
+ * Per-object precomputation for inverting an arc-length function s(x) on `[0, span]`:
+ * cumulative lengths and speeds at `n + 1` uniform nodes, plus the integrand callbacks.
+ * Build it once per curve (memoized on the curve) and answer queries with {@link invertArcLength}.
+ */
+export interface ArcLengthTable {
+	/** Cumulative arc length at node `i` (node `i` sits at `x = i / n * span`). */
+	readonly s: Float64Array
+	/** Speed ds/dx at node `i`. */
+	readonly v: Float64Array
+	readonly span: number
+	/** Total arc length, the last entry of `s`. */
+	readonly total: number
+	readonly speed: (x: number) => number
+	/** Signed arc length between two parameters. */
+	readonly lengthBetween: (x0: number, x1: number) => number
+}
+
+const ARC_LENGTH_TABLE_INTERVALS = 8
+
+export function buildArcLengthTable(
+	speed: (x: number) => number,
+	lengthBetween: (x0: number, x1: number) => number,
+	span: number,
+	n = ARC_LENGTH_TABLE_INTERVALS
+): ArcLengthTable {
+	const s = new Float64Array(n + 1)
+	const v = new Float64Array(n + 1)
+	v[0] = speed(0)
+	for (let i = 1; i <= n; i++) {
+		const x0 = ((i - 1) / n) * span
+		const x1 = (i / n) * span
+		s[i] = s[i - 1] + lengthBetween(x0, x1)
+		v[i] = speed(x1)
+	}
+	return {s, v, span, total: s[n], speed, lengthBetween}
+}
+
+/**
+ * Parameter `x ∈ [0, span]` whose arc length from the start equals `target` (clamped to the
+ * table's total). The table gives the bracketing interval and a cubic Hermite estimate from the
+ * node lengths and speeds; Newton–Raphson with exact increments then refines it to
+ * `total * 1e-12`, integrating only from the interval's start node. Bisection bounds guard
+ * against a step leaving the bracket (e.g. near a cusp where the speed vanishes).
+ */
+export function invertArcLength(table: ArcLengthTable, target: number): number {
+	const {s, v, span, speed, lengthBetween} = table
+	const n = s.length - 1
+	const total = s[n]
+
+	if (total <= 1e-15 || target <= 0) return 0
+	if (target >= total) return span
+
+	const k = searchInterval(s, target)
+	const h = span / n
+	const x0 = k * h
+	const x1 = x0 + h
+	const s0 = s[k]
+	const s1 = s[k + 1]
+	const m0 = v[k] * h
+	const m1 = v[k + 1] * h
+
+	// Cubic Hermite estimate of s on [x0, x1], solved for u ∈ [0, 1]
+	let u = s1 > s0 ? (target - s0) / (s1 - s0) : 0.5
+	for (let i = 0; i < 3; i++) {
+		const u2 = u * u
+		const u3 = u2 * u
+		const f =
+			(2 * u3 - 3 * u2 + 1) * s0 +
+			(u3 - 2 * u2 + u) * m0 +
+			(-2 * u3 + 3 * u2) * s1 +
+			(u3 - u2) * m1 -
+			target
+		const df =
+			(6 * u2 - 6 * u) * s0 +
+			(3 * u2 - 4 * u + 1) * m0 +
+			(-6 * u2 + 6 * u) * s1 +
+			(3 * u2 - 2 * u) * m1
+		if (!(df > 0)) break
+		u = Math.min(Math.max(u - f / df, 0), 1)
+	}
+
+	const tolerance = total * 1e-12
+	let lower = x0
+	let upper = x1
+	let x = x0 + u * h
+	let acc = s0 + lengthBetween(x0, x)
+
+	for (let i = 0; i < 32 && upper - lower > 1e-15 * span; i++) {
+		const err = acc - target
+		if (Math.abs(err) <= tolerance) break
+
+		if (err < 0) {
+			lower = x
+		} else {
+			upper = x
+		}
+
+		const sp = speed(x)
+		let next = sp > 0 ? x - err / sp : NaN
+		if (!(next > lower && next < upper)) {
+			next = (lower + upper) * 0.5
+		} else if (
+			Math.abs(err) <= total * 1e-7 &&
+			Math.abs(next - x) <= 1e-3 * h &&
+			sp >= 0.25 * (total / span)
+		) {
+			// Newton converges quadratically where the speed is not degenerate, so from a residual
+			// this small the step lands within tolerance; skip the verifying integration. Near a
+			// cusp (speed far below the mean) the curvature of s(x) is too large to trust that.
+			return next
+		}
+
+		acc += lengthBetween(x, next)
+		x = next
+	}
+
+	return x
+}

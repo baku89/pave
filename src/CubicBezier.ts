@@ -2,7 +2,12 @@ import {scalar, vec2} from 'linearly'
 
 import {Iter} from './Iter'
 import {SegmentLocation} from './Location'
-import {gaussLegendre, solveQuadratic} from './numeric'
+import {
+	buildArcLengthTable,
+	gaussLegendre,
+	invertArcLength,
+	solveQuadratic,
+} from './numeric'
 import {parallelStart, rawParallelVertices} from './parallelCurve'
 import {Path, VertexC} from './Path'
 import {SegmentC} from './Segment'
@@ -44,9 +49,9 @@ export namespace CubicBezier {
 	/**
 	 * Calculates the length of the Bezier curve. Length is calculated using numerical approximation, specifically the Legendre-Gauss quadrature algorithm.
 	 */
-	export const length = memoize((bezier: BareSegmentC): number => {
-		return arcLengthBetween(bezier, 0, 1)
-	})
+	export function length(bezier: BareSegmentC): number {
+		return arcLengthTable(bezier).total
+	}
 
 	/**
 	 * Calculates the rect of this Bezier curve.
@@ -174,6 +179,54 @@ export namespace CubicBezier {
 		// B′ × B″ = -(A×B) t² + 2 (C×A) t + (C×B)
 		return solveQuadratic(-cross(A, B), 2 * cross(C, A), cross(C, B)).filter(
 			t => t > 1e-9 && t < 1 - 1e-9
+		)
+	}
+
+	/**
+	 * The two `t` values at which the curve passes through the same point, or `null` if it has no loop. Solved in closed form: with `B(t) = at³ + bt² + ct + d`, dividing `B(s) - B(t)` by `s - t` leaves an equation in `s + t` and `st`.
+	 */
+	export function selfIntersectionTimes(
+		bezier: BareSegmentC
+	): [number, number] | null {
+		const [a, b, c] = powerCoefficients(bezier)
+
+		const crossAB = a[0] * b[1] - a[1] * b[0]
+		const aa = vec2.dot(a, a)
+		const scale = Math.sqrt(aa * vec2.dot(b, b))
+		if (scale === 0 || Math.abs(crossAB) <= 1e-12 * scale) return null
+
+		// a(u² - v) + bu + c = 0, where u = s + t and v = st
+		const u = -(a[0] * c[1] - a[1] * c[0]) / crossAB
+		const w = -(a[0] * (b[0] * u + c[0]) + a[1] * (b[1] * u + c[1])) / aa
+		const disc = u * u - 4 * (u * u - w)
+		if (disc <= 1e-12) return null
+
+		const root = Math.sqrt(disc)
+		const s0 = (u - root) / 2
+		const s1 = (u + root) / 2
+		const eps = 1e-9
+		if (s0 < -eps || s1 > 1 + eps) return null
+		return [scalar.clamp(s0, 0, 1), scalar.clamp(s1, 0, 1)]
+	}
+
+	/**
+	 * The `t` values in (0, 1) where the speed vanishes, so that the curve turns back on itself. A cubic has at most one unless it is degenerate to a line.
+	 */
+	export function cuspTimes(bezier: BareSegmentC): number[] {
+		const [a, b, c] = powerCoefficients(bezier)
+		const size = Math.max(...[...a, ...b, ...c].map(Math.abs))
+		if (size === 0) return []
+
+		const speedAt = (t: number) =>
+			Math.hypot(
+				(3 * a[0] * t + 2 * b[0]) * t + c[0],
+				(3 * a[1] * t + 2 * b[1]) * t + c[1]
+			)
+
+		// A root of the derivative is a root of each axis, so take the better conditioned one
+		const axis = Math.abs(a[0]) >= Math.abs(a[1]) ? 0 : 1
+		return solveQuadratic(3 * a[axis], 2 * b[axis], c[axis]).filter(
+			t => t > 1e-9 && t < 1 - 1e-9 && speedAt(t) <= 1e-7 * size
 		)
 	}
 
@@ -307,8 +360,14 @@ export namespace CubicBezier {
 		}
 
 		if (vec2.approx(start, point)) {
-			// Zero-length line, with some handles defined
-			return true
+			// Returning to its start, it is only straight if the handles lie on one line;
+			// otherwise it is a closed loop
+			const h1 = vec2.sub(c1, start)
+			const h2 = vec2.sub(c2, start)
+			return (
+				Math.abs(h1[0] * h2[1] - h1[1] * h2[0]) <=
+				1e-9 * Math.max(vec2.squaredLength(h1), vec2.squaredLength(h2))
+			)
 		}
 
 		const sp = vec2.sub(point, start)
@@ -348,6 +407,20 @@ export namespace CubicBezier {
 			],
 		}
 	}
+}
+
+/** Vector coefficients `[a, b, c]` of `B(t) = at³ + bt² + ct + d`. */
+function powerCoefficients(hull: BareSegmentC): [vec2, vec2, vec2] {
+	const {
+		start: [x0, y0],
+		args: [[x1, y1], [x2, y2]],
+		point: [x3, y3],
+	} = hull
+	return [
+		[x3 - x0 + 3 * (x1 - x2), y3 - y0 + 3 * (y1 - y2)],
+		[3 * (x0 + x2) - 6 * x1, 3 * (y0 + y2) - 6 * y1],
+		[3 * (x1 - x0), 3 * (y1 - y0)],
+	]
 }
 
 /**
@@ -526,26 +599,47 @@ function minMaxAlongDim(
 	return [minV, maxV]
 }
 
-/** Speed ‖B′(t)‖, the arc-length integrand. */
-function speedAt(hull: BareSegmentC, t: number): number {
-	const d = derivativeFn(hull)(t)
-	return Math.hypot(d[0], d[1])
-}
+/**
+ * Speed ‖B′(t)‖, the arc-length integrand, as an allocation-free closure over the hull's
+ * derivative coefficients. Memoized per hull because the quadrature calls it in tight loops.
+ */
+const speedFn = memoize((hull: BareSegmentC): ((t: number) => number) => {
+	const [p0, p3] = [hull.start, hull.point]
+	const [p1, p2] = hull.args
+	const ax = p1[0] - p0[0]
+	const ay = p1[1] - p0[1]
+	const bx = p2[0] - p1[0]
+	const by = p2[1] - p1[1]
+	const cx = p3[0] - p2[0]
+	const cy = p3[1] - p2[1]
+
+	return t => {
+		const u = 1 - t
+		const w0 = 3 * u * u
+		const w1 = 6 * u * t
+		const w2 = 3 * t * t
+		return Math.hypot(w0 * ax + w1 * bx + w2 * cx, w0 * ay + w1 * by + w2 * cy)
+	}
+})
 
 /**
- * Arc length ∫ ‖B′(t)‖ dt from parameter `t0` to `t1` by Gauss–Legendre quadrature.
- * Signed: negative when `t1 < t0`.
+ * Arc-length table of the cubic, built once per hull. It is the single precomputation behind
+ * {@link CubicBezier.length} and every offset/unit query: summing 8 Gauss–Legendre pieces keeps
+ * the length accurate across cusps, where one quadrature over the whole curve loses ~1e-4.
  */
-function arcLengthBetween(hull: BareSegmentC, t0: number, t1: number): number {
-	if (t0 === t1) return 0
-	return gaussLegendre(t => speedAt(hull, t), t0, t1)
-}
+const arcLengthTable = memoize((hull: BareSegmentC) => {
+	const speed = speedFn(hull)
+	return buildArcLengthTable(
+		speed,
+		(t0, t1) => (t0 === t1 ? 0 : gaussLegendre(speed, t0, t1)),
+		1
+	)
+})
 
 /**
  * Parameter t ∈ [0, 1] whose arc length from the curve start equals `s` (clamped to `total`,
- * the full length). Newton–Raphson on s(t) − target, whose derivative is the speed ‖B′(t)‖;
- * each step integrates only the increment from the previous estimate, and bisection bounds
- * guard against a step leaving the bracket (e.g. near a cusp where the speed vanishes).
+ * the full length). The heavy part, sampling the cumulative length along the curve, is memoized
+ * per hull in {@link arcLengthTable}; each query then only brackets, estimates and refines.
  */
 function timeAtArcLength(hull: BareSegmentC, s: number, total: number): number {
 	if (total <= 1e-15) return 0
@@ -554,32 +648,5 @@ function timeAtArcLength(hull: BareSegmentC, s: number, total: number): number {
 	if (target <= 0) return 0
 	if (target >= total) return 1
 
-	const tolerance = total * 1e-12
-
-	let lower = 0
-	let upper = 1
-	let t = target / total
-	let acc = arcLengthBetween(hull, 0, t)
-
-	for (let i = 0; i < 32 && upper - lower > 1e-15; i++) {
-		const err = acc - target
-		if (Math.abs(err) <= tolerance) break
-
-		if (err < 0) {
-			lower = t
-		} else {
-			upper = t
-		}
-
-		const speed = speedAt(hull, t)
-		let next = speed > 0 ? t - err / speed : NaN
-		if (!(next > lower && next < upper)) {
-			next = (lower + upper) * 0.5
-		}
-
-		acc += arcLengthBetween(hull, t, next)
-		t = next
-	}
-
-	return t
+	return invertArcLength(arcLengthTable(hull), target)
 }

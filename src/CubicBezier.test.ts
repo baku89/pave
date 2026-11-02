@@ -16,6 +16,7 @@ import type {vec2} from 'linearly'
 import {describe, expect, it, test} from 'vitest'
 
 import {CubicBezier} from './CubicBezier'
+import {gaussLegendre} from './numeric'
 import {SegmentC} from './Segment'
 
 /**
@@ -149,7 +150,9 @@ describe('fromQuadraticBezier degree elevation', () => {
 	const cubic = CubicBezier.fromQuadraticBezier([0, 0], [0.5, 1], [1, 0])
 
 	it('length', () => {
-		expect(CubicBezier.length(cubic)).toBeCloseTo(1.4789428575453212, 12)
+		// Parabola y = 2x(1 − x): ∫₀¹ √(1 + (2 − 4x)²) dx = √5 / 2 + asinh(2) / 4
+		const exact = Math.sqrt(5) / 2 + Math.asinh(2) / 4
+		expect(CubicBezier.length(cubic)).toBeCloseTo(exact, 14)
 	})
 
 	it('bounds', () => {
@@ -574,38 +577,77 @@ describe('CubicBezier point / tangent / normal (circle quadrant, Paper.js Curve#
  */
 
 describe('toTime by arc length', () => {
-	const curves: [string, SegmentC][] = [
-		['gentle', CubicBezier.of([0, 0], [30, 50], [70, 50], [100, 0])],
-		['S-curve', CubicBezier.of([0, 0], [100, 0], [0, 100], [100, 100])],
-		['loop', CubicBezier.of([0, 0], [150, 100], [-50, 100], [100, 0])],
-		['straight', CubicBezier.of([0, 0], [10, 0], [90, 0], [100, 0])],
+	const curves: Omit<SegmentC, 'command'>[] = [
+		// gentle S-curve
+		{
+			start: [0, 0],
+			args: [
+				[30, 80],
+				[70, -20],
+			],
+			point: [100, 50],
+		},
+		// loop
+		{
+			start: [0, 0],
+			args: [
+				[100, 100],
+				[-50, 100],
+			],
+			point: [50, 0],
+		},
+		// near-cusp
+		{
+			start: [0, 0],
+			args: [
+				[100, 50],
+				[0, 50],
+			],
+			point: [100, 0],
+		},
 	]
 
-	test.each(curves)('inverts the swept arc length on a %s curve', (_, seg) => {
-		const len = CubicBezier.length(seg)
-		let prev = 0
-		for (let unit = 0.02; unit < 1; unit += 0.02) {
-			const time = CubicBezier.toTime(seg, {unit})
-			expect(time).toBeGreaterThan(prev)
-			prev = time
-			const swept = CubicBezier.length(CubicBezier.trim(seg, {time: 0}, {time}))
-			expect(swept / len).toBeCloseTo(unit, 7)
+	/** Reference arc length by fine piecewise quadrature, independent of the engine's table. */
+	function refLength(bezier: Omit<SegmentC, 'command'>, t1: number) {
+		const speed = (t: number) => {
+			const d = CubicBezier.derivative(bezier, {time: t})
+			return Math.hypot(d[0], d[1])
+		}
+		const n = 2000
+		let sum = 0
+		for (let i = 0; i < n; i++) {
+			sum += gaussLegendre(speed, (t1 * i) / n, (t1 * (i + 1)) / n)
+		}
+		return sum
+	}
+
+	it.each(curves)('measures the length within 1e-9 across cusps %#', bezier => {
+		const ref = refLength(bezier, 1)
+		expect(Math.abs(CubicBezier.length(bezier) - ref)).toBeLessThanOrEqual(
+			ref * 1e-9
+		)
+	})
+
+	it.each(curves)('round-trips offset → time → length %#', bezier => {
+		const len = CubicBezier.length(bezier)
+		let prevT = 0
+		for (let i = 0; i <= 20; i++) {
+			const s = (len * i) / 20
+			const t = CubicBezier.toTime(bezier, {offset: s})
+			expect(t).toBeGreaterThanOrEqual(prevT)
+			prevT = t
+			expect(Math.abs(refLength(bezier, t) - s)).toBeLessThanOrEqual(len * 1e-9)
 		}
 	})
 
-	test('accepts offsets, including negative ones measured from the end', () => {
-		const seg = curves[1][1]
-		const len = CubicBezier.length(seg)
-		const fromStart = CubicBezier.toTime(seg, {offset: len * 0.3})
-		const fromEnd = CubicBezier.toTime(seg, {offset: -len * 0.7})
-		expect(fromStart).toBeCloseTo(fromEnd, 10)
-	})
-
-	test('clamps to the ends', () => {
-		const seg = curves[0][1]
-		const len = CubicBezier.length(seg)
-		expect(CubicBezier.toTime(seg, {unit: 0})).toBe(0)
-		expect(CubicBezier.toTime(seg, {unit: 1})).toBe(1)
-		expect(CubicBezier.toTime(seg, {offset: len * 2})).toBe(1)
+	it('treats unit and offset consistently', () => {
+		const bezier = curves[0]
+		const len = CubicBezier.length(bezier)
+		for (const u of [0.1, 0.37, 0.5, 0.9]) {
+			expect(CubicBezier.toTime(bezier, {unit: u})).toBeCloseTo(
+				CubicBezier.toTime(bezier, {offset: u * len}),
+				12
+			)
+		}
 	})
 })
