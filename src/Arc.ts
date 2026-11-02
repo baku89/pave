@@ -4,6 +4,7 @@ import {mat2, mat2d, scalar, vec2} from 'linearly'
 import {CubicBezier} from './CubicBezier'
 import {Iter} from './Iter'
 import {SegmentLocation, UnitSegmentLocation} from './Location'
+import {gaussLegendre} from './numeric'
 import {Path, VertexA, VertexC} from './Path'
 import {SegmentA} from './Segment'
 import {memoize, normalizeOffset} from './utils'
@@ -497,10 +498,9 @@ export namespace Arc {
 	 *
 	 * The integrand `|d/dt (rx cos t, ry sin t)|` is smooth but has sharp dips
 	 * near the minor axis of an eccentric ellipse, so a single fixed-order
-	 * quadrature over a wide span loses accuracy. The span is therefore split
-	 * into pieces of at most 90° and 16-point Gauss–Legendre is applied to each,
-	 * which keeps the relative error around 1e-10 even for a full turn of a
-	 * 100:1 ellipse while costing at most 64 integrand evaluations.
+	 * quadrature over a wide span loses accuracy. The span is therefore cut at
+	 * quadrant boundaries and Gauss–Legendre quadrature is applied to each piece
+	 * (see {@link ellipticArcLengthRad} for the accuracy this achieves).
 	 */
 	export function ellipticArcLength(radii: vec2, angles: AngleRange): number {
 		const [rx, ry] = radii
@@ -552,42 +552,6 @@ export namespace Arc {
 			toAngle
 		)
 	}
-}
-
-/* eslint-disable no-loss-of-precision --
-   Tabulated Gauss–Legendre quadrature coefficients. */
-/** Abscissae for 16-point Gauss–Legendre quadrature on [-1, 1]. */
-const GL16_X: readonly number[] = [
-	-0.9894009349916499, -0.9445750230732326, -0.8656312023878317,
-	-0.755404408355003, -0.6178762444026437, -0.4580167776572274,
-	-0.2816035507792589, -0.09501250983763744, 0.09501250983763744,
-	0.2816035507792589, 0.4580167776572274, 0.6178762444026437, 0.755404408355003,
-	0.8656312023878317, 0.9445750230732326, 0.9894009349916499,
-]
-
-/** Weights for {@link GL16_X}. */
-const GL16_W: readonly number[] = [
-	0.027152459411754095, 0.06225352393864789, 0.09515851168249247,
-	0.12462897125553387, 0.14959598881657673, 0.16915651939500254,
-	0.18260341504492359, 0.18945061045506845, 0.18945061045506845,
-	0.18260341504492359, 0.16915651939500254, 0.14959598881657673,
-	0.12462897125553387, 0.09515851168249247, 0.06225352393864789,
-	0.027152459411754095,
-]
-/* eslint-enable no-loss-of-precision */
-
-function gaussLegendre16(
-	a: number,
-	b: number,
-	f: (t: number) => number
-): number {
-	const mid = (a + b) * 0.5
-	const half = (b - a) * 0.5
-	let sum = 0
-	for (let i = 0; i < 16; i++) {
-		sum += GL16_W[i]! * f(mid + half * GL16_X[i]!)
-	}
-	return half * sum
 }
 
 /**
@@ -703,7 +667,8 @@ function ellipseSpeed(rx: number, ry: number, t: number): number {
  * on an eccentric ellipse, so the range is cut at every quadrant boundary
  * (multiples of π/2). That places each sharp feature at a piece endpoint,
  * where Gauss–Legendre nodes cluster, and lets every full quadrant share a
- * single evaluation by symmetry.
+ * single evaluation by symmetry. Over a full turn the relative error stays
+ * around 1e-11 for a 10:1 ellipse and 2e-7 for a 100:1 one.
  */
 function ellipticArcLengthRad(
 	rx: number,
@@ -723,17 +688,17 @@ function ellipticArcLengthRad(
 	const n1 = Math.floor(hi / quadrant)
 
 	if (n0 === n1) {
-		return dir * gaussLegendre16(lo, hi, f)
+		return dir * gaussLegendre(f, lo, hi)
 	}
 
-	let sum = gaussLegendre16(lo, (n0 + 1) * quadrant, f)
+	let sum = gaussLegendre(f, lo, (n0 + 1) * quadrant)
 
 	const fullQuadrants = n1 - n0 - 1
 	if (fullQuadrants > 0) {
-		sum += fullQuadrants * gaussLegendre16(0, quadrant, f)
+		sum += fullQuadrants * gaussLegendre(f, 0, quadrant)
 	}
 
-	sum += gaussLegendre16(n1 * quadrant, hi, f)
+	sum += gaussLegendre(f, n1 * quadrant, hi)
 
 	return dir * sum
 }

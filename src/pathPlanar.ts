@@ -6,11 +6,8 @@ import {vec2} from 'linearly'
 
 import {Arc} from './Arc'
 import {CubicBezier} from './CubicBezier'
-import {
-	cubicGreenPlaneIntegral,
-	integrateOnUnitInterval,
-} from './cubicBezierGeometry'
 import {Curve} from './Curve'
+import {gaussLegendre} from './numeric'
 import type {Path, VertexL} from './Path'
 import {Segment, type SegmentA, type SegmentC} from './Segment'
 
@@ -23,25 +20,45 @@ function lineGreenPlaneIntegral(start: vec2, end: vec2): number {
 }
 
 /**
- * Same Green integrand ∫ (x dy − y dx) for t ∈ [0,1] along an SVG elliptic arc,
- * using {@link Arc.point} / {@link Arc.derivative} (true dp/dt). Degenerate arcs use the chord.
- * Kept here (not on `Arc`) because it exists only for {@link planarPathArea}.
+ * Same Green integrand ∫ (x dy − y dx) for t ∈ [0,1] along a cubic Bézier, using
+ * {@link CubicBezier.point} / {@link CubicBezier.derivative}. The integrand is a degree-5
+ * polynomial, so Gauss–Legendre quadrature is exact. Kept here (not on `CubicBezier`)
+ * because it exists only for {@link planarPathArea}.
+ */
+function cubicGreenPlaneIntegral(seg: SegmentC): number {
+	return gaussLegendre(
+		t => {
+			const p = CubicBezier.point(seg, {time: t})
+			const v = CubicBezier.derivative(seg, {time: t})
+			return p[0] * v[1] - p[1] * v[0]
+		},
+		0,
+		1
+	)
+}
+
+/**
+ * Same Green integrand for an SVG elliptic arc, using {@link Arc.point} /
+ * {@link Arc.derivative} (true dp/dt). Degenerate arcs use the chord.
  */
 function arcGreenPlaneIntegral(seg: SegmentA): number {
 	const {start, point} = seg
 	if (Arc.isStraight(seg)) {
 		return lineGreenPlaneIntegral(start, point)
 	}
-	return integrateOnUnitInterval(t => {
-		const p = Arc.point(seg, {time: t})
-		const v = Arc.derivative(seg, {time: t})
-		return p[0] * v[1] - p[1] * v[0]
-	})
+	return gaussLegendre(
+		t => {
+			const p = Arc.point(seg, {time: t})
+			const v = Arc.derivative(seg, {time: t})
+			return p[0] * v[1] - p[1] * v[0]
+		},
+		0,
+		1
+	)
 }
 
 /**
- * Per-segment contribution to 2×signed area: line (closed form), cubic (Gauss quadrature in geometry),
- * arc (see {@link arcGreenPlaneIntegral}).
+ * Per-segment contribution to 2×signed area: line (closed form), cubic and arc (Gauss quadrature).
  */
 function segmentGreenPlaneIntegral(seg: Segment): number {
 	if (seg.command === 'L') {
