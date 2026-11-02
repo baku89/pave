@@ -1,8 +1,7 @@
 import type {vec2} from 'linearly'
 import {scalar} from 'linearly'
 
-import {Arc} from '../Arc'
-import type {Path} from '../Path'
+import {Arc, type Path} from '../index'
 import type {CommandArgsA} from './types'
 
 function drawArcToRenderingContext(

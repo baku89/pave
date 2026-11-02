@@ -1,9 +1,7 @@
 import {Circle, Rect} from 'geome'
 import {scalar, vec2} from 'linearly'
 
-import type {CurveL} from '../Curve'
-import {Iter} from '../Iter'
-import type {Path, PathL} from '../Path'
+import {type CurveL, Iter, type Path, type PathL} from '../index'
 import {fromSegment, merge} from './compound'
 import {arcTo, close, moveTo, pen} from './drawAppend'
 import {join} from './modifiers'

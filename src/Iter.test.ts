@@ -1,6 +1,6 @@
 import {describe, expect, it} from 'vitest'
 
-import {Iter} from './Iter'
+import {Iter} from './index'
 
 describe('resample', () => {
 	it('yield `to` when `from` and `to` are the same', () => {

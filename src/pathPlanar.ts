@@ -4,12 +4,17 @@
  */
 import {vec2} from 'linearly'
 
-import {Arc} from './Arc'
-import {CubicBezier} from './CubicBezier'
-import {Curve} from './Curve'
+import {
+	Arc,
+	CubicBezier,
+	Curve,
+	type Path,
+	Segment,
+	type SegmentA,
+	type SegmentC,
+	type VertexL,
+} from './index'
 import {gaussLegendre} from './numeric'
-import type {Path, VertexL} from './Path'
-import {Segment, type SegmentA, type SegmentC} from './Segment'
 
 /**
  * Green plane form for one straight edge from `start` → `end`:

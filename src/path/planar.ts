@@ -18,12 +18,8 @@
 import {Rect} from 'geome'
 import {vec2} from 'linearly'
 
-import {Arc} from '../Arc'
-import {CubicBezier} from '../CubicBezier'
-import {Curve} from '../Curve'
+import {Arc, CubicBezier, Curve, type Path, Segment} from '../index'
 import {cross2, unitNormalAt, unitTangentAt} from '../parallelCurve'
-import type {Path} from '../Path'
-import {Segment} from '../Segment'
 import {rangeBounds} from '../segmentBounds'
 import {intersectSegments} from './intersections'
 import type {Vertex} from './types'

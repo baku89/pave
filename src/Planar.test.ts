@@ -1,12 +1,9 @@
 import {vec2} from 'linearly'
 import {describe, expect, it} from 'vitest'
 
-import {CubicBezier} from './CubicBezier'
-import {Curve} from './Curve'
-import {Path} from './Path'
+import {CubicBezier, Curve, Path, Segment} from './index'
 import {windingNumber} from './path/planar'
 import {planarPathArea} from './pathPlanar'
-import {Segment} from './Segment'
 
 const area = (p: Path) => Math.abs(Path.area(p))
 const commands = (p: Path) =>

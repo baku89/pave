@@ -1,9 +1,7 @@
 import {vec2} from 'linearly'
 import svgpath from 'svgpath'
 
-import {CubicBezier} from '../CubicBezier'
-import {Curve} from '../Curve'
-import type {Path} from '../Path'
+import {CubicBezier, Curve, type Path} from '../index'
 import {toFixedSimple} from '../utils'
 import {Pen} from './drawAppend'
 import type {CommandArgsA, CommandArgsC} from './types'

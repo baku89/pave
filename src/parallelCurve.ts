@@ -12,11 +12,9 @@
  */
 import {vec2} from 'linearly'
 
-import {Arc} from './Arc'
-import {CubicBezier} from './CubicBezier'
 import {fitCubicsToCurve, type ParametricCurve} from './cubicBezierGeometry'
+import {Arc, CubicBezier, Segment, type SegmentA} from './index'
 import type {Vertex, VertexC} from './path/types'
-import {Segment, type SegmentA} from './Segment'
 
 /** Scalar 2D cross product. */
 export function cross2(a: vec2, b: vec2): number {

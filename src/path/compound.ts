@@ -1,6 +1,4 @@
-import type {Curve} from '../Curve'
-import type {Path} from '../Path'
-import type {Segment} from '../Segment'
+import {type Curve, type Path, type Segment} from '../index'
 import type {Vertex} from './types'
 
 /**

@@ -1,11 +1,8 @@
 import {Rect} from 'geome'
 import {scalar} from 'linearly'
 
-import {CubicBezier} from '../CubicBezier'
-import {Curve} from '../Curve'
-import type {Path} from '../Path'
+import {CubicBezier, Curve, type Path, Segment} from '../index'
 import {planarPathArea} from '../pathPlanar'
-import {Segment} from '../Segment'
 import {memoize} from '../utils'
 import {unite} from './boolean'
 

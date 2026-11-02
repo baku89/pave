@@ -6,9 +6,7 @@
 import {Rect} from 'geome'
 import {mat2d, scalar, vec2} from 'linearly'
 
-import {Arc} from './Arc'
-import {CubicBezier} from './CubicBezier'
-import type {Segment} from './Segment'
+import {Arc, CubicBezier, type Segment} from './index'
 
 function arcRangeBounds(
 	seg: Segment & {command: 'A'},

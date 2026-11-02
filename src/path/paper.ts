@@ -7,8 +7,7 @@
  */
 import type {vec2} from 'linearly'
 
-import {Arc} from '../Arc'
-import type {Path} from '../Path'
+import {Arc, type Path} from '../index'
 import {memoize} from '../utils'
 import type {Vertex} from './types'
 

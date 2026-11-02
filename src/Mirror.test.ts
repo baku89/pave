@@ -2,7 +2,7 @@ import {Line} from 'geome'
 import {type vec2} from 'linearly'
 import {describe, expect, it, test} from 'vitest'
 
-import {Path} from './Path'
+import {Path} from './index'
 import {windingNumber} from './path/planar'
 import {planarPathArea} from './pathPlanar'
 

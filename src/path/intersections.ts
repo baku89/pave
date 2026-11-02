@@ -8,8 +8,8 @@
 import {Rect, Segment as LineSegment} from 'geome'
 import {scalar, vec2} from 'linearly'
 
+import {Segment} from '../index'
 import {cross2} from '../parallelCurve'
-import {Segment} from '../Segment'
 import {rangeBounds} from '../segmentBounds'
 
 /** Longest side of a rect. */

@@ -14,9 +14,7 @@
  */
 import {scalar, vec2} from 'linearly'
 
-import {Arc} from '../Arc'
-import {CubicBezier} from '../CubicBezier'
-import {Curve} from '../Curve'
+import {Arc, CubicBezier, Curve, type Path, Segment} from '../index'
 import {
 	arcVertex,
 	circularParallelRadius,
@@ -32,8 +30,6 @@ import {
 	unitNormalAt,
 	unitTangentAt,
 } from '../parallelCurve'
-import type {Path} from '../Path'
-import {Segment} from '../Segment'
 import {unite} from './boolean'
 import {planarBoolean, type PlanarCurve, type PlanarOperand} from './planar'
 import type {Vertex} from './types'

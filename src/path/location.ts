@@ -1,10 +1,8 @@
 import {mat2d, scalar, vec2} from 'linearly'
 
-import {Curve} from '../Curve'
+import {Curve, type Path, Segment} from '../index'
 import type {PathLocation, TimePathLocation} from '../Location'
 import {searchInterval} from '../numeric'
-import type {Path} from '../Path'
-import {Segment} from '../Segment'
 import {normalizeIndex, normalizeOffset} from '../utils'
 import {
 	curveLengthPrefix,

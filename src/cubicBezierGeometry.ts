@@ -8,7 +8,7 @@
  */
 import {scalar, vec2} from 'linearly'
 
-import {type BareSegmentC, CubicBezier} from './CubicBezier'
+import {type BareSegmentC, CubicBezier} from './index'
 
 /**
  * A planar curve sampled by parameter, used as the target of {@link fitCubicsToCurve}.

@@ -1,6 +1,6 @@
 import type p5 from 'p5'
 
-import type {Path, Vertex} from '../Path'
+import {type Path, type Vertex} from '../index'
 import {memoize} from '../utils'
 import {unarc} from './modifiers'
 import {drawToRenderingContext} from './renderContext'

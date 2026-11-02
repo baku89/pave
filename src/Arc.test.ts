@@ -1,9 +1,8 @@
 import {mat2d, vec2} from 'linearly'
 import {describe, expect, it, test} from 'vitest'
 
-import {Arc} from './Arc'
+import {Arc, SegmentA} from './index'
 import {gaussLegendre} from './numeric'
-import {SegmentA} from './Segment'
 
 describe('toCenterParameterization', () => {
 	it('should work in right angle case', () => {

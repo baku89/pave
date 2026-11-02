@@ -1,8 +1,6 @@
 import {vec2} from 'linearly'
 
-import {Curve} from '../Curve'
-import {CurveGroup} from '../CurveGroup'
-import type {Path} from '../Path'
+import {Curve, CurveGroup, type Path} from '../index'
 import type {Vertex} from './types'
 
 /**

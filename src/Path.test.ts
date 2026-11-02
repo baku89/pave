@@ -8,10 +8,7 @@ import {mat2d, vec2} from 'linearly'
 import paper from 'paper'
 import {beforeAll, describe, expect, it, test} from 'vitest'
 
-import {CubicBezier} from './CubicBezier'
-import {Curve} from './Curve'
-import {Path} from './Path'
-import {Segment} from './Segment'
+import {CubicBezier, Curve, Path, Segment} from './index'
 
 beforeAll(() => {
 	paper.setup(new paper.Size(1, 1))

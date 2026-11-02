@@ -1,4 +1,4 @@
-import type {Path} from '../Path'
+import {type Path} from '../index'
 import {planarBoolean, type PlanarOperand} from './planar'
 
 function toOperand(path: Path): PlanarOperand {

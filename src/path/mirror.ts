@@ -11,11 +11,8 @@
 import {Line as AxisLine} from 'geome'
 import {scalar, vec2} from 'linearly'
 
-import {Arc} from '../Arc'
-import {Curve} from '../Curve'
+import {Arc, Curve, type Path, Segment, type SegmentC} from '../index'
 import {solveCubic} from '../numeric'
-import type {Path} from '../Path'
-import {Segment, type SegmentC} from '../Segment'
 import {transform} from './modifiers'
 import type {Vertex} from './types'
 

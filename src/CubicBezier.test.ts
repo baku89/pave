@@ -15,9 +15,8 @@
 import type {vec2} from 'linearly'
 import {describe, expect, it, test} from 'vitest'
 
-import {CubicBezier} from './CubicBezier'
+import {CubicBezier, SegmentC} from './index'
 import {gaussLegendre} from './numeric'
-import {SegmentC} from './Segment'
 
 /**
  * Bezier.js `utils.derive` style hull for cubics (golden rows from

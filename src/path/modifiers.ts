@@ -1,13 +1,18 @@
 import {mat2d, scalar, vec2} from 'linearly'
 
-import {Arc} from '../Arc'
-import {type BareSegmentC, CubicBezier} from '../CubicBezier'
-import {Curve} from '../Curve'
-import {Iter} from '../Iter'
+import {
+	Arc,
+	type BareSegmentC,
+	CubicBezier,
+	Curve,
+	Iter,
+	type Path,
+	type PathC,
+	Segment,
+	type UnarcPath,
+} from '../index'
 import type {PathLocation} from '../Location'
-import type {Path, PathC, UnarcPath} from '../Path'
 import {planarFlattenPath} from '../pathPlanar'
-import {Segment} from '../Segment'
 import {toTime} from './location'
 import type {Vertex, VertexC, VertexL} from './types'
 

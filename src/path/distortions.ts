@@ -4,7 +4,7 @@
  */
 import {mat2d, vec2} from 'linearly'
 
-import type {Path} from '../Path'
+import {type Path} from '../index'
 import {distort, type DistortOptions} from './modifiers'
 
 /**
