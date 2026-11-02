@@ -14,6 +14,7 @@
  */
 import {scalar, vec2} from 'linearly'
 
+import {completeVertexAttrs, interpolateValue, withCurves} from '../attributes'
 import {Arc, CubicBezier, Curve, type Path, Segment} from '../index'
 import {
 	arcVertex,
@@ -29,10 +30,13 @@ import {
 	splitForParallel,
 	unitNormalAt,
 	unitTangentAt,
+	variableParallelBreaks,
+	variableParallelPieces,
 } from '../parallelCurve'
+import {setAttribute} from './attributes'
 import {unite} from './boolean'
 import {planarBoolean, type PlanarCurve, type PlanarOperand} from './planar'
-import type {Vertex} from './types'
+import type {AttributeDef, AttributeLike, Vertex} from './types'
 
 /**
  * @category Options
@@ -85,6 +89,9 @@ const NEGLIGIBLE_RELATIVE_OFFSET = 1e-7
 function sheetTolerance(s: number, tolerance: number): number {
 	return Math.min(tolerance, Math.abs(s) * FIT_TOLERANCE_RATIO)
 }
+
+/** Where {@link offsetStroke} keeps the width it has read while working. */
+const WIDTH_ATTRIBUTE = '__offsetStrokeWidth'
 
 const TAG_OFFSET = 'offset'
 const TAG_AUX = 'aux'
@@ -515,7 +522,7 @@ export function offset(
 		curves.push(...result.curves)
 	}
 
-	return {curves}
+	return withCurves(path, curves)
 }
 
 /**
@@ -523,7 +530,7 @@ export function offset(
  *
  * Straight lines and circular arcs are offset exactly, so `A` commands are preserved; cubic Béziers and elliptic arcs are approximated by cubic Béziers within `options.tolerance`.
  * @param path The path to stroke
- * @param width The width of stroke
+ * @param width The width of stroke. It can vary along the path, as the name of an attribute or a function of the vertex: the width is read at the vertices and interpolated along the segments. A path whose curves each have one width keeps its `A` commands.
  * @param options The options
  * @returns The newly created path
  * @category Modifiers
@@ -537,43 +544,154 @@ export function offset(
  */
 export function offsetStroke(
 	path: Path,
-	width: number,
+	width: AttributeLike<number>,
 	options?: OffsetStrokeOptions
 ): Path {
 	const opts = resolve(options)
 	const lineCap = options?.lineCap ?? 'butt'
-	const d = Math.abs(width) / 2
 
-	if (d === 0) {
-		return {curves: []}
+	// Reading the width as a vertex attribute lets it follow any cut of the segments
+	const widthDef =
+		typeof width === 'string' ? path.attrDefs?.[width] : undefined
+	const withWidth = setAttribute(
+		completeVertexAttrs(path),
+		WIDTH_ATTRIBUTE,
+		width
+	)
+	const halfWidthAt = (vertex: Vertex) => {
+		const value = vertex.attrs?.[WIDTH_ATTRIBUTE]
+		return typeof value === 'number' ? Math.abs(value) / 2 : 0
 	}
 
 	const sheets: PlanarCurve[] = []
+	let smallest = Infinity
 
-	for (const curve of path.curves) {
+	for (const curve of withWidth.curves) {
 		const segs = cleanSegments(curve)
 		if (segs.length === 0) continue
 
-		sheets.push(...curveSheets(curve, d, opts), ...curveSheets(curve, -d, opts))
+		const halves = curve.vertices.map(halfWidthAt)
+		const d = halves[0]
+		const uniform = halves.every(h => h === d)
+
+		for (const h of halves) if (h > 0) smallest = Math.min(smallest, h)
+
+		if (uniform) {
+			if (d === 0) continue
+			sheets.push(
+				...curveSheets(curve, d, opts),
+				...curveSheets(curve, -d, opts)
+			)
+		} else {
+			sheets.push(
+				...variableCurveSheets(curve, 1, opts, widthDef),
+				...variableCurveSheets(curve, -1, opts, widthDef)
+			)
+		}
 
 		if (!curve.closed) {
 			const first = segs[0]
 			const last = segs[segs.length - 1]
-			const startCap = capSheet(
-				first.start,
-				vec2.negate(unitTangentAt(first, 0)),
-				d,
-				lineCap
-			)
-			const endCap = capSheet(last.point, unitTangentAt(last, 1), d, lineCap)
+			const startHalf = halfWidthAt(curve.vertices[0])
+			const endHalf = halfWidthAt(curve.vertices[curve.vertices.length - 1])
+			const startCap =
+				startHalf > 0
+					? capSheet(
+							first.start,
+							vec2.negate(unitTangentAt(first, 0)),
+							startHalf,
+							lineCap
+						)
+					: null
+			const endCap =
+				endHalf > 0
+					? capSheet(last.point, unitTangentAt(last, 1), endHalf, lineCap)
+					: null
 			if (startCap) sheets.push(startCap)
 			if (endCap) sheets.push(endCap)
 		}
 	}
 
-	return planarBoolean(asOperands(sheets), {
+	if (sheets.length === 0) {
+		return withCurves(path, [])
+	}
+
+	const {curves} = planarBoolean(asOperands(sheets), {
 		inside: anyInside,
 		assemble: 'closed',
-		tolerance: d * ENGINE_TOLERANCE_RATIO,
+		tolerance: smallest * ENGINE_TOLERANCE_RATIO,
 	})
+
+	return withCurves(path, curves)
+}
+
+/** The sheets of one side of a curve whose stroke width changes along the way. */
+function variableCurveSheets(
+	curve: Curve,
+	side: 1 | -1,
+	options: ResolvedOptions,
+	widthDef?: AttributeDef
+): PlanarCurve[] {
+	const segs = cleanSegments(curve)
+	const out: PlanarCurve[] = []
+
+	const distanceOf = (seg: Segment) => (t: number) => {
+		const width = interpolateValue(
+			seg.startAttrs?.[WIDTH_ATTRIBUTE],
+			seg.attrs?.[WIDTH_ATTRIBUTE],
+			t,
+			widthDef
+		)
+		return (side * Math.abs(typeof width === 'number' ? width : 0)) / 2
+	}
+
+	segs.forEach((seg, i) => {
+		const s = distanceOf(seg)
+		const thickest = Math.max(Math.abs(s(0)), Math.abs(s(0.5)), Math.abs(s(1)))
+		if (thickest > 0) {
+			const tolerance = sheetTolerance(thickest, options.tolerance)
+			const breaks = variableParallelBreaks(seg, s)
+
+			for (let b = 0; b + 1 < breaks.length; b++) {
+				// Reversed so that each sheet runs along the segment and back. Every piece makes
+				// its own sheet: being separate operands, a fold cannot cancel out the others.
+				const pieces = variableParallelPieces(
+					seg,
+					s,
+					breaks[b + 1],
+					breaks[b],
+					tolerance
+				)
+				for (const {from, to, vertex} of pieces) {
+					const piece = trimOrSelf(seg, to, from)
+					const q1 = vec2.scaleAndAdd(
+						piece.point,
+						unitNormalAt(seg, from),
+						s(from)
+					)
+					out.push({
+						curve: {
+							vertices: [
+								{command: 'L', point: piece.start},
+								segmentVertex(piece),
+								{command: 'L', point: q1},
+								vertex,
+							],
+							closed: true,
+						},
+					})
+				}
+			}
+		}
+
+		const next =
+			i + 1 < segs.length ? segs[i + 1] : curve.closed ? segs[0] : null
+		const distance = s(1)
+		if (next && distance !== 0) {
+			const join = joinSheet(seg, next, distance, options)
+			if (join) out.push(join)
+		}
+	})
+
+	return out
 }

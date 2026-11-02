@@ -4,6 +4,7 @@
  */
 import {vec2} from 'linearly'
 
+import {completeVertexAttrs, segmentAttrsAt, withCurves} from './attributes'
 import {
 	Arc,
 	CubicBezier,
@@ -15,6 +16,7 @@ import {
 	type VertexL,
 } from './index'
 import {gaussLegendre} from './numeric'
+import type {AttributeDefs} from './path/types'
 
 /**
  * Green plane form for one straight edge from `start` → `end`:
@@ -129,6 +131,12 @@ function cubicMaxDeviationFromChord(seg: SegmentC): number {
 
 const FLATTEN_MAX_DEPTH = 64
 
+/** A point on a segment, along with its time to read the attributes there. */
+interface FlatPoint {
+	point: vec2
+	time: number
+}
+
 /**
  * Recursively bisect a cubic at t=½ until the hull is within `tolerance` of the chord,
  * then append the end vertex. Outputs only interior breakpoints + end (caller owns start).
@@ -136,20 +144,23 @@ const FLATTEN_MAX_DEPTH = 64
 function pushCubicFlat(
 	seg: SegmentC,
 	tolerance: number,
-	out: vec2[],
-	depth: number
+	out: FlatPoint[],
+	depth: number,
+	t0 = 0,
+	t1 = 1
 ): void {
 	if (
 		depth > FLATTEN_MAX_DEPTH ||
 		cubicMaxDeviationFromChord(seg) <= tolerance
 	) {
-		out.push(seg.point)
+		out.push({point: seg.point, time: t1})
 		return
 	}
+	const tm = (t0 + t1) / 2
 	const left = CubicBezier.trim(seg, {time: 0}, {time: 0.5})
 	const right = CubicBezier.trim(seg, {time: 0.5}, {time: 1})
-	pushCubicFlat(left, tolerance, out, depth + 1)
-	pushCubicFlat(right, tolerance, out, depth + 1)
+	pushCubicFlat(left, tolerance, out, depth + 1, t0, tm)
+	pushCubicFlat(right, tolerance, out, depth + 1, tm, t1)
 }
 
 /** Midpoint (t=½) deviation from the chord; coarse upper bound on arc–line error for splitting. */
@@ -164,21 +175,24 @@ function arcMidChordDeviation(seg: SegmentA): number {
 function pushArcFlat(
 	seg: SegmentA,
 	tolerance: number,
-	out: vec2[],
-	depth: number
+	out: FlatPoint[],
+	depth: number,
+	t0 = 0,
+	t1 = 1
 ): void {
 	if (Arc.isStraight(seg)) {
-		out.push(seg.point)
+		out.push({point: seg.point, time: t1})
 		return
 	}
 	if (depth > FLATTEN_MAX_DEPTH || arcMidChordDeviation(seg) <= tolerance) {
-		out.push(seg.point)
+		out.push({point: seg.point, time: t1})
 		return
 	}
+	const tm = (t0 + t1) / 2
 	const left = Arc.trim(seg, {time: 0}, {time: 0.5})
 	const right = Arc.trim(seg, {time: 0.5}, {time: 1})
-	pushArcFlat(left, tolerance, out, depth + 1)
-	pushArcFlat(right, tolerance, out, depth + 1)
+	pushArcFlat(left, tolerance, out, depth + 1, t0, tm)
+	pushArcFlat(right, tolerance, out, depth + 1, tm, t1)
 }
 
 /**
@@ -186,30 +200,36 @@ function pushArcFlat(
  */
 function flattenCurve(
 	curve: Curve,
-	tolerance: number
+	tolerance: number,
+	attrDefs?: AttributeDefs
 ): Curve & {vertices: VertexL[]} {
+	const curveAttrs = curve.attrs ? {attrs: curve.attrs} : {}
 	const segs = Curve.segments(curve)
 	if (segs.length === 0) {
-		return {vertices: [], closed: curve.closed}
+		return {vertices: [], closed: curve.closed, ...curveAttrs}
 	}
 
-	const verts: VertexL[] = [{point: curve.vertices[0].point, command: 'L'}]
+	const first = curve.vertices[0]
+	const verts: VertexL[] = [
+		{
+			point: first.point,
+			command: 'L',
+			...(first.attrs ? {attrs: first.attrs} : {}),
+		},
+	]
 
 	for (const seg of segs) {
+		const pts: FlatPoint[] = []
 		if (seg.command === 'L') {
-			verts.push({point: seg.point, command: 'L'})
+			pts.push({point: seg.point, time: 1})
 		} else if (seg.command === 'C') {
-			const pts: vec2[] = []
 			pushCubicFlat(seg, tolerance, pts, 0)
-			for (const p of pts) {
-				verts.push({point: p, command: 'L'})
-			}
 		} else {
-			const pts: vec2[] = []
 			pushArcFlat(seg, tolerance, pts, 0)
-			for (const p of pts) {
-				verts.push({point: p, command: 'L'})
-			}
+		}
+		for (const {point, time} of pts) {
+			const attrs = segmentAttrsAt(seg, time, attrDefs)
+			verts.push({point, command: 'L', ...(attrs ? {attrs} : {})})
 		}
 	}
 
@@ -221,12 +241,14 @@ function flattenCurve(
 		verts.pop()
 	}
 
-	return {vertices: verts, closed: curve.closed}
+	return {vertices: verts, closed: curve.closed, ...curveAttrs}
 }
 
 /** Map every curve through {@link flattenCurve} with shared `tolerance`. */
 export function planarFlattenPath(path: Path, tolerance: number): Path {
-	return {
-		curves: path.curves.map(c => flattenCurve(c, tolerance)),
-	}
+	const complete = completeVertexAttrs(path)
+	return withCurves(
+		path,
+		complete.curves.map(c => flattenCurve(c, tolerance, path.attrDefs))
+	)
 }

@@ -11,10 +11,11 @@
 import {Line as AxisLine} from 'geome'
 import {scalar, vec2} from 'linearly'
 
+import {completeVertexAttrs, segmentToVertex, withCurves} from '../attributes'
 import {Arc, Curve, type Path, Segment, type SegmentC} from '../index'
 import {solveCubic} from '../numeric'
 import {transform} from './modifiers'
-import type {Vertex} from './types'
+import type {AttributeDefs, Vertex} from './types'
 
 /**
  * The axis of a reflection. Either a directed line of geome, or two distinct points on the line. Two points `[p1, p2]` give the line whose normal is the direction from `p1` to `p2` rotated by +90° (x+ towards y+).
@@ -123,11 +124,18 @@ function splitBySide(
 	seg: Segment,
 	distance: (p: vec2) => number,
 	line: AxisLine,
-	epsilon: number
+	epsilon: number,
+	attrDefs?: AttributeDefs
 ): {seg: Segment; keep: boolean}[] {
 	// A degenerate arc is drawn as a straight line
 	if (seg.command === 'A' && Arc.isStraight(seg)) {
-		seg = {command: 'L', start: seg.start, point: seg.point}
+		seg = {
+			command: 'L',
+			start: seg.start,
+			point: seg.point,
+			...(seg.attrs ? {attrs: seg.attrs} : {}),
+			...(seg.startAttrs ? {startAttrs: seg.startAttrs} : {}),
+		}
 	}
 
 	const times = [
@@ -158,7 +166,7 @@ function splitBySide(
 			from === 0 && to === 1
 				? seg
 				: ({
-						...Segment.trim(seg, {time: from}, {time: to}),
+						...Segment.trim(seg, {time: from}, {time: to}, attrDefs),
 						...(from === 0 ? {start: seg.start} : {}),
 						...(to === 1 ? {point: seg.point} : {}),
 					} as Segment),
@@ -171,11 +179,12 @@ function mirrorCurve(
 	line: AxisLine,
 	distance: (p: vec2) => number,
 	reflectCurve: (curve: Curve) => Curve,
-	epsilon: number
+	epsilon: number,
+	attrDefs?: AttributeDefs
 ): Curve[] {
 	let pieces = Curve.segments(curve)
 		.filter(seg => !Segment.isZero(seg))
-		.flatMap(seg => splitBySide(seg, distance, line, epsilon))
+		.flatMap(seg => splitBySide(seg, distance, line, epsilon, attrDefs))
 
 	if (curve.closed) {
 		if (pieces.every(piece => piece.keep)) {
@@ -234,8 +243,9 @@ function joinChain(
 		? AxisLine.closest(line, chain[0].start)
 		: chain[0].start
 
+	const startAttrs = chain[0].startAttrs
 	const half: Vertex[] = [
-		{command: 'L', point: start},
+		{command: 'L', point: start, ...(startAttrs ? {attrs: startAttrs} : {})},
 		...chain.map(segmentToVertex),
 	]
 	if (endsOnAxis) {
@@ -261,12 +271,6 @@ function joinChain(
 		return [{vertices: [...copy, ...half.slice(1)], closed: false}]
 	}
 	return [halfCurve, {vertices: copy, closed: false}]
-}
-
-function segmentToVertex(seg: Segment): Vertex {
-	return seg.command === 'L'
-		? {command: 'L', point: seg.point}
-		: ({command: seg.command, args: seg.args, point: seg.point} as Vertex)
 }
 
 /**
@@ -318,9 +322,19 @@ export function mirror(path: Path, axis: MirrorAxis): Path {
 	}
 	const epsilon = magnitude * RELATIVE_EPSILON
 
-	return {
-		curves: path.curves.flatMap(curve =>
-			mirrorCurve(curve, line, distance, reflectCurve, epsilon)
-		),
-	}
+	const complete = completeVertexAttrs(path)
+
+	return withCurves(
+		path,
+		complete.curves.flatMap(curve =>
+			mirrorCurve(
+				curve,
+				line,
+				distance,
+				reflectCurve,
+				epsilon,
+				path.attrDefs
+			).map(c => (curve.attrs ? {...c, attrs: curve.attrs} : c))
+		)
+	)
 }

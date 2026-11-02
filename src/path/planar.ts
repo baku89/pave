@@ -18,11 +18,12 @@
 import {Rect} from 'geome'
 import {vec2} from 'linearly'
 
+import {interpolateAttrs} from '../attributes'
 import {Arc, CubicBezier, Curve, type Path, Segment} from '../index'
 import {cross2, unitNormalAt, unitTangentAt} from '../parallelCurve'
 import {rangeBounds} from '../segmentBounds'
 import {intersectSegments} from './intersections'
-import type {Vertex} from './types'
+import type {AttributeDefs, Attributes, Vertex} from './types'
 
 /** A closed curve with an optional label per segment (in {@link Curve.segments} order). */
 export interface PlanarCurve {
@@ -50,6 +51,8 @@ export interface PlanarOptions {
 	 * only depends on the extent of the operands.
 	 */
 	tolerance?: number
+	/** How the attributes of the operands are interpolated */
+	attrDefs?: AttributeDefs
 }
 
 interface SourceSegment {
@@ -271,7 +274,12 @@ export function planarBoolean(
 			const a = stops[i]
 			const b = stops[i + 1]
 			if (b.t - a.t < 1e-12) continue
-			let piece = Segment.trim(src.seg, {time: a.t}, {time: b.t})
+			let piece = Segment.trim(
+				src.seg,
+				{time: a.t},
+				{time: b.t},
+				options.attrDefs
+			)
 			if (a.node === b.node && Segment.length(piece) <= 2 * tol) continue
 			piece = {
 				...piece,
@@ -333,13 +341,18 @@ export function planarBoolean(
 			? unique.filter(e => e.tag === options.tag)
 			: unique
 
-	return assemble(candidates, nodes.points, options.assemble)
+	return assemble(candidates, nodes.points, options.assemble, options.attrDefs)
+}
+
+function sameAttrs(a: Attributes | undefined, b: Attributes | undefined) {
+	return a === b || JSON.stringify(a) === JSON.stringify(b)
 }
 
 function assemble(
 	edges: Edge[],
 	points: vec2[],
-	mode: 'closed' | 'open'
+	mode: 'closed' | 'open',
+	attrDefs?: AttributeDefs
 ): Path {
 	const outgoing = new Map<number, Edge[]>()
 	const incoming = new Map<number, number>()
@@ -397,7 +410,13 @@ function assemble(
 		}
 		const returned = node === start.from
 		curves.push(
-			toCurve(mergeChain(chain, returned), points, returned, mode === 'closed')
+			toCurve(
+				mergeChain(chain, returned),
+				points,
+				returned,
+				mode === 'closed',
+				attrDefs
+			)
 		)
 	}
 
@@ -417,6 +436,11 @@ function assemble(
 
 /** Merges two consecutive edges when they continue the same line or circle. */
 function mergeEdges(a: Edge, b: Edge): Edge | null {
+	// Removing the vertex between them must not change what can be read along the way
+	if (!sameAttrs(a.seg.startAttrs, a.seg.attrs)) return null
+	if (!sameAttrs(a.seg.attrs, b.seg.startAttrs)) return null
+	if (!sameAttrs(b.seg.startAttrs, b.seg.attrs)) return null
+
 	if (a.seg.command === 'L' && b.seg.command === 'L') {
 		const d1 = vec2.sub(a.seg.point, a.seg.start)
 		const d2 = vec2.sub(b.seg.point, b.seg.start)
@@ -427,7 +451,7 @@ function mergeEdges(a: Edge, b: Edge): Edge | null {
 		if (Math.abs(cross2(d1, d2)) > 1e-9 * l1 * l2) return null
 		return {
 			...a,
-			seg: {command: 'L', start: a.seg.start, point: b.seg.point},
+			seg: {...a.seg, command: 'L', point: b.seg.point},
 			to: b.to,
 		}
 	}
@@ -454,6 +478,7 @@ function mergeEdges(a: Edge, b: Edge): Edge | null {
 		return {
 			...a,
 			seg: {
+				...a.seg,
 				command: 'A',
 				start: a.seg.start,
 				args: [radii, rotation, total > 180, pa.sweep],
@@ -491,16 +516,37 @@ function toCurve(
 	chain: Edge[],
 	points: vec2[],
 	returned: boolean,
-	forceClose: boolean
+	forceClose: boolean,
+	attrDefs?: AttributeDefs
 ): Curve {
-	const asVertex = (e: Edge): Vertex =>
-		({command: e.seg.command, args: e.seg.args, point: e.seg.point}) as Vertex
+	// Where a curve hands over to another, the two values may differ: their average keeps
+	// the attribute continuous. An edge with no value simply takes the other's.
+	const asVertex = (e: Edge, i: number): Vertex => {
+		const next =
+			i + 1 < chain.length ? chain[i + 1] : returned ? chain[0] : null
+		const attrs = interpolateAttrs(
+			e.seg.attrs,
+			next?.seg.startAttrs,
+			0.5,
+			attrDefs
+		)
+		return {
+			command: e.seg.command,
+			args: e.seg.args,
+			point: e.seg.point,
+			...(attrs ? {attrs} : {}),
+		} as Vertex
+	}
 
 	const start = points[chain[0].from]
+	const startAttrs = chain[0].seg.startAttrs
 
 	if (returned) {
-		const last = chain[chain.length - 1]
-		const first = {...asVertex(last), point: start} as Vertex
+		const lastIndex = chain.length - 1
+		const first = {
+			...asVertex(chain[lastIndex], lastIndex),
+			point: start,
+		} as Vertex
 		return {
 			vertices: [first, ...chain.slice(0, -1).map(asVertex)],
 			closed: true,
@@ -508,7 +554,10 @@ function toCurve(
 	}
 
 	return {
-		vertices: [{command: 'L', point: start}, ...chain.map(asVertex)],
+		vertices: [
+			{command: 'L', point: start, ...(startAttrs ? {attrs: startAttrs} : {})},
+			...chain.map(asVertex),
+		],
 		closed: forceClose,
 	}
 }

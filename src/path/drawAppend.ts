@@ -1,5 +1,6 @@
 import {vec2} from 'linearly'
 
+import {withCurves} from '../attributes'
 import {Curve, CurveGroup, type Path} from '../index'
 import type {Vertex} from './types'
 
@@ -33,15 +34,13 @@ export type ReduceOptions = Curve.ReduceOptions & {
 }
 
 export function moveTo(path: Path, point: vec2): Path {
-	return {
-		curves: [
-			...path.curves,
-			{
-				vertices: [{point, command: 'L'}],
-				closed: false,
-			},
-		],
-	}
+	return withCurves(path, [
+		...path.curves,
+		{
+			vertices: [{point, command: 'L'}],
+			closed: false,
+		},
+	])
 }
 
 /**
@@ -55,24 +54,20 @@ export function addVertex(path: Path, vertex: Vertex): Path {
 	const lastCurve = path.curves.at(-1)
 
 	if (lastCurve) {
-		return {
-			curves: [
-				...path.curves.slice(0, -1),
-				{
-					vertices: [...lastCurve.vertices, vertex],
-					closed: lastCurve.closed,
-				},
-			],
-		}
+		return withCurves(path, [
+			...path.curves.slice(0, -1),
+			{
+				...lastCurve,
+				vertices: [...lastCurve.vertices, vertex],
+			},
+		])
 	} else {
-		return {
-			curves: [
-				{
-					vertices: [vertex],
-					closed: false,
-				},
-			],
-		}
+		return withCurves(path, [
+			{
+				vertices: [vertex],
+				closed: false,
+			},
+		])
 	}
 }
 
@@ -169,11 +164,12 @@ export function close(
 ): Path {
 	const matcher = CurveGroup.getMatcher(group, path)
 
-	return {
-		curves: path.curves.map((curve, i) =>
+	return withCurves(
+		path,
+		path.curves.map((curve, i) =>
 			matcher(curve, i) ? Curve.close(curve, fuse) : curve
-		),
-	}
+		)
+	)
 }
 
 /**
@@ -188,9 +184,7 @@ export function reduce(path: Path, options: ReduceOptions = {}): Path {
 		curves = curves.filter(c => !Curve.isZero(c))
 	}
 
-	return {
-		curves,
-	}
+	return withCurves(path, curves)
 }
 
 /**

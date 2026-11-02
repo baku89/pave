@@ -1,8 +1,47 @@
+import {
+	completeVertexAttrs,
+	mergeAttrDefs,
+	pushDownCurveAttrs,
+	pushDownPathAttrs,
+	withCurves,
+} from '../attributes'
 import {type Path} from '../index'
 import {planarBoolean, type PlanarOperand} from './planar'
 
 function toOperand(path: Path): PlanarOperand {
 	return {curves: path.curves.map(curve => ({curve}))}
+}
+
+/**
+ * Runs a boolean with attributes: curves get mixed up, so what the curves hold moves down to
+ * the vertices. So does what the paths hold, unless there is only one path to keep it on.
+ */
+function runBoolean(
+	paths: Path[],
+	inside: (windings: number[]) => boolean
+): Path {
+	const attrDefs = mergeAttrDefs(paths)
+	const single = paths.length === 1
+
+	const operands = paths.map(path =>
+		toOperand({
+			curves: completeVertexAttrs(path).curves.map(curve =>
+				pushDownCurveAttrs(single ? curve : pushDownPathAttrs(path, curve))
+			),
+		})
+	)
+
+	const {curves} = planarBoolean(operands, {
+		inside,
+		assemble: 'closed',
+		attrDefs,
+	})
+
+	return single
+		? withCurves(paths[0], curves)
+		: attrDefs
+			? {curves, attrDefs}
+			: {curves}
 }
 
 /**
@@ -20,10 +59,7 @@ function toOperand(path: Path): PlanarOperand {
  * ```
  */
 export function unite(paths: Path[]): Path {
-	return planarBoolean(paths.map(toOperand), {
-		inside: w => w.some(x => x !== 0),
-		assemble: 'closed',
-	})
+	return runBoolean(paths, w => w.some(x => x !== 0))
 }
 
 /**
@@ -42,10 +78,10 @@ export function unite(paths: Path[]): Path {
  * ```
  */
 export function subtract(subject: Path, tools: Path[]): Path {
-	return planarBoolean([subject, ...tools].map(toOperand), {
-		inside: w => w[0] !== 0 && w.slice(1).every(x => x === 0),
-		assemble: 'closed',
-	})
+	return runBoolean(
+		[subject, ...tools],
+		w => w[0] !== 0 && w.slice(1).every(x => x === 0)
+	)
 }
 
 /**
@@ -64,10 +100,7 @@ export function subtract(subject: Path, tools: Path[]): Path {
  */
 export function intersect(paths: Path[]): Path {
 	if (paths.length === 0) return {curves: []}
-	return planarBoolean(paths.map(toOperand), {
-		inside: w => w.every(x => x !== 0),
-		assemble: 'closed',
-	})
+	return runBoolean(paths, w => w.every(x => x !== 0))
 }
 
 /**
@@ -85,8 +118,5 @@ export function intersect(paths: Path[]): Path {
  * ```
  */
 export function exclude(paths: Path[]): Path {
-	return planarBoolean(paths.map(toOperand), {
-		inside: w => w.filter(x => x !== 0).length % 2 === 1,
-		assemble: 'closed',
-	})
+	return runBoolean(paths, w => w.filter(x => x !== 0).length % 2 === 1)
 }

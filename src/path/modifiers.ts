@@ -1,6 +1,17 @@
 import {mat2d, scalar, vec2} from 'linearly'
 
 import {
+	completeVertexAttrs,
+	mergeAttrDefs,
+	omit,
+	pushDownCurveAttrs,
+	pushDownPathAttrs,
+	resolveAttribute,
+	segmentAttrsAt,
+	segmentToVertex,
+	withCurves,
+} from '../attributes'
+import {
 	Arc,
 	type BareSegmentC,
 	CubicBezier,
@@ -9,12 +20,13 @@ import {
 	type Path,
 	type PathC,
 	Segment,
+	type SegmentC,
 	type UnarcPath,
 } from '../index'
 import type {PathLocation} from '../Location'
 import {planarFlattenPath} from '../pathPlanar'
 import {toTime} from './location'
-import type {Vertex, VertexC, VertexL} from './types'
+import type {AttributeLike, Vertex, VertexC, VertexL} from './types'
 
 /**
  * @category Options
@@ -57,8 +69,25 @@ export function spawnVertex<
 	path: Path<V1>,
 	fn: (segment: Segment<V1>, segmentIndex: number, curve: Curve) => V2 | V2[]
 ): Path<V2> {
-	return {
-		curves: path.curves.map(curve => {
+	const complete = completeVertexAttrs(path)
+	const attrDefs = complete.attrDefs
+
+	// What a vertex does not say for itself is taken from where it is on the segment,
+	// assuming that the vertices returned for a segment divide it evenly
+	const carry = (segment: Segment<V1>, result: V2 | V2[]): V2[] => {
+		const out = Array.isArray(result) ? result : [result]
+		const seg = segment as Segment
+		return out.map((vertex, i) => {
+			const rest = omit(vertex, 'start', 'startAttrs')
+			const attrs =
+				vertex.attrs ?? segmentAttrsAt(seg, (i + 1) / out.length, attrDefs)
+			return (attrs ? {...rest, attrs} : rest) as unknown as V2
+		})
+	}
+
+	return withCurves<Path<V2>>(
+		path,
+		complete.curves.map(curve => {
 			const vertices: V2[] = []
 
 			if (!curve.closed && curve.vertices.length > 1) {
@@ -68,20 +97,20 @@ export function spawnVertex<
 					start: curve.vertices.at(-1)!.point,
 					point: curve.vertices[0].point,
 					args: curve.vertices[0].args,
+					...(curve.vertices[0].attrs ? {attrs: curve.vertices[0].attrs} : {}),
 				} as Segment<V1>
 
-				const lastToFirstVertices = fn(lastToFirstSeg, -1, curve)
-
-				if (Array.isArray(lastToFirstVertices)) {
-					vertices.push(...lastToFirstVertices.slice(-1))
-				} else {
-					vertices.push(lastToFirstVertices)
-				}
+				vertices.push(
+					...carry(lastToFirstSeg, fn(lastToFirstSeg, -1, curve)).slice(-1)
+				)
 			}
 
 			vertices.push(
 				...Curve.segments(curve).flatMap((segment, segmentIndex) =>
-					fn(segment as Segment<V1>, segmentIndex, curve)
+					carry(
+						segment as Segment<V1>,
+						fn(segment as Segment<V1>, segmentIndex, curve)
+					)
 				)
 			)
 
@@ -92,9 +121,10 @@ export function spawnVertex<
 			return {
 				vertices,
 				closed: curve.closed,
-			}
-		}),
-	}
+				...(curve.attrs ? {attrs: curve.attrs} : {}),
+			} as Curve<V2>
+		}) as Curve[]
+	)
 }
 
 /**
@@ -111,9 +141,15 @@ export function spawnCurve<
 	path: Path<V1>,
 	fn: (curve: Curve<V1>, curveIndex: number) => Curve<V2> | Curve<V2>[]
 ): Path<V2> {
-	return {
-		curves: path.curves.flatMap(fn),
-	}
+	return withCurves<Path<V2>>(
+		path,
+		path.curves.flatMap((curve, i) => {
+			const result = fn(curve, i)
+			return (Array.isArray(result) ? result : [result]).map(c =>
+				curve.attrs && !c.attrs ? {...c, attrs: curve.attrs} : c
+			)
+		}) as Curve[]
+	)
 }
 
 /**
@@ -125,7 +161,7 @@ export function spawn(
 	fn: (seg: Segment, segmentIndex: number, curve: Curve) => Path,
 	{join = true}: SpawnOptions = {}
 ): Path {
-	const newPath: Path = {curves: []}
+	const newPath: Path = withCurves(path, [])
 
 	for (const originalCurve of path.curves) {
 		const curves: Curve[] = []
@@ -225,7 +261,7 @@ export function transform(path: Path, matrix: mat2d): Path {
 export function reverse(path: Path, {per = 'path'}: ReverseOptions = {}): Path {
 	const curves = per === 'path' ? path.curves.slice().reverse() : path.curves
 
-	return {curves: curves.flatMap(Curve.reverse)}
+	return withCurves(path, curves.flatMap(Curve.reverse))
 }
 
 /**
@@ -242,6 +278,9 @@ export function trim(
 	to: PathLocation,
 	crossFirstPoint = true
 ): Path {
+	path = completeVertexAttrs(path)
+	const {attrDefs} = path
+
 	let fromLoc = toTime(path, from)
 	let toLoc = toTime(path, to)
 
@@ -250,28 +289,25 @@ export function trim(
 		const curve = path.curves[fromLoc.curveIndex]
 
 		if (crossFirstPoint && fromLoc.time > toLoc.time) {
-			const firstCurve = Curve.trim(curve, fromLoc, 1)
-			const secondCurve = Curve.trim(curve, 0, toLoc)
+			const firstCurve = Curve.trim(curve, fromLoc, 1, attrDefs)
+			const secondCurve = Curve.trim(curve, 0, toLoc, attrDefs)
 
 			if (curve.closed) {
-				return {
-					curves: [
-						{
-							vertices: [
-								...firstCurve.vertices,
-								...secondCurve.vertices.slice(1),
-							],
-							closed: false,
-						},
-					],
-				}
+				return withCurves(path, [
+					{
+						...firstCurve,
+						vertices: [
+							...firstCurve.vertices,
+							...secondCurve.vertices.slice(1),
+						],
+						closed: false,
+					},
+				])
 			} else {
-				return {
-					curves: [firstCurve, secondCurve],
-				}
+				return withCurves(path, [firstCurve, secondCurve])
 			}
 		} else {
-			return {curves: [Curve.trim(curve, fromLoc, toLoc)]}
+			return withCurves(path, [Curve.trim(curve, fromLoc, toLoc, attrDefs)])
 		}
 	}
 
@@ -281,13 +317,11 @@ export function trim(
 		;[fromLoc, toLoc] = [toLoc, fromLoc]
 	}
 
-	const trimmedPath = {
-		curves: [
-			Curve.trim(path.curves[fromLoc.curveIndex], fromLoc, 1),
-			...path.curves.slice(fromLoc.curveIndex + 1, toLoc.curveIndex),
-			Curve.trim(path.curves[toLoc.curveIndex], 0, toLoc),
-		],
-	}
+	const trimmedPath = withCurves<Path>(path, [
+		Curve.trim(path.curves[fromLoc.curveIndex], fromLoc, 1, attrDefs),
+		...path.curves.slice(fromLoc.curveIndex + 1, toLoc.curveIndex),
+		Curve.trim(path.curves[toLoc.curveIndex], 0, toLoc, attrDefs),
+	])
 
 	return invert ? reverse(trimmedPath) : trimmedPath
 }
@@ -351,14 +385,19 @@ export const toC = toCubicBezier
  * @category Modifiers
  */
 export function join(paths: Path[]): Path {
-	return {
-		curves: [
-			{
-				vertices: paths.flatMap(path => path.curves.flatMap(p => p.vertices)),
-				closed: false,
-			},
-		],
-	}
+	const attrDefs = mergeAttrDefs(paths)
+	const curves: Curve[] = [
+		{
+			// The curves become one, so what differed between them moves down to the vertices
+			vertices: paths.flatMap(path =>
+				path.curves.flatMap(
+					curve => pushDownCurveAttrs(pushDownPathAttrs(path, curve)).vertices
+				)
+			),
+			closed: false,
+		},
+	]
+	return attrDefs ? {curves, attrDefs} : {curves}
 }
 
 /**
@@ -395,7 +434,7 @@ export function subdivide(path: Path, division: number): Path {
 	const times = Array.from({length: division - 1}, (_, i) => (i + 1) / division)
 
 	return spawnVertex(path, segment => {
-		return Segment.divideAtTimes(segment, times)
+		return Segment.divideAtTimes(segment, times, path.attrDefs)
 	})
 }
 
@@ -454,7 +493,7 @@ export function distort(
 	const maxDepth = 10
 	const checkTimes = [0.25, 0.5, 0.75]
 
-	const fit = (seg: BareSegmentC, depth: number): VertexC[] => {
+	const fit = (seg: SegmentC, depth: number): VertexC[] => {
 		const {start, point} = seg
 		const [c1, c2] = seg.args
 
@@ -478,18 +517,54 @@ export function distort(
 			})
 
 			if (exceeds) {
-				const [first, second] = CubicBezier.divideAtTimes(seg, [0.5])
+				const [first, second] = Segment.divideAtTimes(
+					seg,
+					[0.5],
+					path.attrDefs
+				) as VertexC[]
 				return [
-					...fit({...first, start}, depth + 1),
-					...fit({...second, start: first.point}, depth + 1),
+					...fit(
+						{
+							...first,
+							start,
+							...(seg.startAttrs ? {startAttrs: seg.startAttrs} : {}),
+						},
+						depth + 1
+					),
+					...fit(
+						{
+							...second,
+							start: first.point,
+							...(first.attrs ? {startAttrs: first.attrs} : {}),
+						},
+						depth + 1
+					),
 				]
 			}
 		}
 
-		return [{command: 'C', point: mappedPoint, args: fitted.args}]
+		return [
+			{
+				command: 'C',
+				point: mappedPoint,
+				args: fitted.args,
+				...(seg.attrs ? {attrs: seg.attrs} : {}),
+			},
+		]
 	}
 
 	return spawnVertex(toCubicBezier(path, tolerance), seg => fit(seg, 0))
+}
+
+/**
+ * An options for {@link Path.fillet} and {@link Path.chamfer}
+ * @category Options
+ */
+export interface CornerOptions {
+	/**
+	 * Which corners to process: a boolean attribute's name, or a function of the vertex at the corner. All of them by default.
+	 */
+	group?: AttributeLike<boolean>
 }
 
 /**
@@ -543,12 +618,34 @@ function jointTurn(seg: Segment, next: Segment): number | null {
  */
 function cutCorners(
 	path: Path,
-	cut: (seg: Segment, next: Segment, budget: CornerBudget) => CornerCut | null
+	amount: AttributeLike<number>,
+	{group}: CornerOptions,
+	cut: (
+		seg: Segment,
+		next: Segment,
+		budget: CornerBudget,
+		amount: number
+	) => CornerCut | null
 ): Path {
-	return spawnCurve(path, (curve): Curve => {
+	path = completeVertexAttrs(path)
+	const {attrDefs} = path
+	const readAmount = resolveAttribute(amount, path)
+	const readGroup = group === undefined ? null : resolveAttribute(group, path)
+
+	return spawnCurve(path, (curve, curveIndex): Curve => {
 		const segs = Curve.segments(curve)
 		const n = segs.length
 		if (n === 0) return curve
+
+		// The amount for the joint at the end of each segment; 0 leaves the joint as it is
+		const amounts = segs.map((_seg, i) => {
+			const index = (i + 1) % curve.vertices.length
+			const vertex = curve.vertices[index]
+			const context = {index, curve, curveIndex, path}
+			if (readGroup && !readGroup(vertex, context)) return 0
+			const value = readAmount(vertex, context)
+			return typeof value === 'number' && value > 0 ? value : 0
+		})
 
 		const lengths = segs.map(seg => Segment.length(seg))
 		const nextIndexOf = (i: number): number | null =>
@@ -560,7 +657,9 @@ function cutCorners(
 		// Joint i sits between segment i and segment nextIndexOf(i).
 		const isCorner = segs.map((seg, i) => {
 			const next = nextIndexOf(i)
-			return next !== null && jointTurn(seg, segs[next]) !== null
+			return (
+				next !== null && amounts[i] > 0 && jointTurn(seg, segs[next]) !== null
+			)
 		})
 		const cornerAtStart = (i: number) => {
 			const prev = prevIndexOf(i)
@@ -579,7 +678,9 @@ function cutCorners(
 		const cuts: (CornerCut | null)[] = segs.map((seg, i) => {
 			const budget = budgets[i]
 			const next = nextIndexOf(i)
-			return budget && next !== null ? cut(seg, segs[next], budget) : null
+			return budget && next !== null
+				? cut(seg, segs[next], budget, amounts[i])
+				: null
 		})
 
 		// Relaxation: release what each neighbour leaves unused
@@ -605,7 +706,7 @@ function cutCorners(
 					released.after > budget.after + epsilon
 				) {
 					budgets[i] = released
-					const grown = cut(segs[i], segs[next], released)
+					const grown = cut(segs[i], segs[next], released, amounts[i])
 					if (grown) {
 						cuts[i] = grown
 						changed = true
@@ -622,7 +723,12 @@ function cutCorners(
 			const prevCut = prev !== null ? cuts[prev] : null
 			const startTime = prevCut?.v ?? 0
 			const endTime = cuts[i]?.u ?? 1
-			const trimmed = Segment.trim(seg, {time: startTime}, {time: endTime})
+			const trimmed = Segment.trim(
+				seg,
+				{time: startTime},
+				{time: endTime},
+				attrDefs
+			)
 
 			// Two corners meeting leave nothing in between
 			if (Segment.length(trimmed) > 1e-6 * lengths[i]) {
@@ -633,23 +739,45 @@ function cutCorners(
 				out.length > 0
 					? out[out.length - 1].point
 					: Segment.point(seg, {time: startTime})
-			for (const vertex of cuts[i]?.vertices ?? []) {
-				out.push({...vertex, start} as Segment)
+			let startAttrs =
+				out.length > 0
+					? out[out.length - 1].attrs
+					: segmentAttrsAt(seg, startTime, attrDefs)
+			const nextIndex = nextIndexOf(i)
+			const inserted = cuts[i]?.vertices ?? []
+			for (const [k, vertex] of inserted.entries()) {
+				// The last inserted vertex lands on the next segment, at the end of the cut
+				const attrs =
+					k === inserted.length - 1 && nextIndex !== null
+						? segmentAttrsAt(segs[nextIndex], cuts[i]!.v, attrDefs)
+						: undefined
+				out.push({
+					...vertex,
+					start,
+					...(startAttrs ? {startAttrs} : {}),
+					...(attrs ? {attrs} : {}),
+				} as Segment)
 				start = vertex.point
+				startAttrs = attrs
 			}
 		}
 
 		if (out.length === 0) return curve
 
-		const toVertex = ({command, args, point}: Segment): Vertex =>
-			({command, args, point}) as Vertex
+		const firstAttrs = out[0].startAttrs ? {attrs: out[0].startAttrs} : {}
 
 		const vertices: Vertex[] = curve.closed
 			? [
-					{...toVertex(out[out.length - 1]), point: out[0].start} as Vertex,
-					...out.slice(0, -1).map(toVertex),
+					{
+						...segmentToVertex(out[out.length - 1]),
+						point: out[0].start,
+					} as Vertex,
+					...out.slice(0, -1).map(segmentToVertex),
 				]
-			: [{point: out[0].start, command: 'L'}, ...out.map(toVertex)]
+			: [
+					{point: out[0].start, command: 'L', ...firstAttrs},
+					...out.map(segmentToVertex),
+				]
 
 		return {vertices, closed: curve.closed}
 	})
@@ -670,12 +798,17 @@ function timeBeforeEnd(seg: Segment, distance: number): number {
  * on each side is capped at what the segment can give (see {@link fillet} for the sharing rule).
  * Smooth joints are left untouched.
  * @param path The path to chamfer
- * @param distance The distance of chamfer along each segment from the joint
+ * @param distance The distance of chamfer along each segment from the joint. It can vary per corner, as the name of an attribute or a function of the vertex at the corner.
+ * @param options The options
  * @returns The newly created path
  * @category Modifiers
  */
-export function chamfer(path: Path, distance: number): Path {
-	return cutCorners(path, (seg, next, budget) => {
+export function chamfer(
+	path: Path,
+	distance: AttributeLike<number>,
+	options: CornerOptions = {}
+): Path {
+	return cutCorners(path, distance, options, (seg, next, budget, distance) => {
 		if (jointTurn(seg, next) === null || !(distance > 0)) return null
 
 		const before = Math.min(distance, budget.before)
@@ -703,7 +836,8 @@ export function chamfer(path: Path, distance: number): Path {
  * the other leaves (half each when both are held back), so neighbouring fillets never overlap.
  * Smooth joints are left untouched.
  * @param path The path to fillet
- * @param radius The radius of fillet
+ * @param radius The radius of fillet. It can vary per corner, as the name of an attribute or a function of the vertex at the corner.
+ * @param options The options
  * @returns The newly created path
  * @category Modifiers
  *
@@ -714,8 +848,12 @@ export function chamfer(path: Path, distance: number): Path {
  * stroke(Path.fillet(p, 15), 'tomato')
  * ```
  */
-export function fillet(path: Path, radius: number): Path {
-	return cutCorners(path, (seg, next, budget) =>
+export function fillet(
+	path: Path,
+	radius: AttributeLike<number>,
+	options: CornerOptions = {}
+): Path {
+	return cutCorners(path, radius, options, (seg, next, budget, radius) =>
 		filletCorner(seg, next, radius, budget)
 	)
 }

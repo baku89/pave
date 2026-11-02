@@ -1,8 +1,26 @@
 import type {vec2} from 'linearly'
 
 import type {Curve as CurveSelf, Path as PathSelf} from './index'
-import type {Vertex, VertexA, VertexC, VertexL} from './path/types'
+import type {
+	AttributeDefs,
+	Attributes,
+	Vertex,
+	VertexA,
+	VertexC,
+	VertexL,
+} from './path/types'
 export * from './Location'
+export type {
+	AttributeDef,
+	AttributeDefs,
+	AttributeInterpolation,
+	AttributeLevel,
+	AttributeLike,
+	Attributes,
+	AttributeValue,
+	CurveContext,
+	VertexContext,
+} from './path/types'
 export type {PartialBy} from './utils'
 
 // The declaration emit cannot name a type that shares its name with a namespace re-export in
@@ -49,6 +67,8 @@ export * as CubicBezier from './CubicBezier'
 export type Curve<V extends Vertex = Vertex> = {
 	readonly vertices: V[]
 	readonly closed: boolean
+	/** The attributes of the whole curve, read when a vertex does not have its own */
+	readonly attrs?: Attributes
 }
 
 /** @category Types */
@@ -106,13 +126,25 @@ export type Segment<V extends Vertex = Vertex> = V extends VertexL
 	: SegmentL | SegmentC | SegmentA
 
 /** @category Types */
-export type SegmentL = VertexL & {start: vec2}
+export type SegmentL = VertexL & {
+	start: vec2
+	/** The attributes of the vertex at `start`; `attrs` are those at `point` */
+	startAttrs?: Attributes
+}
 
 /** @category Types */
-export type SegmentC = VertexC & {start: vec2}
+export type SegmentC = VertexC & {
+	start: vec2
+	/** The attributes of the vertex at `start`; `attrs` are those at `point` */
+	startAttrs?: Attributes
+}
 
 /** @category Types */
-export type SegmentA = VertexA & {start: vec2}
+export type SegmentA = VertexA & {
+	start: vec2
+	/** The attributes of the vertex at `start`; `attrs` are those at `point` */
+	startAttrs?: Attributes
+}
 
 /**
  * A collection of functions to handle {@link Segment}.
@@ -138,6 +170,10 @@ export type {
  */
 export type Path<V extends Vertex = Vertex> = {
 	readonly curves: CurveSelf<V>[]
+	/** The attributes of the whole path, read when a curve or a vertex does not have its own */
+	readonly attrs?: Attributes
+	/** The default values and the interpolations of the attributes. This is optional. */
+	readonly attrDefs?: AttributeDefs
 }
 
 /**

@@ -1,6 +1,14 @@
 /**
  * The members of the {@link Path} namespace.
  */
+export {
+	attribute,
+	attributeNames,
+	setAttribute,
+	deleteAttribute,
+	renameAttribute,
+	defineAttribute,
+} from './attributes'
 export {unite, subtract, intersect, exclude} from './boolean'
 export {toPath2D, drawToCanvas, drawToP5} from './canvas'
 export {fromSegment, merge} from './compound'
@@ -89,3 +97,4 @@ export type {
 	CircleFromPointsOptions,
 	FormulaOptions,
 } from './primitives'
+export type {SetAttributeOptions} from './attributes'

@@ -1,3 +1,4 @@
+import {mergeAttrDefs, pushDownPathAttrs} from '../attributes'
 import {type Curve, type Path, type Segment} from '../index'
 import type {Vertex} from './types'
 
@@ -30,7 +31,12 @@ export function fromSegment(segment: Segment): Path {
  * @category Modifiers
  */
 export function merge(pathOrCurves: (Path | Curve)[]): Path {
-	return {
-		curves: pathOrCurves.flatMap(pc => ('curves' in pc ? pc.curves : [pc])),
-	}
+	const paths = pathOrCurves.filter((pc): pc is Path => 'curves' in pc)
+	const attrDefs = mergeAttrDefs(paths)
+
+	const curves = pathOrCurves.flatMap(pc =>
+		'curves' in pc ? pc.curves.map(c => pushDownPathAttrs(pc, c)) : [pc]
+	)
+
+	return attrDefs ? {curves, attrDefs} : {curves}
 }

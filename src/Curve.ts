@@ -1,9 +1,11 @@
 import {Rect} from 'geome'
 import {scalar, vec2} from 'linearly'
 
+import {segmentToVertex} from './attributes'
 import {type Curve, Segment, Vertex} from './index'
 import {CurveLocation, TimeCurveLocation} from './Location'
 import {searchInterval} from './numeric'
+import type {AttributeDefs} from './path/types'
 import {memoize, normalizeIndex, normalizeOffset} from './utils'
 
 export const length = /* @__PURE__ */ memoize((curve: Curve): number => {
@@ -29,22 +31,26 @@ export function segment(curve: Curve, index: number): Segment {
 export const segments = /* @__PURE__ */ memoize((curve: Curve): Segment[] => {
 	const segs: Segment[] = []
 
-	let start: vec2 | undefined
+	let prev: Vertex | undefined
+
+	const segmentFrom = (from: Vertex, vertex: Vertex) =>
+		({
+			...vertex,
+			start: from.point,
+			...(from.attrs ? {startAttrs: from.attrs} : {}),
+		}) as Segment
 
 	for (const vertex of curve.vertices) {
-		if (start) {
-			segs.push({...vertex, start})
+		if (prev) {
+			segs.push(segmentFrom(prev, vertex))
 		}
-		start = vertex.point
+		prev = vertex
 	}
 
 	if (curve.closed) {
 		const firstVertex = curve.vertices.at(0)
-		if (start && firstVertex) {
-			segs.push({
-				...firstVertex,
-				start,
-			})
+		if (prev && firstVertex) {
+			segs.push(segmentFrom(prev, firstVertex))
 		}
 	}
 
@@ -87,24 +93,29 @@ export function prevSegment(
 
 export function reverse(curve: Curve): Curve {
 	const numVertex = curve.vertices.length
+	const curveAttrs = curve.attrs ? {attrs: curve.attrs} : {}
 
 	if (!curve.closed) {
 		if (numVertex === 0) {
-			return {vertices: [], closed: false}
-		}
-		if (numVertex === 1) {
-			return {
-				vertices: [{command: 'L', point: curve.vertices[0].point}],
-				closed: false,
-			}
+			return {vertices: [], closed: false, ...curveAttrs}
 		}
 		const v = curve.vertices
+		const last = v[numVertex - 1]
+		const first: Vertex = {
+			command: 'L',
+			point: last.point,
+			...(last.attrs ? {attrs: last.attrs} : {}),
+		}
+		if (numVertex === 1) {
+			return {vertices: [first], closed: false, ...curveAttrs}
+		}
 		return {
 			vertices: [
-				{command: 'L', point: v[numVertex - 1].point},
-				...Segment.reverseVertexChain(v[0].point, v.slice(1)),
+				first,
+				...Segment.reverseVertexChain(v[0].point, v.slice(1), v[0].attrs),
 			],
 			closed: false,
+			...curveAttrs,
 		}
 	}
 
@@ -112,16 +123,18 @@ export function reverse(curve: Curve): Curve {
 	const iStart = numVertex - 1
 
 	for (let i = iStart; i >= 0; i--) {
-		const point = curve.vertices[i % numVertex].point
+		const {point, attrs} = curve.vertices[i % numVertex]
+		const carried = attrs ? {attrs} : {}
 		const {command, args} = curve.vertices[(i + 1) % numVertex]
 
 		if (command === 'L') {
-			vertices.push({command: 'L', point})
+			vertices.push({command: 'L', point, ...carried})
 		} else if (command === 'C') {
 			vertices.push({
 				command: 'C',
 				point,
 				args: [args[1], args[0]],
+				...carried,
 			})
 		} else {
 			const [radii, xAxisRotation, largeArc, sweep] = args
@@ -129,38 +142,41 @@ export function reverse(curve: Curve): Curve {
 				command: 'A',
 				point,
 				args: [radii, xAxisRotation, largeArc, !sweep],
+				...carried,
 			})
 		}
 	}
 
-	return {vertices, closed: true}
+	return {vertices, closed: true, ...curveAttrs}
 }
 
 export function trim(
 	curve: Curve,
 	from: CurveLocation,
-	to: CurveLocation
+	to: CurveLocation,
+	attrDefs?: AttributeDefs
 ): Curve {
 	const fromLoc = toTime(curve, from)
 	const toLoc = toTime(curve, to)
+	const curveAttrs = curve.attrs ? {attrs: curve.attrs} : {}
+
+	/** The vertex a chain starting at the segment's start begins with. */
+	const startOf = (seg: Segment): Vertex => ({
+		command: 'L',
+		point: seg.start,
+		...(seg.startAttrs ? {attrs: seg.startAttrs} : {}),
+	})
 
 	if (fromLoc.segmentIndex === toLoc.segmentIndex) {
-		const seg = Segment.trim(fromLoc.segment, fromLoc, toLoc)
-		const firstVertex: Vertex = {
-			command: 'L',
-			point: seg.start,
-		}
+		const seg = Segment.trim(fromLoc.segment, fromLoc, toLoc, attrDefs)
 
 		return {
-			vertices: [firstVertex, seg],
+			vertices: [startOf(seg), segmentToVertex(seg)],
 			closed: false,
+			...curveAttrs,
 		}
 	} else if (fromLoc.segmentIndex < toLoc.segmentIndex) {
-		const firstSeg = Segment.trim(fromLoc.segment, fromLoc, 1)
-		const firstVertex: Vertex = {
-			command: 'L',
-			point: firstSeg.start,
-		}
+		const firstSeg = Segment.trim(fromLoc.segment, fromLoc, 1, attrDefs)
 
 		const inbetweenVertices = curve.vertices.slice(
 			fromLoc.segmentIndex + 2,
@@ -171,11 +187,17 @@ export function trim(
 
 		const lastVertices = scalar.approx(time, 0)
 			? []
-			: [Segment.trim(toLoc.segment, 0, {time})]
+			: [segmentToVertex(Segment.trim(toLoc.segment, 0, {time}, attrDefs))]
 
 		return {
-			vertices: [firstVertex, firstSeg, ...inbetweenVertices, ...lastVertices],
+			vertices: [
+				startOf(firstSeg),
+				segmentToVertex(firstSeg),
+				...inbetweenVertices,
+				...lastVertices,
+			],
 			closed: false,
+			...curveAttrs,
 		}
 	} else {
 		// fromLoc.segmentIndex > toLoc.segmentIndex (reverse order)
@@ -184,23 +206,34 @@ export function trim(
 		const fromTime = Segment.toTime(fromLoc.segment, fromLoc)
 
 		if (scalar.approx(fromTime, 0)) {
-			firstVertices = [{command: 'L', point: fromLoc.segment.start}]
+			firstVertices = [startOf(fromLoc.segment)]
 		} else {
-			const firstSeg = Segment.trim(fromLoc.segment, {time: fromTime}, 0)
+			const firstSeg = Segment.trim(
+				fromLoc.segment,
+				{time: fromTime},
+				0,
+				attrDefs
+			)
 
-			firstVertices = [{command: 'L', point: firstSeg.start}, firstSeg]
+			firstVertices = [startOf(firstSeg), segmentToVertex(firstSeg)]
 		}
 
 		const inbetweenVerticesReversed = Segment.reverseVertexChain(
 			toLoc.segment.point,
-			curve.vertices.slice(toLoc.segmentIndex + 2, fromLoc.segmentIndex + 1)
+			curve.vertices.slice(toLoc.segmentIndex + 2, fromLoc.segmentIndex + 1),
+			toLoc.segment.attrs
 		)
 
-		const lastSeg = Segment.trim(toLoc.segment, 1, toLoc)
+		const lastSeg = Segment.trim(toLoc.segment, 1, toLoc, attrDefs)
 
 		return {
-			vertices: [...firstVertices, ...inbetweenVerticesReversed, lastSeg],
+			vertices: [
+				...firstVertices,
+				...inbetweenVerticesReversed,
+				segmentToVertex(lastSeg),
+			],
 			closed: false,
+			...curveAttrs,
 		}
 	}
 }
@@ -216,6 +249,7 @@ export function close(curve: Curve, fuse = true): Curve {
 			vec2.approx(firstVertex.point, lastVertex.point)
 		) {
 			return {
+				...curve,
 				vertices: [lastVertex, ...curve.vertices.slice(1)],
 				closed: true,
 			}
@@ -251,10 +285,16 @@ export function reduce(
 
 		// Check if the cubic bezier segment is a straight line
 		if (convertStraightLines && Segment.isStraight(seg)) {
-			return [{command: 'L', point: seg.point}]
+			return [
+				{
+					command: 'L',
+					point: seg.point,
+					...(seg.attrs ? {attrs: seg.attrs} : {}),
+				},
+			]
 		}
 
-		return [seg]
+		return [segmentToVertex(seg)]
 	})
 
 	if (curve.closed) {
@@ -273,7 +313,7 @@ export function reduce(
 		}
 	}
 
-	return {vertices, closed: curve.closed}
+	return {...curve, vertices, closed: curve.closed}
 }
 
 export function isZero(curve: Curve): boolean {

@@ -253,6 +253,93 @@ export function hermiteParallelVertices(
 	]
 }
 
+/** A piece of a parallel curve, drawn from parameter `from` to `to`. */
+export interface VariableParallelPiece {
+	from: number
+	to: number
+	vertex: VertexC
+}
+
+/**
+ * The curve at the signed distance `s(t)` from the segment along its normal, as cubics matching
+ * its position and derivative at both ends of each piece. Distances varying along the way tilt
+ * the curve away from the direction of the segment, by the change of the distance.
+ */
+export function variableParallelPieces(
+	seg: Segment,
+	s: (t: number) => number,
+	from: number,
+	to: number,
+	tolerance: number,
+	depth = 0
+): VariableParallelPiece[] {
+	const pointOf = (t: number) =>
+		vec2.scaleAndAdd(pointAt(seg, t), unitNormalAt(seg, t), s(t))
+
+	const derivativeAt = (t: number) => {
+		const h = 1e-5
+		const lo = Math.max(t - h, 0)
+		const hi = Math.min(t + h, 1)
+		const ds = (s(hi) - s(lo)) / (hi - lo)
+		const d = Segment.derivative(seg, {time: clampTime(t)})
+		return vec2.scaleAndAdd(
+			vec2.scale(d, 1 - s(t) * curvatureAt(seg, t)),
+			unitNormalAt(seg, t),
+			ds
+		)
+	}
+
+	const third = (to - from) / 3
+	const start = pointOf(from)
+	const point = pointOf(to)
+	const hull = {
+		start,
+		args: [
+			vec2.scaleAndAdd(start, derivativeAt(from), third),
+			vec2.scaleAndAdd(point, derivativeAt(to), -third),
+		] as const,
+		point,
+	}
+
+	let error = 0
+	for (let i = 1; i <= HERMITE_SAMPLE_COUNT; i++) {
+		const u = i / (HERMITE_SAMPLE_COUNT + 1)
+		error = Math.max(
+			error,
+			vec2.distance(
+				CubicBezier.point(hull, {time: u}),
+				pointOf(from + (to - from) * u)
+			)
+		)
+	}
+
+	if (error <= tolerance || depth >= HERMITE_MAX_DEPTH) {
+		return [{from, to, vertex: {command: 'C', args: hull.args, point}}]
+	}
+
+	const mid = (from + to) / 2
+	return [
+		...variableParallelPieces(seg, s, from, mid, tolerance, depth + 1),
+		...variableParallelPieces(seg, s, mid, to, tolerance, depth + 1),
+	]
+}
+
+/**
+ * Where the parallel curve at the distance `s(t)` may fold or change its turning direction.
+ */
+export function variableParallelBreaks(
+	seg: Segment,
+	s: (t: number) => number
+): number[] {
+	if (seg.command === 'L') return [0, 1]
+
+	const breaks = sampledRoots(t => 1 - s(t) * curvatureAt(seg, t), 0, 1)
+	if (seg.command === 'C') {
+		breaks.push(...CubicBezier.inflectionTimes(seg))
+	}
+	return dedupeSorted([0, ...breaks, 1])
+}
+
 /**
  * Parameters in (t0, t1) where the curvature has a local extremum (cusps of the evolute).
  */

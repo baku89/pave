@@ -1,8 +1,10 @@
 import {Rect} from 'geome'
 import {mat2d, vec2} from 'linearly'
 
+import {segmentAttrsAt, withSegmentAttrs} from './attributes'
 import {Arc, CubicBezier, Line, type Path, type Segment, Vertex} from './index'
 import {SegmentLocation} from './Location'
+import type {AttributeDefs, Attributes} from './path/types'
 
 /**
  * Returns the length of the segment.
@@ -87,15 +89,25 @@ export function orientation(seg: Segment, loc: SegmentLocation): mat2d {
 export function trim(
 	seg: Segment,
 	from: SegmentLocation,
-	to: SegmentLocation
+	to: SegmentLocation,
+	attrDefs?: AttributeDefs
 ): Segment {
-	if (seg.command === 'L') {
-		return Line.trim(seg, from, to)
-	} else if (seg.command === 'C') {
-		return CubicBezier.trim(seg, from, to)
-	} else {
-		return Arc.trim(seg, from, to)
-	}
+	const piece =
+		seg.command === 'L'
+			? Line.trim(seg, from, to)
+			: seg.command === 'C'
+				? CubicBezier.trim(seg, from, to)
+				: Arc.trim(seg, from, to)
+
+	if (!seg.attrs && !seg.startAttrs) return piece
+
+	return withSegmentAttrs(
+		piece,
+		seg,
+		toTime(seg, from),
+		toTime(seg, to),
+		attrDefs
+	)
 }
 
 /**
@@ -154,14 +166,20 @@ export function offset(seg: Segment, distance: number, tolerance = 0.05): Path {
  * Returns the segment traversed in the opposite direction.
  */
 export function reverse(seg: Segment): Segment {
+	const attrs = {
+		...(seg.attrs ? {startAttrs: seg.attrs} : {}),
+		...(seg.startAttrs ? {attrs: seg.startAttrs} : {}),
+	}
+
 	if (seg.command === 'L') {
-		return {command: 'L', start: seg.point, point: seg.start}
+		return {command: 'L', start: seg.point, point: seg.start, ...attrs}
 	} else if (seg.command === 'C') {
 		return {
 			command: 'C',
 			start: seg.point,
 			args: [seg.args[1], seg.args[0]],
 			point: seg.start,
+			...attrs,
 		}
 	} else {
 		const [radii, xAxisRotation, largeArc, sweep] = seg.args
@@ -170,6 +188,7 @@ export function reverse(seg: Segment): Segment {
 			start: seg.point,
 			args: [radii, xAxisRotation, largeArc, !sweep],
 			point: seg.start,
+			...attrs,
 		}
 	}
 }
@@ -177,14 +196,25 @@ export function reverse(seg: Segment): Segment {
 /**
  * Returns a new vertex array with the segment divided at the given times.
  */
-export function divideAtTimes(seg: Segment, times: Iterable<number>): Vertex[] {
-	if (seg.command === 'L') {
-		return Line.divideAtTimes(seg, times)
-	} else if (seg.command === 'C') {
-		return CubicBezier.divideAtTimes(seg, times)
-	} else {
-		return Arc.divideAtTimes(seg, times)
-	}
+export function divideAtTimes(
+	seg: Segment,
+	times: Iterable<number>,
+	attrDefs?: AttributeDefs
+): Vertex[] {
+	const stops = [...times]
+	const vertices: Vertex[] =
+		seg.command === 'L'
+			? Line.divideAtTimes(seg, stops)
+			: seg.command === 'C'
+				? CubicBezier.divideAtTimes(seg, stops)
+				: Arc.divideAtTimes(seg, stops)
+
+	if (!seg.attrs && !seg.startAttrs) return vertices
+
+	return vertices.map((vertex, i) => {
+		const attrs = segmentAttrsAt(seg, stops[i] ?? 1, attrDefs)
+		return (attrs ? {...vertex, attrs} : vertex) as Vertex
+	})
 }
 
 /**
@@ -206,22 +236,26 @@ export function toTime(seg: Segment, loc: SegmentLocation): number {
  */
 export function reverseVertexChain<V extends Vertex = Vertex>(
 	start: vec2,
-	vertices: readonly V[]
+	vertices: readonly V[],
+	startAttrs?: Attributes
 ): V[] {
 	const out: Vertex[] = []
 
 	for (let i = vertices.length - 1; i >= 0; i--) {
 		const point = i >= 1 ? vertices[i - 1].point : start
+		const attrs = i >= 1 ? vertices[i - 1].attrs : startAttrs
+		const carried = attrs ? {attrs} : {}
 
 		const {command, args} = vertices[i]
 
 		if (command === 'L') {
-			out.push({command: 'L', point})
+			out.push({command: 'L', point, ...carried})
 		} else if (command === 'C') {
 			out.push({
 				command: 'C',
 				point,
 				args: [args[1], args[0]],
+				...carried,
 			})
 		} else {
 			const [radii, xAxisRotation, largeArc, sweep] = args
@@ -229,6 +263,7 @@ export function reverseVertexChain<V extends Vertex = Vertex>(
 				command: 'A',
 				point,
 				args: [radii, xAxisRotation, largeArc, !sweep],
+				...carried,
 			})
 		}
 	}
