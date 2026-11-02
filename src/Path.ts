@@ -63,6 +63,8 @@ import type {
 import * as PDraw from './path/drawAppend'
 import * as PLocation from './path/location'
 import * as PMetrics from './path/metrics'
+import type {MirrorAxis as NT_MirrorAxis} from './path/mirror'
+import * as PMirror from './path/mirror'
 import type {
 	DistortOptions as NT_DistortOptions,
 	ReverseOptions as NT_ReverseOptions,
@@ -100,6 +102,7 @@ export namespace Path {
 	export type WaveOptions = NT_WaveOptions
 	export type RadialDistortOptions = NT_RadialDistortOptions
 	export type FormulaOptions = NT_FormulaOptions
+	export type MirrorAxis = NT_MirrorAxis
 	export type OffsetOptions = NT_OffsetOptions
 	export type OffsetStrokeOptions = NT_OffsetStrokeOptions
 	export type PathCloseOptions = NT_PathCloseOptions
@@ -175,6 +178,8 @@ export namespace Path {
 	export const bulge = PDistortions.bulge
 	export const chamfer = PModifiers.chamfer
 	export const fillet = PModifiers.fillet
+	export const reflect = PMirror.reflect
+	export const mirror = PMirror.mirror
 
 	export const unite = PBoolean.unite
 	export const subtract = PBoolean.subtract

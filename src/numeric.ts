@@ -109,3 +109,69 @@ export function solveQuadratic(a: number, b: number, c: number): number[] {
 	const r2 = q !== 0 ? c / q : -b / a
 	return r1 < r2 ? [r1, r2] : [r2, r1]
 }
+
+/**
+ * Roots of `a·x³ + b·x² + c·x + d = 0` inside the open range (`lo`, `hi`), ascending. The range
+ * is cut at the critical points so that the cubic is monotone on each piece, and every sign
+ * change is then refined by Newton–Raphson with a bisection fallback. Critical points where
+ * the magnitude of the value is within `tolerance` are reported too, so double roots are not
+ * lost to rounding.
+ */
+export function solveCubic(
+	a: number,
+	b: number,
+	c: number,
+	d: number,
+	lo: number,
+	hi: number,
+	tolerance = 0
+): number[] {
+	const f = (x: number) => ((a * x + b) * x + c) * x + d
+	const df = (x: number) => (3 * a * x + 2 * b) * x + c
+
+	const breaks = [
+		lo,
+		...solveQuadratic(3 * a, 2 * b, c).filter(x => x > lo && x < hi),
+		hi,
+	]
+
+	const roots: number[] = []
+	for (let i = 0; i + 1 < breaks.length; i++) {
+		const x0 = breaks[i]
+		const x1 = breaks[i + 1]
+		const f0 = f(x0)
+		const f1 = f(x1)
+
+		if (Math.abs(f0) <= tolerance) {
+			if (i > 0) roots.push(x0)
+		} else if (Math.abs(f1) > tolerance && f0 * f1 < 0) {
+			roots.push(refineBracketedRoot(f, df, x0, x1, f0))
+		}
+	}
+	return roots
+}
+
+/** Safeguarded Newton–Raphson for a root bracketed by [`lo`, `hi`], where `f(lo) = fLo`. */
+function refineBracketedRoot(
+	f: (x: number) => number,
+	df: (x: number) => number,
+	lo: number,
+	hi: number,
+	fLo: number
+): number {
+	let x = (lo + hi) * 0.5
+	for (let i = 0; i < 64 && hi - lo > 1e-15 * Math.max(1, Math.abs(x)); i++) {
+		const fx = f(x)
+		if (fx === 0) return x
+
+		if (fx * fLo > 0) {
+			lo = x
+		} else {
+			hi = x
+		}
+
+		const next = x - fx / df(x)
+		x = next > lo && next < hi ? next : (lo + hi) * 0.5
+	}
+	return x
+}
