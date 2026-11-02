@@ -1,3 +1,4 @@
+import {Rect} from 'geome'
 import {mat2d, vec2} from 'linearly'
 
 import {segmentToVertex} from '../attributes'
@@ -107,9 +108,17 @@ function sweep(
 
 	if (regions.length === 0) return {curves: []}
 
-	// The boolean may leave a curve of no extent where a connector is tangent to the path
+	// The boolean may leave a sliver of no extent where a connector runs along the path
 	const {curves} = unite(regions)
-	return {curves: curves.filter(curve => !Curve.isZero(curve))}
+	const extent = Math.max(
+		1,
+		...curves.map(curve => Math.max(...Rect.size(Curve.bounds(curve))))
+	)
+	return {
+		curves: curves.filter(
+			curve => Math.max(...Rect.size(Curve.bounds(curve))) > 1e-5 * extent
+		),
+	}
 }
 
 /**
