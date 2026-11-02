@@ -109,3 +109,39 @@ export type {
 	FormulaOptions,
 } from './primitives'
 export type {SetAttributeOptions} from './attributes'
+export {arcify} from './arcify'
+export type {ArcifyOptions} from './arcify'
+export {
+	convexHull,
+	orientedBounds,
+	supportPoint,
+	tangentsAlong,
+	tangentsFrom,
+} from './hull'
+export type {
+	ConvexHullOptions,
+	OrientedRect,
+	PathPoint,
+	TangentHit,
+	TangentsOptions,
+} from './hull'
+export {
+	centroid,
+	contains,
+	hitTest,
+	intersections,
+	nearest,
+	selfIntersections,
+} from './queries'
+export type {
+	ContainsOptions,
+	FillRule,
+	HitTestOptions,
+	HitTestResult,
+	IntersectionsOptions,
+	NearestPoint,
+	PathIntersection,
+} from './queries'
+export {raycast} from './raycast'
+export type {RaycastOptions, RayHit} from './raycast'
+export {shadow, shadowFrom} from './shadow'
