@@ -161,45 +161,47 @@ export function toPaperPath<P extends PaperNamespace>(
  * @returns The newly created path
  * @category Converters
  */
-export const fromPaperPath = memoize((item: PaperPathItemLike): Path => {
-	const paperPaths =
-		item.className === 'CompoundPath'
-			? ((item.children ?? []) as PaperPathItemLike[])
-			: [item]
+export const fromPaperPath = /* @__PURE__ */ memoize(
+	(item: PaperPathItemLike): Path => {
+		const paperPaths =
+			item.className === 'CompoundPath'
+				? ((item.children ?? []) as PaperPathItemLike[])
+				: [item]
 
-	const curves = paperPaths.map(({curves = [], closed = false}) => {
-		const vertices: Vertex[] = curves.map(curve => {
-			const {point1, point2, handle1, handle2} = curve
-			if (curve.isStraight()) {
-				return {point: toVec2(point2), command: 'L'}
-			} else {
-				return {
-					point: toVec2(point2),
-					command: 'C',
-					args: [
-						[point1.x + handle1.x, point1.y + handle1.y],
-						[point2.x + handle2.x, point2.y + handle2.y],
-					],
+		const curves = paperPaths.map(({curves = [], closed = false}) => {
+			const vertices: Vertex[] = curves.map(curve => {
+				const {point1, point2, handle1, handle2} = curve
+				if (curve.isStraight()) {
+					return {point: toVec2(point2), command: 'L'}
+				} else {
+					return {
+						point: toVec2(point2),
+						command: 'C',
+						args: [
+							[point1.x + handle1.x, point1.y + handle1.y],
+							[point2.x + handle2.x, point2.y + handle2.y],
+						],
+					}
 				}
+			})
+
+			if (closed) {
+				const lastVertex = vertices.at(-1)
+				if (lastVertex) {
+					vertices.pop()
+					vertices.unshift(lastVertex)
+				}
+			} else if (curves.length > 0) {
+				vertices.unshift({point: toVec2(curves[0].point1), command: 'L'})
 			}
+
+			return {vertices, closed}
 		})
 
-		if (closed) {
-			const lastVertex = vertices.at(-1)
-			if (lastVertex) {
-				vertices.pop()
-				vertices.unshift(lastVertex)
-			}
-		} else if (curves.length > 0) {
-			vertices.unshift({point: toVec2(curves[0].point1), command: 'L'})
+		return {curves}
+
+		function toVec2(point: PaperPointLike): vec2 {
+			return [point.x, point.y]
 		}
-
-		return {vertices, closed}
-	})
-
-	return {curves}
-
-	function toVec2(point: PaperPointLike): vec2 {
-		return [point.x, point.y]
 	}
-})
+)

@@ -14,7 +14,7 @@ import {unite} from './boolean'
  * @param arg The path to iterate
  * @category Properties
  */
-export const segments = memoize((path: Path): Segment[] => {
+export const segments = /* @__PURE__ */ memoize((path: Path): Segment[] => {
 	return path.curves.flatMap(Curve.segments)
 })
 /**
@@ -23,7 +23,7 @@ export const segments = memoize((path: Path): Segment[] => {
  * @returns The length of the path
  * @category Properties
  */
-export const length = memoize((path: Path): number => {
+export const length = /* @__PURE__ */ memoize((path: Path): number => {
 	let total = 0
 	for (const seg of segments(path)) {
 		total += Segment.length(seg)
@@ -45,7 +45,7 @@ export const length = memoize((path: Path): number => {
  * stroke(Path.rect(...b))
  * ```
  */
-export const bounds = memoize((path: Path): Rect => {
+export const bounds = /* @__PURE__ */ memoize((path: Path): Rect => {
 	return Rect.unite(...path.curves.map(Curve.bounds))
 })
 
@@ -55,7 +55,7 @@ export const bounds = memoize((path: Path): Rect => {
  * @returns The area of the path
  * @category Properties
  */
-export const area = memoize((path: Path) => {
+export const area = /* @__PURE__ */ memoize((path: Path) => {
 	return Math.abs(planarPathArea(hasCubicLoop(path) ? unite([path]) : path))
 })
 
@@ -78,20 +78,22 @@ function hasCubicLoop(path: Path): boolean {
  * @returns The count of segments in the path
  * @category Properties
  */
-export const segmentCount = memoize((path: Path) => {
+export const segmentCount = /* @__PURE__ */ memoize((path: Path) => {
 	return path.curves.reduce((acc, curve) => acc + Curve.segmentCount(curve), 0)
 })
 
 /** Linear segment index where each curve starts (memoized). */
-export const segmentCurveStarts = memoize((path: Path): readonly number[] => {
-	const starts: number[] = []
-	let acc = 0
-	for (const curve of path.curves) {
-		starts.push(acc)
-		acc += Curve.segmentCount(curve)
+export const segmentCurveStarts = /* @__PURE__ */ memoize(
+	(path: Path): readonly number[] => {
+		const starts: number[] = []
+		let acc = 0
+		for (const curve of path.curves) {
+			starts.push(acc)
+			acc += Curve.segmentCount(curve)
+		}
+		return starts
 	}
-	return starts
-})
+)
 
 /**
  * Maps a linear segment index (optionally negative from the end) to curve and in-curve indices.
@@ -166,10 +168,12 @@ export function segment(
  * Cumulative curve lengths: `prefix[i]` is the length before curve `i`, the last entry the total.
  * Built once per path so that offset lookups are a binary search instead of a scan.
  */
-export const curveLengthPrefix = memoize((path: Path): Float64Array => {
-	const prefix = new Float64Array(path.curves.length + 1)
-	for (const [i, curve] of path.curves.entries()) {
-		prefix[i + 1] = prefix[i] + Curve.length(curve)
+export const curveLengthPrefix = /* @__PURE__ */ memoize(
+	(path: Path): Float64Array => {
+		const prefix = new Float64Array(path.curves.length + 1)
+		for (const [i, curve] of path.curves.entries()) {
+			prefix[i + 1] = prefix[i] + Curve.length(curve)
+		}
+		return prefix
 	}
-	return prefix
-})
+)

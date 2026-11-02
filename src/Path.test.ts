@@ -864,7 +864,14 @@ describe('chamfer and fillet', () => {
 					vertices: [
 						{command: 'L', point: [20, 20]},
 						{command: 'L', point: [80, 20]},
-						{command: 'C', args: [[96, 40], [50, 60]], point: [72, 82]},
+						{
+							command: 'C',
+							args: [
+								[96, 40],
+								[50, 60],
+							],
+							point: [72, 82],
+						},
 						{command: 'A', args: [[30, 30], 0, false, true], point: [28, 82]},
 						{command: 'L', point: [50, 50]},
 					],

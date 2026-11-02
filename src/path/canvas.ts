@@ -11,7 +11,7 @@ import {drawToRenderingContext} from './renderContext'
  * @returns The newly created Path2D
  * @category Converters
  */
-export const toPath2D = memoize((path: Path): Path2D => {
+export const toPath2D = /* @__PURE__ */ memoize((path: Path): Path2D => {
 	const path2d = new Path2D()
 
 	drawToRenderingContext(path, path2d)
