@@ -580,3 +580,42 @@ describe('cubic Béziers crossing themselves', () => {
 		})
 	})
 })
+
+describe('winding numbers on many segments', () => {
+	const circleOf = (n: number, r: number, reverse = false) => {
+		const points = Array.from({length: n}, (_, i) => {
+			const a = (i / n) * Math.PI * 2 * (reverse ? -1 : 1)
+			return [Math.cos(a) * r, Math.sin(a) * r] as [number, number]
+		})
+		return Path.polygon(...points)
+	}
+
+	// Having to visit every segment per probe, this would take tens of seconds
+	it('keeps a dense polygon quick to offset', () => {
+		const result = Path.offset(circleOf(2000, 100), 10, {lineJoin: 'round'})
+		expect(Math.abs(Path.area(result))).toBeCloseTo(Math.PI * 110 * 110, -2)
+	})
+
+	it('sums up curves with holes and repeated vertices', () => {
+		const outer = circleOf(64, 100)
+		const hole = circleOf(32, 50, true)
+		const repeated = {
+			curves: [
+				{
+					closed: true,
+					vertices: [
+						...outer.curves[0].vertices.slice(0, 8),
+						outer.curves[0].vertices[7],
+						...outer.curves[0].vertices.slice(8),
+					],
+				},
+				hole.curves[0],
+			],
+		} as Path
+		const united = Path.unite([repeated])
+
+		expect(Path.contains(united, [75, 0])).toBe(true)
+		expect(Path.contains(united, [0, 0])).toBe(false)
+		expect(Path.contains(united, [120, 0])).toBe(false)
+	})
+})

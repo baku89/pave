@@ -37,7 +37,10 @@ export interface PlanarOperand {
 }
 
 export interface PlanarOptions {
-	/** Whether a point with the given per-operand winding numbers is inside the result. */
+	/**
+	 * Whether a point with the given per-operand winding numbers is inside the result. The
+	 * array is reused between the calls, so it must not be kept.
+	 */
 	inside: (windings: number[]) => boolean
 	/**
 	 * `closed`: link boundary edges into closed loops.
@@ -105,9 +108,11 @@ class NodeStore {
 }
 
 function chordAngle(start: vec2, end: vec2, q: vec2): number {
-	const a = vec2.sub(start, q)
-	const b = vec2.sub(end, q)
-	return Math.atan2(cross2(a, b), vec2.dot(a, b))
+	const ax = start[0] - q[0]
+	const ay = start[1] - q[1]
+	const bx = end[0] - q[0]
+	const by = end[1] - q[1]
+	return Math.atan2(ax * by - ay * bx, ax * bx + ay * by)
 }
 
 /** Distance regarded as zero, relative to the extent of the operands. */
@@ -151,6 +156,103 @@ function sweptAngle(seg: Segment, q: vec2, t0 = 0, t1 = 1, depth = 0): number {
 }
 
 /**
+ * A run of consecutive segments of a curve. Seen from outside its box the run subtends less
+ * than a half turn, so the angle it sweeps is the angle of the chord between its ends.
+ */
+interface WindingNode {
+	start: vec2
+	end: vec2
+	box: Rect
+	seg?: Segment
+	left?: WindingNode
+	right?: WindingNode
+}
+
+function windingTree(
+	segs: Segment[],
+	bounds: Rect[],
+	lo: number,
+	hi: number
+): WindingNode {
+	if (hi - lo === 1) {
+		return {
+			start: segs[lo].start,
+			end: segs[lo].point,
+			box: bounds[lo],
+			seg: segs[lo],
+		}
+	}
+	const mid = (lo + hi) >> 1
+	const left = windingTree(segs, bounds, lo, mid)
+	const right = windingTree(segs, bounds, mid, hi)
+	return {
+		start: left.start,
+		end: right.end,
+		box: Rect.unite(left.box, right.box),
+		left,
+		right,
+	}
+}
+
+function sweptAngleOfTree(n: WindingNode, q: vec2): number {
+	const [[x0, y0], [x1, y1]] = n.box
+	const pad = 1e-12 * Math.max(x1 - x0, y1 - y0, 1)
+	if (
+		q[0] < x0 - pad ||
+		q[0] > x1 + pad ||
+		q[1] < y0 - pad ||
+		q[1] > y1 + pad
+	) {
+		return chordAngle(n.start, n.end, q)
+	}
+	return n.seg
+		? sweptAngle(n.seg, q)
+		: sweptAngleOfTree(n.left!, q) + sweptAngleOfTree(n.right!, q)
+}
+
+/**
+ * Static tree of the boxes of the operands, to find those around a point. An offset can have
+ * thousands of operands, as it makes one per sheet.
+ */
+interface BoxNode {
+	box: Rect
+	item?: number
+	left?: BoxNode
+	right?: BoxNode
+}
+
+function boxTree(items: {box: Rect; item: number}[]): BoxNode | null {
+	if (items.length === 0) return null
+	if (items.length === 1) return items[0]
+	let box = items[0].box
+	for (const it of items) box = Rect.unite(box, it.box)
+	const axis = box[1][0] - box[0][0] > box[1][1] - box[0][1] ? 0 : 1
+	const sorted = items
+		.slice()
+		.sort(
+			(a, b) =>
+				a.box[0][axis] + a.box[1][axis] - b.box[0][axis] - b.box[1][axis]
+		)
+	const mid = sorted.length >> 1
+	return {
+		box,
+		left: boxTree(sorted.slice(0, mid))!,
+		right: boxTree(sorted.slice(mid))!,
+	}
+}
+
+function visitBoxes(n: BoxNode | null, q: vec2, visit: (item: number) => void) {
+	if (!n) return
+	const [[x0, y0], [x1, y1]] = n.box
+	if (q[0] < x0 || q[0] > x1 || q[1] < y0 || q[1] > y1) return
+	if (n.item !== undefined) visit(n.item)
+	else {
+		visitBoxes(n.left!, q, visit)
+		visitBoxes(n.right!, q, visit)
+	}
+}
+
+/**
  * Whether the segment fits within `tolerance` of its start. Unlike {@link Segment.isZero},
  * whose threshold is absolute, this keeps the short edges of thin sheets: losing one would
  * break the winding numbers.
@@ -185,21 +287,29 @@ export function planarBoolean(
 ): Path {
 	// 1. Collect closed, non-degenerate segments
 	const sources: SourceSegment[] = []
-	const operandSegments: Segment[][] = operands.map(() => [])
+	const operandTrees: WindingNode[][] = operands.map(() => [])
 	const operandBounds: (Rect | null)[] = operands.map(() => null)
 
 	operands.forEach((op, oi) => {
 		for (const {curve, tags} of op.curves) {
 			const closed: Curve = {vertices: curve.vertices, closed: true}
+			const runSegs: Segment[] = []
+			const runBounds: Rect[] = []
 			Curve.segments(closed).forEach((seg, si) => {
 				if (hasNoExtent(seg, 0)) return
 				const bounds = Segment.bounds(seg)
+				runSegs.push(seg)
+				runBounds.push(bounds)
 				sources.push({seg, bounds, operand: oi, tag: tags?.[si], splits: []})
-				operandSegments[oi].push(seg)
 				operandBounds[oi] = operandBounds[oi]
 					? Rect.unite(operandBounds[oi]!, bounds)
 					: bounds
 			})
+			if (runSegs.length > 0) {
+				operandTrees[oi].push(
+					windingTree(runSegs, runBounds, 0, runSegs.length)
+				)
+			}
 		}
 	})
 
@@ -249,7 +359,15 @@ export function planarBoolean(
 			const j = order[jj]
 			const sj = sources[j]
 			if (sj.bounds[0][0] > maxX) break
-			if (!Rect.intersects(Rect.offset(si.bounds, tol), sj.bounds)) continue
+			const [[ax0, ay0], [ax1, ay1]] = si.bounds
+			const [[bx0, by0], [bx1, by1]] = sj.bounds
+			if (
+				ay0 - tol > by1 ||
+				by0 > ay1 + tol ||
+				ax0 - tol > bx1 ||
+				bx0 > ax1 + tol
+			)
+				continue
 
 			for (const x of intersectSegments(si.seg, sj.seg, tol)) {
 				const node = nodes.add(x.point)
@@ -292,16 +410,28 @@ export function planarBoolean(
 	}
 
 	// 4. Classify edges by probing both sides
-	const windingsAt = (q: vec2): number[] =>
-		operands.map((_, oi) => {
-			const b = operandBounds[oi]
-			if (!b || !Rect.containsPoint(Rect.offset(b, tol), q)) return 0
+	const operandIndex = boxTree(
+		operandBounds.flatMap((b, item) =>
+			b ? [{box: Rect.offset(b, tol), item}] : []
+		)
+	)
+	const windings: number[] = operands.map(() => 0)
+	const touched: number[] = []
+	const insideAt = (q: vec2): boolean => {
+		visitBoxes(operandIndex, q, oi => {
 			let sum = 0
-			for (const seg of operandSegments[oi]) {
-				sum += sweptAngle(seg, q)
+			for (const tree of operandTrees[oi]) sum += sweptAngleOfTree(tree, q)
+			const w = Math.round(sum / (2 * Math.PI))
+			if (w !== 0) {
+				windings[oi] = w
+				touched.push(oi)
 			}
-			return Math.round(sum / (2 * Math.PI))
 		})
+		const result = options.inside(windings)
+		for (const oi of touched) windings[oi] = 0
+		touched.length = 0
+		return result
+	}
 
 	const kept: Edge[] = []
 	for (const e of edges) {
@@ -309,8 +439,8 @@ export function planarBoolean(
 		const n = unitNormalAt(e.seg, 0.5)
 		const len = Segment.length(e.seg)
 		const eps = Math.max(Math.min(0.01 * len, 10 * tol), tol)
-		const inPlus = options.inside(windingsAt(vec2.scaleAndAdd(mid, n, eps)))
-		const inMinus = options.inside(windingsAt(vec2.scaleAndAdd(mid, n, -eps)))
+		const inPlus = insideAt(vec2.scaleAndAdd(mid, n, eps))
+		const inMinus = insideAt(vec2.scaleAndAdd(mid, n, -eps))
 		if (inPlus === inMinus) continue
 		kept.push(
 			inPlus ? e : {...e, seg: Segment.reverse(e.seg), from: e.to, to: e.from}
