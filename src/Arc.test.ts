@@ -414,3 +414,75 @@ describe('toTime offset', () => {
 		expect(tNearEnd).toBeLessThan(1)
 	})
 })
+
+describe('ellipticArcLength on wide spans', () => {
+	function riemann(rx: number, ry: number, startDeg: number, endDeg: number) {
+		const steps = 200000
+		const startRad = (startDeg * Math.PI) / 180
+		const endRad = (endDeg * Math.PI) / 180
+		const delta = (endRad - startRad) / steps
+		let sum = 0
+		for (let i = 0; i < steps; i++) {
+			const t = startRad + (i + 0.5) * delta
+			sum += Math.abs(delta) * Math.hypot(rx * Math.sin(t), ry * Math.cos(t))
+		}
+		return sum
+	}
+
+	test.each([
+		[10, 1, 0, 270],
+		[10, 1, 0, 359],
+		[100, 1, 0, 315],
+		[100, 1, 30, 300],
+		[2, 1, 0, -229],
+	])(
+		'stays within 1e-5 relative error for radii [%d, %d] over [%d°, %d°]',
+		(rx, ry, startDeg, endDeg) => {
+			const expected = riemann(rx, ry, startDeg, endDeg)
+			const actual = Arc.ellipticArcLength([rx, ry], [startDeg, endDeg])
+			expect(Math.abs(actual - expected) / expected).toBeLessThan(1e-5)
+		}
+	)
+})
+
+describe('toTime unit on elliptic arcs', () => {
+	function arcTo(rx: number, ry: number, endRad: number): SegmentA {
+		return Arc.of(
+			[rx, 0],
+			[rx, ry],
+			0,
+			Math.abs(endRad) > Math.PI,
+			endRad > 0,
+			[rx * Math.cos(endRad), ry * Math.sin(endRad)]
+		)
+	}
+
+	test.each([
+		[2, 1, 5.5],
+		[10, 1, 2],
+		[100, 1, -1],
+		[100, 1, -4],
+	])(
+		'solves the inverse of the swept arc length for radii [%d, %d] to angle %f rad',
+		(rx, ry, endRad) => {
+			const seg = arcTo(rx, ry, endRad)
+			const {
+				angles: [startAngle, endAngle],
+			} = Arc.toCenterParameterization(seg)
+			const len = Arc.length(seg)
+
+			for (let unit = 0.05; unit < 1; unit += 0.05) {
+				const time = Arc.toTime(seg, {unit})
+				const angle = startAngle + (endAngle - startAngle) * time
+				const swept = Arc.ellipticArcLength([rx, ry], [startAngle, angle])
+				expect(swept / len).toBeCloseTo(unit, 5)
+			}
+		}
+	)
+
+	test('clamps to the ends', () => {
+		const seg = arcTo(10, 1, 2)
+		expect(Arc.toTime(seg, {unit: 0})).toBe(0)
+		expect(Arc.toTime(seg, {unit: 1})).toBe(1)
+	})
+})
