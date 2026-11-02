@@ -695,6 +695,40 @@ describe('fromPaperPath', () => {
 	})
 })
 
+describe('chamfer and fillet on curves', () => {
+	const cubicLineCorner: Path = {
+		curves: [
+			{
+				closed: false,
+				vertices: [
+					{point: [0, 0], command: 'L'},
+					{
+						point: [50, 40],
+						command: 'C',
+						args: [
+							[20, 0],
+							[40, 20],
+						],
+					},
+					{point: [80, 40], command: 'L'},
+				],
+			},
+		],
+	}
+
+	it('chamfers cubic-to-line joint using arc-length trim', () => {
+		const out = Path.chamfer(cubicLineCorner, 4)
+		expect(out.curves[0].vertices.length).toBeGreaterThan(
+			cubicLineCorner.curves[0].vertices.length
+		)
+	})
+
+	it('fillets cubic-to-line joint with a cubic corner', () => {
+		const out = Path.fillet(cubicLineCorner, 6)
+		expect(out.curves[0].vertices.some(v => v.command === 'C')).toBe(true)
+	})
+})
+
 /*
  * -----------------------------------------------------------------------------
  * MIT License — Paper.js (test/tests/Path.js numeric fixtures)

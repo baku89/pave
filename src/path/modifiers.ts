@@ -560,9 +560,10 @@ export function distort(
 }
 
 /**
- * Chamfers the given path.
+ * Chamfers the path by replacing each internal corner with a straight cut.
+ * Distances are measured along segment arc length (line, cubic, or arc).
  * @param path The path to chamfer
- * @param distance The distance of chamfer
+ * @param distance The distance of chamfer along each segment from the joint
  * @returns The newly created path
  * @category Modifiers
  */
@@ -581,7 +582,9 @@ export function chamfer(path: Path, distance: number): Path {
 }
 
 /**
- * Fillets the given path.
+ * Fillets internal corners with a cubic that approximates a circular arc of the given radius.
+ * Trims are arc-length along each segment; the wedge angle is refit once using tangents at
+ * the trim points so curved segments behave better than a pure vertex-tangent estimate.
  * @param path The path to fillet
  * @param radius The radius of fillet
  * @returns The newly created path
@@ -595,12 +598,18 @@ export function fillet(path: Path, radius: number): Path {
 			return seg
 		}
 
-		// NOTE: This assumes the two segments are straight lines. It should be improved to handle curves.
-		const angle = Math.abs(
-			vec2.angle(Segment.tangent(seg, 1), Segment.tangent(next, 0))
-		)
+		const tJoint0 = Segment.tangent(seg, 1)
+		const tJoint1 = Segment.tangent(next, 0)
+		let angle = Math.abs(vec2.angle(tJoint0, tJoint1))
+		let trimLength = radius * scalar.tan(angle / 2)
 
-		const trimLength = radius * scalar.tan(angle / 2)
+		angle = Math.abs(
+			vec2.angle(
+				Segment.tangent(seg, {offset: -trimLength}),
+				vec2.neg(Segment.tangent(next, {offset: trimLength}))
+			)
+		)
+		trimLength = radius * scalar.tan(angle / 2)
 
 		const start = Segment.point(seg, {offset: -trimLength})
 		const end = Segment.point(next, {offset: trimLength})
