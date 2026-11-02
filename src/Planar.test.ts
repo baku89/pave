@@ -1,5 +1,6 @@
 import {describe, expect, it} from 'vitest'
 
+import {Curve} from './Curve'
 import {Path} from './Path'
 import {planarPathArea} from './pathPlanar'
 
@@ -213,6 +214,78 @@ describe('offset', () => {
 			const i = Path.offset(star, -4, {lineJoin: join})
 			expect(finite(i)).toBe(true)
 			expect(area(i)).toBeLessThan(area(star))
+		}
+	})
+})
+
+describe('offset by a tiny distance', () => {
+	const lineAndCubic = Path.close(
+		Path.join([
+			Path.polyline([60, 90], [60, 60], [90, 60]),
+			Path.cubicBezier([90, 60], [95, 75], [82, 78], [90, 90]),
+			Path.line([90, 90], [60, 90]),
+		])
+	)
+
+	const segmentCount = (p: Path) =>
+		p.curves.reduce((n, c) => n + Curve.segments(c).length, 0)
+
+	it('does not break a line + cubic loop into a fan of straight lines', () => {
+		const o = Path.offset(lineAndCubic, 0.01, {lineJoin: 'round'})
+		expect(o.curves.length).toBe(1)
+		expect(o.curves[0].closed).toBe(true)
+		expect(commands(o).filter(c => c === 'A').length).toBe(4)
+		expect(commands(o).filter(c => c === 'C').length).toBeGreaterThan(0)
+		expect(commands(o).filter(c => c === 'L').length).toBe(3)
+	})
+
+	const shapes: [string, Path, Path.OffsetOptions][] = [
+		['line + cubic, round join', lineAndCubic, {lineJoin: 'round'}],
+		['line + cubic, miter join', lineAndCubic, {lineJoin: 'miter'}],
+		['line + cubic, bevel join', lineAndCubic, {lineJoin: 'bevel'}],
+		['round rect', Path.roundRect([14, 64], [36, 86], 5), {}],
+		['circle', Path.circle([25, 25], 11), {}],
+		['square', Path.rect([0, 0], [20, 20]), {}],
+		['cubic circle', Path.toC(Path.circle([25, 25], 11)), {}],
+	]
+	const distances = [1e-12, 1e-9, 1e-7, 1e-6, 1e-5, 1e-4, 1e-3, 0.01, 0.05]
+
+	it.each(shapes)('stays one thin ring off a %s', (_, shape, options) => {
+		const a0 = area(shape)
+		const perimeter = Path.length(shape)
+		for (const magnitude of distances) {
+			for (const d of [magnitude, -magnitude]) {
+				const o = Path.offset(shape, d, options)
+				expect(o.curves.length).toBe(1)
+				expect(segmentCount(o)).toBeLessThanOrEqual(20)
+				// Steiner formula, within the fitting tolerance of d / 4. Offsets below 1e-7 of the
+				// coordinates (at most 90 here) are regarded as zero.
+				expect(Math.abs(area(o) - (a0 + perimeter * d))).toBeLessThanOrEqual(
+					8 * d * d + 0.02 * Math.abs(d) * perimeter + perimeter * 9e-6 + 2e-5
+				)
+			}
+		}
+	})
+
+	it('keeps an open cubic in one piece', () => {
+		const p = Path.cubicBezier([0, 0], [30, 50], [70, -50], [100, 0])
+		const len = Path.length(p)
+		for (const magnitude of distances) {
+			for (const d of [magnitude, -magnitude]) {
+				const o = Path.offset(p, d)
+				expect(o.curves.length).toBe(1)
+				expect(o.curves[0].closed).toBe(false)
+				expect(Math.abs(Path.length(o) - len)).toBeLessThan(0.01)
+			}
+		}
+	})
+
+	it('strokes a cubic loop with a hairline', () => {
+		const a0 = Path.length(lineAndCubic)
+		for (const width of [1e-5, 1e-3, 0.02]) {
+			const o = Path.offsetStroke(lineAndCubic, width)
+			expect(o.curves.length).toBe(2)
+			expect(Math.abs(area(o) - a0 * width) / (a0 * width)).toBeLessThan(0.05)
 		}
 	})
 })

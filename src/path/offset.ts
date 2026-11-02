@@ -24,6 +24,7 @@ import {
 	evoluteDirectionSign,
 	evoluteParametric,
 	fitVertices,
+	hermiteParallelVertices,
 	parallelParametric,
 	reverseParametric,
 	splitForParallel,
@@ -67,6 +68,25 @@ export interface OffsetStrokeOptions extends OffsetOptions {
 	 * @defaultValue 'butt'
 	 */
 	lineCap?: CanvasLineCap
+}
+
+/**
+ * A fitted parallel curve must stay on its side of the source, or the sheet between them
+ * inverts. So the fitting tolerance never exceeds this fraction of the offset distance.
+ */
+const FIT_TOLERANCE_RATIO = 1 / 4
+
+/**
+ * The boolean engine snaps points and probes both sides of edges at distances proportional
+ * to its tolerance, which therefore has to be far below the thickness of the sheets.
+ */
+const ENGINE_TOLERANCE_RATIO = 1 / 50
+
+/** Offsets below this fraction of the extent of the path cannot be told from zero. */
+const NEGLIGIBLE_RELATIVE_OFFSET = 1e-7
+
+function sheetTolerance(s: number, tolerance: number): number {
+	return Math.min(tolerance, Math.abs(s) * FIT_TOLERANCE_RATIO)
 }
 
 const TAG_OFFSET = 'offset'
@@ -168,8 +188,9 @@ function trimOrSelf(seg: Segment, t0: number, t1: number): Segment {
 function curvedSheets(
 	seg: Segment,
 	s: number,
-	tolerance: number
+	userTolerance: number
 ): PlanarCurve[] {
+	const tolerance = sheetTolerance(s, userTolerance)
 	const out: PlanarCurve[] = []
 
 	for (const piece of splitForParallel(seg, s)) {
@@ -178,12 +199,10 @@ function curvedSheets(
 		if (piece.sign === 1) {
 			const src = trimOrSelf(seg, piece.t0, piece.t1)
 			const q1 = par.point(piece.t1)
-			const parallel = fitVertices(
-				reverseParametric(par),
-				-piece.t1,
-				-piece.t0,
-				tolerance
-			)
+			const parallel =
+				tolerance < userTolerance
+					? hermiteParallelVertices(seg, s, piece.t1, piece.t0, tolerance)
+					: fitVertices(reverseParametric(par), -piece.t1, -piece.t0, tolerance)
 			out.push(
 				sheet(
 					[
@@ -307,10 +326,12 @@ function joinSheet(
 			const mid = vec2.direction(fromDeg + delta / 2)
 			if (vec2.dot(mid, t1) < 0) delta = -delta
 		}
-		return sheet(
-			[...base, arcVertex(v, Math.abs(s), fromDeg, fromDeg + delta)],
-			[TAG_AUX, TAG_OFFSET, TAG_AUX]
-		)
+		// Arc regards a radius or chord this small as straight, so make that explicit
+		const tip =
+			scalar.approx(s, 0) || vec2.approx(a, b)
+				? ({command: 'L', point: b} as const)
+				: arcVertex(v, Math.abs(s), fromDeg, fromDeg + delta)
+		return sheet([...base, tip], [TAG_AUX, TAG_OFFSET, TAG_AUX])
 	}
 
 	if (lineJoin === 'miter') {
@@ -395,6 +416,16 @@ function asOperands(sheets: PlanarCurve[]): PlanarOperand[] {
 
 const anyInside = (w: number[]) => w.some(x => x !== 0)
 
+function isNegligibleOffset(path: Path, offset: number): boolean {
+	let extent = 0
+	for (const curve of path.curves) {
+		for (const {point} of curve.vertices) {
+			extent = Math.max(extent, Math.abs(point[0]), Math.abs(point[1]))
+		}
+	}
+	return Math.abs(offset) <= NEGLIGIBLE_RELATIVE_OFFSET * extent
+}
+
 /**
  * Creates an offset path from the given path.
  *
@@ -421,6 +452,11 @@ export function offset(
 ): Path {
 	const opts = resolve(options)
 	const curves: Curve[] = []
+	const engineTolerance = Math.abs(offset) * ENGINE_TOLERANCE_RATIO
+
+	if (isNegligibleOffset(path, offset)) {
+		offset = 0
+	}
 
 	const closedCurves = path.curves.filter(
 		c => c.closed && c.vertices.length >= 2
@@ -447,6 +483,7 @@ export function offset(
 						? anyInside
 						: w => w[0] !== 0 && w.slice(1).every(x => x === 0),
 				assemble: 'closed',
+				tolerance: engineTolerance,
 			})
 			curves.push(...result.curves)
 		}
@@ -461,6 +498,7 @@ export function offset(
 			inside: anyInside,
 			assemble: 'open',
 			tag: TAG_OFFSET,
+			tolerance: engineTolerance,
 		})
 		curves.push(...result.curves)
 	}
@@ -525,5 +563,6 @@ export function offsetStroke(
 	return planarBoolean(asOperands(sheets), {
 		inside: anyInside,
 		assemble: 'closed',
+		tolerance: d * ENGINE_TOLERANCE_RATIO,
 	})
 }

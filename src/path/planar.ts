@@ -48,6 +48,12 @@ export interface PlanarOptions {
 	 */
 	assemble: 'closed' | 'open'
 	tag?: string
+	/**
+	 * Upper bound of the distance at which points are regarded as the same. It must be well
+	 * below the smallest feature of the operands, or thin operands collapse. By default it
+	 * only depends on the extent of the operands.
+	 */
+	tolerance?: number
 }
 
 interface SourceSegment {
@@ -105,6 +111,12 @@ function chordAngle(start: vec2, end: vec2, q: vec2): number {
 	return Math.atan2(cross2(a, b), vec2.dot(a, b))
 }
 
+/** Distance regarded as zero, relative to the extent of the operands. */
+const RELATIVE_TOLERANCE = 1e-6
+
+/** The finest {@link PlanarOptions.tolerance} that floating point can resolve reliably. */
+const MIN_RELATIVE_TOLERANCE = 1e-11
+
 const SWEPT_MAX_DEPTH = 60
 
 /**
@@ -137,6 +149,17 @@ function sweptAngle(seg: Segment, q: vec2, t0 = 0, t1 = 1, depth = 0): number {
 		sweptAngle(seg, q, t0, tm, depth + 1) +
 		sweptAngle(seg, q, tm, t1, depth + 1)
 	)
+}
+
+/**
+ * Whether the segment fits within `tolerance` of its start. Unlike {@link Segment.isZero},
+ * whose threshold is absolute, this keeps the short edges of thin sheets: losing one would
+ * break the winding numbers.
+ */
+function hasNoExtent(seg: Segment, tolerance: number): boolean {
+	const near = (p: vec2) => vec2.distance(seg.start, p) <= tolerance
+	if (!near(seg.point)) return false
+	return seg.command !== 'C' || (near(seg.args[0]) && near(seg.args[1]))
 }
 
 /** Winding number of the closed curves around `q`. */
@@ -198,7 +221,7 @@ export function planarBoolean(
 		for (const {curve, tags} of op.curves) {
 			const closed: Curve = {vertices: curve.vertices, closed: true}
 			Curve.segments(closed).forEach((seg, si) => {
-				if (Segment.isZero(seg)) return
+				if (hasNoExtent(seg, 0)) return
 				const bounds = Segment.bounds(seg)
 				sources.push({seg, bounds, operand: oi, tag: tags?.[si], splits: []})
 				operandSegments[oi].push(seg)
@@ -216,7 +239,10 @@ export function planarBoolean(
 	const total = Rect.unite(...sources.map(s => s.bounds))
 	const [tw, th] = Rect.size(total)
 	const scale = Math.max(tw, th, 1e-9)
-	const tol = 1e-6 * scale
+	const tol = Math.max(
+		Math.min(RELATIVE_TOLERANCE * scale, options.tolerance ?? Infinity),
+		MIN_RELATIVE_TOLERANCE * scale
+	)
 	const nodes = new NodeStore(tol)
 
 	const isInterior = (seg: Segment, p: vec2) =>
@@ -275,7 +301,7 @@ export function planarBoolean(
 				start: nodes.points[a.node],
 				point: nodes.points[b.node],
 			} as Segment
-			if (Segment.isZero(piece)) continue
+			if (hasNoExtent(piece, tol)) continue
 			edges.push({seg: piece, from: a.node, to: b.node, tag: src.tag})
 		}
 	}

@@ -61,7 +61,11 @@ export function rangeBounds(seg: Segment, t0: number, t1: number): Rect {
 		return CubicBezier.bounds(CubicBezier.trim(seg, {time: t0}, {time: t1}))
 	}
 	if (Arc.isStraight(seg)) {
-		return Rect.fromPoints(seg.start, seg.point)
+		// Must shrink with the range, or a recursive subdivision around it never ends
+		return Rect.fromPoints(
+			Arc.point(seg, {time: t0}),
+			Arc.point(seg, {time: t1})
+		)
 	}
 	return arcRangeBounds(seg, t0, t1)
 }

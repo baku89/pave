@@ -196,6 +196,63 @@ export function fitVertices(
 	}))
 }
 
+const HERMITE_SAMPLE_COUNT = 8
+const HERMITE_MAX_DEPTH = 12
+
+/**
+ * Parallel curve of `seg` from parameter `from` to `to` (either direction), as `C` vertices
+ * matching its position and derivative at both ends of each piece. Unlike a generic fit
+ * this reproduces `seg` as `s` tends to 0: the error is proportional to `s`, so the number
+ * of pieces does not grow however tight a tolerance proportional to `s` is. The parallel
+ * curve must not fold on the range.
+ */
+export function hermiteParallelVertices(
+	seg: Segment,
+	s: number,
+	from: number,
+	to: number,
+	tolerance: number,
+	depth = 0
+): VertexC[] {
+	const curve = parallelParametric(seg, s, 1)
+	const derivativeAt = (t: number) =>
+		vec2.scale(Segment.derivative(seg, {time: t}), 1 - s * curvatureAt(seg, t))
+
+	const third = (to - from) / 3
+	const start = curve.point(from)
+	const point = curve.point(to)
+	const hull = {
+		start,
+		args: [
+			vec2.scaleAndAdd(start, derivativeAt(from), third),
+			vec2.scaleAndAdd(point, derivativeAt(to), -third),
+		] as const,
+		point,
+	}
+
+	let error = 0
+	for (let i = 1; i <= HERMITE_SAMPLE_COUNT; i++) {
+		const u = i / (HERMITE_SAMPLE_COUNT + 1)
+		error = Math.max(
+			error,
+			vec2.distance(
+				CubicBezier.point(hull, {time: u}),
+				curve.point(from + (to - from) * u)
+			)
+		)
+	}
+
+	if (error <= tolerance || depth >= HERMITE_MAX_DEPTH) {
+		return [{command: 'C', args: hull.args, point}]
+	}
+
+	const mid = (from + to) / 2
+	return [
+		...hermiteParallelVertices(seg, s, from, mid, tolerance, depth + 1),
+		...hermiteParallelVertices(seg, s, mid, to, tolerance, depth + 1),
+	]
+}
+
 /**
  * Parameters in (t0, t1) where the curvature has a local extremum (cusps of the evolute).
  */
