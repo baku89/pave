@@ -1,7 +1,8 @@
 import {Circle, Rect} from 'geome'
 import {scalar, vec2} from 'linearly'
 
-import {type CurveL, Iter, type Path, type PathL} from '../index'
+import {type CurveL, type Path, type PathL} from '../index'
+import * as Iter from '../Iter'
 import {fromSegment, merge} from './compound'
 import {arcTo, close, moveTo, pen} from './drawAppend'
 import {join} from './modifiers'
@@ -32,7 +33,7 @@ export type ArcOptions = {
 	 * The alignment of the vertices
 	 * @default 'uniform'
 	 */
-	align?: Iter.ResampleOptions['align']
+	align?: 'uniform' | 'start' | 'center' | 'end'
 	/**
 	 * The total count of the segments in the arc. If this is specified, the `step` will be ignored and the arc will be deviced into the specified number of segments uniformly.
 	 */

@@ -16,13 +16,13 @@ import {
 	type BareSegmentC,
 	CubicBezier,
 	Curve,
-	Iter,
 	type Path,
 	type PathC,
 	Segment,
 	type SegmentC,
 	type UnarcPath,
 } from '../index'
+import * as Iter from '../Iter'
 import type {PathLocation} from '../Location'
 import {planarFlattenPath} from '../pathPlanar'
 import {toTime} from './location'

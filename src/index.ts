@@ -95,12 +95,6 @@ export type CurveGroup =
 export * as CurveGroup from './CurveGroup'
 
 /**
- * A collection of utility functions for working with iterables.
- * @category Modules
- */
-export * as Iter from './Iter'
-
-/**
  * Almost equivalent to {@link SegmentL}, but the redundant `command` field can be omitted. Used for the argument of Line functions.
  * @category Types
  */

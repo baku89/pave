@@ -4,12 +4,12 @@ import {mat2, mat2d, scalar, vec2} from 'linearly'
 import {
 	type AngleRange,
 	type BareSegmentA,
-	Iter,
 	Path,
 	SegmentA,
 	VertexA,
 	VertexC,
 } from './index'
+import * as Iter from './Iter'
 import {SegmentLocation, UnitSegmentLocation} from './Location'
 import {buildArcLengthTable, gaussLegendre, invertArcLength} from './numeric'
 import {parallelStart, rawParallelVertices} from './parallelCurve'

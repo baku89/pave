@@ -1,6 +1,7 @@
 import {scalar, vec2} from 'linearly'
 
-import {type BareSegmentC, Iter, Path, SegmentC, VertexC} from './index'
+import {type BareSegmentC, Path, SegmentC, VertexC} from './index'
+import * as Iter from './Iter'
 import {SegmentLocation} from './Location'
 import {
 	buildArcLengthTable,
