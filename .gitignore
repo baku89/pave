@@ -33,3 +33,5 @@ lerna-debug.log*
 .temp
 docs/api
 dist
+# Verification videos rendered by scripts outside the repo
+/verification
