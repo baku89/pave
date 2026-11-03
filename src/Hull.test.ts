@@ -141,3 +141,44 @@ describe('orientedBounds', () => {
 		expect(Math.min(...ob.size)).toBeCloseTo(40, 2)
 	})
 })
+
+describe('convexHull of many straight segments', () => {
+	const gon = (n: number) =>
+		Path.polygon(
+			...Array.from({length: n}, (_, i): [number, number] => {
+				const a = (i / n) * Math.PI * 2
+				return [Math.cos(a) * 100, Math.sin(a) * 100]
+			})
+		)
+
+	it('keeps more corners than the steps of the sweep', () => {
+		const hull = Path.convexHull(gon(3000))
+		expect(hull.curves[0].vertices.length).toBe(3000)
+		expect(Path.area(hull)).toBeCloseTo(Path.area(gon(3000)), 6)
+	})
+
+	it('runs in the same direction as the sweep over curves', () => {
+		const polygon = Path.convexHull(gon(40))
+		const curved = Path.convexHull(Path.circle([0, 0], 100))
+		expect(Math.sign(Path.area(polygon))).toBe(Math.sign(Path.area(curved)))
+	})
+
+	it('ignores curves inside the polygon of the end points', () => {
+		const path = Path.merge([
+			Path.rect([0, 0], [100, 100]),
+			Path.circle([50, 50], 10),
+		])
+		const {vertices} = Path.convexHull(path).curves[0]
+		expect(vertices.map(v => v.command)).toEqual(['L', 'L', 'L', 'L'])
+	})
+
+	it('keeps a curve bulging out of the polygon of the end points', () => {
+		const path = Path.merge([
+			Path.rect([0, 0], [100, 100]),
+			Path.cubicBezier([100, 20], [160, 20], [160, 80], [100, 80]),
+		])
+		expect(
+			Path.convexHull(path).curves[0].vertices.some(v => v.command === 'C')
+		).toBe(true)
+	})
+})

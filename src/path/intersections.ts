@@ -112,19 +112,30 @@ function overlapIntersections(
 		candidates.push({t1, t2, point: vec2.lerp(p, q, 0.5)})
 	}
 
-	{
+	// An end point away from the box of the other segment cannot be within the tolerance of it
+	const nearOn = (seg: Segment, p: vec2) => {
+		const [[x0, y0], [x1, y1]] = Segment.bounds(seg)
+		return (
+			p[0] >= x0 - tolerance &&
+			p[0] <= x1 + tolerance &&
+			p[1] >= y0 - tolerance &&
+			p[1] <= y1 + tolerance
+		)
+	}
+
+	if (nearOn(a, b.start)) {
 		const n = nearestTime(a, b.start)
 		add(n.t, 0, Segment.point(a, {time: n.t}), b.start)
 	}
-	{
+	if (nearOn(a, b.point)) {
 		const n = nearestTime(a, b.point)
 		add(n.t, 1, Segment.point(a, {time: n.t}), b.point)
 	}
-	{
+	if (nearOn(b, a.start)) {
 		const n = nearestTime(b, a.start)
 		add(0, n.t, a.start, Segment.point(b, {time: n.t}))
 	}
-	{
+	if (nearOn(b, a.point)) {
 		const n = nearestTime(b, a.point)
 		add(1, n.t, a.point, Segment.point(b, {time: n.t}))
 	}

@@ -388,6 +388,8 @@ function boundsOf(path: Path): Rect {
 
 /** The support of the path in a direction, keyed so that runs of the same support can be told apart. */
 interface Support {
+	/** The direction it is the farthest along, in degrees */
+	angle: number
 	index: number
 	time: number
 	point: vec2
@@ -398,7 +400,7 @@ interface Support {
 /**
  * The exact convex hull of the path. Unlike the hull of the control points or of a flattened polygon, the result keeps the curved parts of the path that lie on the hull, joining them with the common tangents.
  *
- * The hull is traced by sweeping the support direction around: while the farthest point stays on one segment the hull follows that segment, and when it jumps to another segment the two support points are joined by a line.
+ * The hull is traced by sweeping the support direction around: while the farthest point stays on one segment the hull follows that segment, and when it jumps to another segment the two support points are joined by a line. When only straight segments can reach the hull, it is solved exactly, whatever the `steps` are.
  * @param path The path to wrap
  * @param options The options
  * @returns A closed path. An empty path for an empty input.
@@ -417,13 +419,41 @@ export function convexHull(
 			: {curves: []}
 	}
 
-	const support = (angle: number): Support => {
+	const extent = Math.max(...Rect.size(boundsOf(path)), 1)
+	const near = (a: vec2, b: vec2) => vec2.distance(a, b) <= 1e-6 * extent
+
+	// The polygon of the end points is inside the hull, so what stays in it can never be on it
+	const polygon = convexPolygon(segs.flatMap(s => [s.seg.start, s.seg.point]))
+	const margin = 1e-9 * extent
+	const active = segs.flatMap(({seg}, index) =>
+		polygon.length < 3 ||
+		!reachPoints(seg).every(p => isInsideConvex(polygon, p, margin))
+			? [index]
+			: []
+	)
+
+	if (polygon.length >= 3 && active.every(i => segs[i].seg.command === 'L')) {
+		const corners = polygon.filter(
+			(p, i) => !near(p, polygon[(i + 1) % polygon.length])
+		)
+		return {
+			curves: [
+				{
+					vertices: corners.map(point => ({point, command: 'L'})),
+					closed: true,
+				},
+			],
+		}
+	}
+
+	const support = (angle: number, indices = active): Support => {
 		const direction = vec2.dir(angle)
 		const perp = vec2.rotate(direction, 90)
 		let best = null as Support | null
 		let bestValue = -Infinity
 
-		segs.forEach(({seg, curveIndex}, index) => {
+		for (const index of indices) {
+			const {seg, curveIndex} = segs[index]
 			const times = [0, 1, ...Segment.tangentTimes(seg, perp)]
 			for (const time of times) {
 				const point = Segment.point(seg, {time})
@@ -435,6 +465,7 @@ export function convexHull(
 					bestValue = value
 					const atVertex = time === 0 || time === 1
 					best = {
+						angle,
 						index,
 						time,
 						point,
@@ -444,7 +475,7 @@ export function convexHull(
 					}
 				}
 			}
-		})
+		}
 
 		return best!
 	}
@@ -486,17 +517,22 @@ export function convexHull(
 
 	// Refine the switching angles between runs
 	const stepAngle = 360 / steps
-	const angleOf = (s: Support) => samples.indexOf(s) * stepAngle
 	for (let r = 0; r < runs.length; r++) {
 		const run = runs[r]
 		const next = runs[(r + 1) % runs.length]
-		let lo = angleOf(run.to)
+
+		// A vertex stays where it is, whichever angle it hands over at
+		if (run.key.startsWith('v') && next.key.startsWith('v')) continue
+
+		const pair =
+			run.index === next.index ? [run.index] : [run.index, next.index]
+		let lo = run.to.angle
 		let hi = lo + stepAngle
 		let sLo = run.to
 		let sHi = next.from
 		for (let k = 0; k < 48; k++) {
 			const mid = (lo + hi) / 2
-			const s = support(mid)
+			const s = support(mid, pair)
 			if (s.key === run.key) {
 				lo = mid
 				sLo = s
@@ -509,8 +545,6 @@ export function convexHull(
 		next.from = sHi
 	}
 
-	const extent = Math.max(...Rect.size(boundsOf(path)), 1)
-	const near = (a: vec2, b: vec2) => vec2.distance(a, b) <= 1e-6 * extent
 	const snap = (t: number) => (t < 1e-5 ? 0 : t > 1 - 1e-5 ? 1 : t)
 
 	const vertices: Vertex[] = []
@@ -555,6 +589,60 @@ export function convexHull(
 	}
 
 	return {curves: [{vertices, closed: true}]}
+}
+
+/** Points whose convex hull contains the segment. */
+function reachPoints(seg: Segment): vec2[] {
+	if (seg.command === 'L') return [seg.start, seg.point]
+	if (seg.command === 'C') return [seg.start, ...seg.args, seg.point]
+	const [[x0, y0], [x1, y1]] = Segment.bounds(seg)
+	return [
+		[x0, y0],
+		[x1, y0],
+		[x1, y1],
+		[x0, y1],
+	]
+}
+
+/** The corners of the convex polygon around the points, in the direction of the sweep. */
+function convexPolygon(points: vec2[]): vec2[] {
+	const sorted = points
+		.slice()
+		.sort((a, b) => (a[0] !== b[0] ? a[0] - b[0] : a[1] - b[1]))
+
+	const chain = (order: vec2[]) => {
+		const out: vec2[] = []
+		for (const p of order) {
+			while (out.length >= 2) {
+				const a = out[out.length - 2]
+				const b = out[out.length - 1]
+				if (cross(vec2.sub(b, a), vec2.sub(p, a)) > 0) break
+				out.pop()
+			}
+			out.push(p)
+		}
+		out.pop()
+		return out
+	}
+
+	return [...chain(sorted), ...chain(sorted.slice().reverse())]
+}
+
+/** Whether the point is inside the convex polygon, farther than `margin` from its edges. */
+function isInsideConvex(polygon: vec2[], p: vec2, margin: number): boolean {
+	for (let i = 0; i < polygon.length; i++) {
+		const a = polygon[i]
+		const b = polygon[(i + 1) % polygon.length]
+		const ex = b[0] - a[0]
+		const ey = b[1] - a[1]
+		if (
+			ex * (p[1] - a[1]) - ey * (p[0] - a[0]) <=
+			margin * Math.hypot(ex, ey)
+		) {
+			return false
+		}
+	}
+	return true
 }
 
 /** A stable id for the vertex at the given end of a segment. */

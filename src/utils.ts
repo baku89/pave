@@ -8,7 +8,8 @@ export function toFixedSimple(a: number, fractionDigits = 2): string {
 }
 
 export function normalizeOffset(offset: number, max: number) {
-	return scalar.clamp(offset >= 0 ? offset : max + offset, 0, max)
+	const value = offset >= 0 ? offset : max + offset
+	return value < 0 ? 0 : value > max ? max : value
 }
 
 /**
