@@ -39,9 +39,10 @@ export interface PlanarOperand {
 export interface PlanarOptions {
 	/**
 	 * Whether a point with the given per-operand winding numbers is inside the result. The
-	 * array is reused between the calls, so it must not be kept.
+	 * array is reused between the calls, so it must not be kept. As it can be long and is
+	 * mostly zeros, the number of non-zero values comes along.
 	 */
-	inside: (windings: number[]) => boolean
+	inside: (windings: number[], nonZeroCount: number) => boolean
 	/**
 	 * `closed`: link boundary edges into closed loops.
 	 * `open`: keep only edges carrying `tag` and link them into open chains.
@@ -73,10 +74,15 @@ interface Edge {
 	tag?: string
 }
 
+/** Hash of a grid cell. Cells may collide, as the points found are checked by distance. */
+function cellKey(cx: number, cy: number): number {
+	return (cx * 73856093) ^ (cy * 19349663)
+}
+
 /** Tolerance-based point registry on a uniform grid. */
 class NodeStore {
 	points: vec2[] = []
-	#cells = new Map<string, number[]>()
+	#cells = new Map<number, number[]>()
 	#cell: number
 
 	constructor(private tolerance: number) {
@@ -88,7 +94,7 @@ class NodeStore {
 		const cy = Math.floor(p[1] / this.#cell)
 		for (let dx = -1; dx <= 1; dx++) {
 			for (let dy = -1; dy <= 1; dy++) {
-				const ids = this.#cells.get(`${cx + dx},${cy + dy}`)
+				const ids = this.#cells.get(cellKey(cx + dx, cy + dy))
 				if (!ids) continue
 				for (const id of ids) {
 					if (vec2.distance(this.points[id], p) <= this.tolerance) {
@@ -99,7 +105,7 @@ class NodeStore {
 		}
 		const id = this.points.length
 		this.points.push(p)
-		const key = `${cx},${cy}`
+		const key = cellKey(cx, cy)
 		const list = this.#cells.get(key)
 		if (list) list.push(id)
 		else this.#cells.set(key, [id])
@@ -211,8 +217,8 @@ function sweptAngleOfTree(n: WindingNode, q: vec2): number {
 }
 
 /**
- * Static tree of the boxes of the operands, to find those around a point. An offset can have
- * thousands of operands, as it makes one per sheet.
+ * Static tree of boxes, to find those around a point or a box. An offset can have thousands
+ * of operands, as it makes one per sheet.
  */
 interface BoxNode {
 	box: Rect
@@ -241,14 +247,19 @@ function boxTree(items: {box: Rect; item: number}[]): BoxNode | null {
 	}
 }
 
-function visitBoxes(n: BoxNode | null, q: vec2, visit: (item: number) => void) {
+function visitBoxes(
+	n: BoxNode | null,
+	query: Rect,
+	visit: (item: number) => void
+) {
 	if (!n) return
 	const [[x0, y0], [x1, y1]] = n.box
-	if (q[0] < x0 || q[0] > x1 || q[1] < y0 || q[1] > y1) return
+	const [[qx0, qy0], [qx1, qy1]] = query
+	if (qx1 < x0 || qx0 > x1 || qy1 < y0 || qy0 > y1) return
 	if (n.item !== undefined) visit(n.item)
 	else {
-		visitBoxes(n.left!, q, visit)
-		visitBoxes(n.right!, q, visit)
+		visitBoxes(n.left!, query, visit)
+		visitBoxes(n.right!, query, visit)
 	}
 }
 
@@ -329,15 +340,17 @@ export function planarBoolean(
 	const isInterior = (seg: Segment, p: vec2) =>
 		vec2.distance(p, seg.start) > tol && vec2.distance(p, seg.point) > tol
 
-	// 2. Intersections (sweep on x)
+	// 2. Intersections, in the order of the left sides of the boxes
 	const order = sources
 		.map((_, i) => i)
 		.sort((a, b) => sources[a].bounds[0][0] - sources[b].bounds[0][0])
+	const rank: number[] = []
+	order.forEach((source, r) => (rank[source] = r))
+	const sourceIndex = boxTree(sources.map((s, item) => ({box: s.bounds, item})))
 
 	for (let ii = 0; ii < order.length; ii++) {
 		const i = order[ii]
 		const si = sources[i]
-		const maxX = si.bounds[1][0] + tol
 
 		// A cubic also has to be cut where it touches itself, and at its cusps, where it has
 		// no normal to probe along
@@ -355,20 +368,14 @@ export function planarBoolean(
 			}
 		}
 
-		for (let jj = ii + 1; jj < order.length; jj++) {
-			const j = order[jj]
-			const sj = sources[j]
-			if (sj.bounds[0][0] > maxX) break
-			const [[ax0, ay0], [ax1, ay1]] = si.bounds
-			const [[bx0, by0], [bx1, by1]] = sj.bounds
-			if (
-				ay0 - tol > by1 ||
-				by0 > ay1 + tol ||
-				ax0 - tol > bx1 ||
-				bx0 > ax1 + tol
-			)
-				continue
+		const later: number[] = []
+		visitBoxes(sourceIndex, Rect.offset(si.bounds, tol), j => {
+			if (rank[j] > ii) later.push(rank[j])
+		})
+		later.sort((a, b) => a - b)
 
+		for (const r of later) {
+			const sj = sources[order[r]]
 			for (const x of intersectSegments(si.seg, sj.seg, tol)) {
 				const node = nodes.add(x.point)
 				if (isInterior(si.seg, x.point)) si.splits.push({t: x.t1, node})
@@ -418,7 +425,7 @@ export function planarBoolean(
 	const windings: number[] = operands.map(() => 0)
 	const touched: number[] = []
 	const insideAt = (q: vec2): boolean => {
-		visitBoxes(operandIndex, q, oi => {
+		visitBoxes(operandIndex, [q, q], oi => {
 			let sum = 0
 			for (const tree of operandTrees[oi]) sum += sweptAngleOfTree(tree, q)
 			const w = Math.round(sum / (2 * Math.PI))
@@ -427,7 +434,7 @@ export function planarBoolean(
 				touched.push(oi)
 			}
 		})
-		const result = options.inside(windings)
+		const result = options.inside(windings, touched.length)
 		for (const oi of touched) windings[oi] = 0
 		touched.length = 0
 		return result

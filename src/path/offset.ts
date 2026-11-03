@@ -501,7 +501,7 @@ function asOperands(sheets: PlanarCurve[]): PlanarOperand[] {
 	return sheets.map(s => ({curves: [s]}))
 }
 
-const anyInside = (w: number[]) => w.some(x => x !== 0)
+const anyInside = (_: number[], nonZeroCount: number) => nonZeroCount > 0
 
 function isNegligibleOffset(path: Path, offset: number): boolean {
 	let extent = 0
@@ -573,7 +573,7 @@ export function offset(
 				inside:
 					offset > 0
 						? anyInside
-						: w => w[0] !== 0 && w.slice(1).every(x => x === 0),
+						: (w, nonZeroCount) => w[0] !== 0 && nonZeroCount === 1,
 				assemble: 'closed',
 				tolerance: engineTolerance,
 				attrDefs,
