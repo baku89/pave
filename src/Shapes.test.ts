@@ -24,7 +24,41 @@ const expectSmooth = (p: Path, limit = 1e-6) => {
 	}
 }
 
+describe('regularPolygon', () => {
+	it('places the first vertex on +X by default', () => {
+		const {point} = Path.regularPolygon([50, 50], 40, 5).curves[0].vertices[0]
+		expect(point[0]).toBeCloseTo(90)
+		expect(point[1]).toBeCloseTo(50)
+	})
+
+	it('places the first vertex in the direction of the angle', () => {
+		const {vertices} = Path.regularPolygon([50, 50], 40, 4, -90).curves[0]
+		const expected: vec2[] = [
+			[50, 10],
+			[90, 50],
+			[50, 90],
+			[10, 50],
+		]
+		vertices.forEach(({point}, i) => {
+			expect(vec2.distance(point, expected[i])).toBeLessThan(1e-9)
+		})
+	})
+})
+
 describe('star', () => {
+	it('places the first tip in the direction of the angle', () => {
+		const {vertices} = Path.star([50, 50], 40, 20, 2, 90).curves[0]
+		const expected: vec2[] = [
+			[50, 90],
+			[30, 50],
+			[50, 10],
+			[70, 50],
+		]
+		vertices.forEach(({point}, i) => {
+			expect(vec2.distance(point, expected[i])).toBeLessThan(1e-9)
+		})
+	})
+
 	it('alternates between the radii, starting with a tip on +X', () => {
 		const p = Path.star([50, 50], 40, 15, 5)
 		const {vertices, closed} = p.curves[0]

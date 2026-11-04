@@ -687,10 +687,11 @@ export function polygon(...points: vec2[]): PathL {
 }
 
 /**
- * Creates a regular polygon. The first vertex will be placed at the +X axis relative to the center.
+ * Creates a regular polygon. The first vertex will be placed in the direction of `angle` from the center, on the +X axis by default.
  * @param center The center of the polygon
  * @param radius The radius of the circumcircle of the polygon
  * @param sides The number o sides of the polygon
+ * @param angle The direction of the first vertex in degrees, in which 0° is +X and the angle increases clockwise on a Y-down canvas
  * @returns The newly created path
  * @category Primitives
  * @example
@@ -702,13 +703,14 @@ export function polygon(...points: vec2[]): PathL {
 export function regularPolygon(
 	center: vec2,
 	radius: number,
-	sides: number
+	sides: number,
+	angle = 0
 ): PathL {
 	const angleStep = 360 / sides
 	const points: vec2[] = []
 
 	for (let i = 0; i < sides; i++) {
-		const p = vec2.add(center, vec2.rotate([radius, 0], angleStep * i))
+		const p = vec2.add(center, vec2.rotate([radius, 0], angle + angleStep * i))
 		points.push(p)
 	}
 
@@ -722,11 +724,12 @@ export function regularPolygon(
 export const ngon = regularPolygon
 
 /**
- * Creates a star, alternating between two radii. The first vertex will be placed at the +X axis relative to the center, on the outer radius.
+ * Creates a star, alternating between two radii. The first vertex will be placed in the direction of `angle` from the center, on the outer radius, on the +X axis by default.
  * @param center The center of the star
  * @param outerRadius The radius of the tips
  * @param innerRadius The radius of the notches between the tips
  * @param points The number of the tips, an integer of 2 or more
+ * @param angle The direction of the first tip in degrees, in which 0° is +X and the angle increases clockwise on a Y-down canvas
  * @returns The newly created path
  * @category Primitives
  * @example
@@ -739,7 +742,8 @@ export function star(
 	center: vec2,
 	outerRadius: number,
 	innerRadius: number,
-	points: number
+	points: number,
+	angle = 0
 ): PathL {
 	if (!Number.isInteger(points) || points < 2) {
 		throw new Error('A star must have an integer of 2 or more points')
@@ -750,7 +754,9 @@ export function star(
 
 	for (let i = 0; i < points * 2; i++) {
 		const radius = i % 2 === 0 ? outerRadius : innerRadius
-		vertices.push(vec2.add(center, vec2.rotate([radius, 0], angleStep * i)))
+		vertices.push(
+			vec2.add(center, vec2.rotate([radius, 0], angle + angleStep * i))
+		)
 	}
 
 	return polygon(...vertices)
