@@ -24,6 +24,64 @@ const expectSmooth = (p: Path, limit = 1e-6) => {
 	}
 }
 
+describe('ellipse', () => {
+	it('lies along +X by default', () => {
+		const [right, left] = Path.ellipse([50, 50], [40, 20]).curves[0].vertices
+		expect(right.point).toEqual([90, 50])
+		expect(left.point).toEqual([10, 50])
+		expect(right.args).toEqual([[40, 20], 0, false, true])
+	})
+
+	it('is turned by the angle', () => {
+		const p = Path.ellipse([50, 50], [40, 20], 90)
+		const [right, left] = p.curves[0].vertices
+		expect(vec2.distance(right.point, [50, 90])).toBeLessThan(1e-9)
+		expect(vec2.distance(left.point, [50, 10])).toBeLessThan(1e-9)
+		expect(right.args![1]).toBe(90)
+		const [[x0, y0], [x1, y1]] = Path.bounds(p)
+		expect(x0).toBeCloseTo(30)
+		expect(x1).toBeCloseTo(70)
+		expect(y0).toBeCloseTo(10)
+		expect(y1).toBeCloseTo(90)
+	})
+})
+
+describe('ellipseFromFoci', () => {
+	it('keeps the sum of the distances to the foci, all around', () => {
+		const [f1, f2, through]: vec2[] = [[20, 30], [70, 60], [50, 20]]
+		const sum = vec2.distance(through, f1) + vec2.distance(through, f2)
+		for (const point of samplesOf(Path.ellipseFromFoci(f1, f2, through))) {
+			expect(vec2.distance(point, f1) + vec2.distance(point, f2)).toBeCloseTo(sum, 4)
+		}
+	})
+
+	it('passes through the point', () => {
+		const through: vec2 = [50, 20]
+		const distances = samplesOf(Path.ellipseFromFoci([20, 30], [70, 60], through), 512).map(p =>
+			vec2.distance(p, through)
+		)
+		expect(Math.min(...distances)).toBeLessThan(0.5)
+	})
+
+	it('is around the middle, along the line between the foci', () => {
+		const [right, left] = Path.ellipseFromFoci([30, 50], [70, 50], [50, 20]).curves[0].vertices
+		const major = Math.hypot(20, 30)
+		expect(vec2.distance(right.point, [50 + major, 50])).toBeLessThan(1e-9)
+		expect(vec2.distance(left.point, [50 - major, 50])).toBeLessThan(1e-9)
+		expect(right.args![0]).toEqual([major, 30])
+	})
+
+	it('is a circle with one focus', () => {
+		const [right] = Path.ellipseFromFoci([50, 50], [50, 50], [50, 80]).curves[0].vertices
+		expect(right.args![0]).toEqual([30, 30])
+	})
+
+	it('is flat through a point between the foci', () => {
+		const [right] = Path.ellipseFromFoci([30, 50], [70, 50], [40, 50]).curves[0].vertices
+		expect(right.args![0]).toEqual([20, 0])
+	})
+})
+
 describe('regularPolygon', () => {
 	it('places the first vertex on +X by default', () => {
 		const {point} = Path.regularPolygon([50, 50], 40, 5).curves[0].vertices[0]

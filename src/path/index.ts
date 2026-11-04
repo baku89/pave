@@ -77,6 +77,7 @@ export {
 	halfLine,
 	circleFromPoints,
 	ellipse,
+	ellipseFromFoci,
 	arc,
 	arcByPoints,
 	arcByPointsTangent,

@@ -319,7 +319,8 @@ export function circleFromPoints(
 /**
  * Creates an ellipse path from the given center and radius.
  * @param center The center of the ellipse
- * @param radius The horizontal and vertical radii (rx, ry)
+ * @param radius The radii along its own axes (rx, ry), which are horizontal and vertical unless it is turned
+ * @param angle How far it is turned around the center in degrees, in which the angle increases clockwise on a Y-down canvas
  * @returns The newly created path
  * @category Primitives
  * @example
@@ -328,29 +329,52 @@ export function circleFromPoints(
  * stroke(e)
  * ```
  */
-export function ellipse(center: vec2, radius: vec2): Path {
-	const [cx, cy] = center
-	const [rx] = radius
+export function ellipse(center: vec2, radius: vec2, angle = 0): Path {
+	const axis = vec2.rotate([radius[0], 0], angle)
 
 	return {
 		curves: [
 			{
 				vertices: [
 					{
-						point: [cx + rx, cy],
+						point: vec2.add(center, axis),
 						command: 'A',
-						args: [radius, 0, false, true],
+						args: [radius, angle, false, true],
 					},
 					{
-						point: [cx - rx, cy],
+						point: vec2.sub(center, axis),
 						command: 'A',
-						args: [radius, 0, false, true],
+						args: [radius, angle, false, true],
 					},
 				],
 				closed: true,
 			},
 		],
 	}
+}
+
+/**
+ * Creates an ellipse from its two foci and a point that it passes through. Two foci alone would not do, as there are ellipses of every size around them: an ellipse is where the sum of the distances to its foci stays the same, and the point says what that sum is. When the foci are the same it is a circle, and when the point is on the line between them it is flat.
+ * @param focus1 The first focus
+ * @param focus2 The second focus
+ * @param through A point that the ellipse passes through
+ * @returns The newly created path
+ * @category Primitives
+ * @example
+ * ```js:pave
+ * const p = Path.ellipseFromFoci([30, 50], [70, 50], [50, 25])
+ * stroke(p)
+ * ```
+ */
+export function ellipseFromFoci(focus1: vec2, focus2: vec2, through: vec2): Path {
+	const major =
+		(vec2.distance(through, focus1) + vec2.distance(through, focus2)) / 2
+	const focal = vec2.distance(focus1, focus2) / 2
+	const minor = Math.sqrt(Math.max(0, major * major - focal * focal))
+	const angle =
+		(Math.atan2(focus2[1] - focus1[1], focus2[0] - focus1[0]) * 180) / Math.PI
+
+	return ellipse(vec2.lerp(focus1, focus2, 0.5), [major, minor], angle)
 }
 
 /**
