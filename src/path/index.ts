@@ -176,6 +176,12 @@ export type {
 	NearestPoint,
 	PathIntersection,
 } from './queries'
+export {pixelate} from './pixelate'
+export type {
+	PixelateAnchors,
+	PixelateMode,
+	PixelateOptions,
+} from './pixelate'
 export {raycast} from './raycast'
 export type {RaycastOptions, RayHit} from './raycast'
 export {shadow, shadowFrom} from './shadow'
