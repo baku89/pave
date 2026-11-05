@@ -8,6 +8,16 @@ import {
 import {type Path} from '../index'
 import {planarBoolean, type PlanarOperand} from './planar'
 
+/**
+ * @category Options
+ */
+export interface BooleanOptions {
+	/**
+	 * Upper bound of the distance at which points are regarded as the same. It must be well below the smallest feature of the paths, or thin ones collapse. By default it only depends on their extent.
+	 */
+	tolerance?: number
+}
+
 function toOperand(path: Path): PlanarOperand {
 	return {curves: path.curves.map(curve => ({curve}))}
 }
@@ -18,7 +28,8 @@ function toOperand(path: Path): PlanarOperand {
  */
 function runBoolean(
 	paths: Path[],
-	inside: (windings: number[]) => boolean
+	inside: (windings: number[]) => boolean,
+	{tolerance}: BooleanOptions = {}
 ): Path {
 	const attrDefs = mergeAttrDefs(paths)
 	const single = paths.length === 1
@@ -35,6 +46,7 @@ function runBoolean(
 		inside,
 		assemble: 'closed',
 		attrDefs,
+		...(tolerance === undefined ? {} : {tolerance}),
 	})
 
 	return single
@@ -58,8 +70,8 @@ function runBoolean(
  * stroke(Path.unite([a, b]), 'tomato')
  * ```
  */
-export function unite(paths: Path[]): Path {
-	return runBoolean(paths, w => w.some(x => x !== 0))
+export function unite(paths: Path[], options?: BooleanOptions): Path {
+	return runBoolean(paths, w => w.some(x => x !== 0), options)
 }
 
 /**
@@ -77,10 +89,15 @@ export function unite(paths: Path[]): Path {
  * stroke(Path.subtract(a, [b]), 'tomato')
  * ```
  */
-export function subtract(subject: Path, tools: Path[]): Path {
+export function subtract(
+	subject: Path,
+	tools: Path[],
+	options?: BooleanOptions
+): Path {
 	return runBoolean(
 		[subject, ...tools],
-		w => w[0] !== 0 && w.slice(1).every(x => x === 0)
+		w => w[0] !== 0 && w.slice(1).every(x => x === 0),
+		options
 	)
 }
 
@@ -98,9 +115,9 @@ export function subtract(subject: Path, tools: Path[]): Path {
  * stroke(Path.intersect([a, b]), 'tomato')
  * ```
  */
-export function intersect(paths: Path[]): Path {
+export function intersect(paths: Path[], options?: BooleanOptions): Path {
 	if (paths.length === 0) return {curves: []}
-	return runBoolean(paths, w => w.every(x => x !== 0))
+	return runBoolean(paths, w => w.every(x => x !== 0), options)
 }
 
 /**
@@ -117,6 +134,10 @@ export function intersect(paths: Path[]): Path {
  * stroke(Path.exclude([a, b]), 'tomato')
  * ```
  */
-export function exclude(paths: Path[]): Path {
-	return runBoolean(paths, w => w.filter(x => x !== 0).length % 2 === 1)
+export function exclude(paths: Path[], options?: BooleanOptions): Path {
+	return runBoolean(
+		paths,
+		w => w.filter(x => x !== 0).length % 2 === 1,
+		options
+	)
 }

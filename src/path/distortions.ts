@@ -22,7 +22,7 @@ export interface WaveOptions extends DistortOptions {
 	 */
 	angle?: number
 	/**
-	 * A reference point on the wave axis. With `angle`, it fixes the frame of the wave.
+	 * Where the wave is measured from: the point it turns around by `angle`, and where its phase is `phase`. Moving this along with the path moves the wave with it.
 	 * @default [0, 0]
 	 */
 	origin?: vec2
@@ -74,7 +74,8 @@ export function wave(
 		path,
 		p => {
 			const local = vec2.transformMat2d(p, invXform)
-			const theta = (local[0] / wavelength + phase / 360) * 2 * Math.PI
+			const theta =
+				((local[0] - origin[0]) / wavelength + phase / 360) * 2 * Math.PI
 			const warped = vec2.add(local, [0, Math.sin(theta) * amplitude])
 
 			return vec2.transformMat2d(warped, xform)

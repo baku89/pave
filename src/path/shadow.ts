@@ -4,7 +4,7 @@ import {mat2d, vec2} from 'linearly'
 import {segmentToVertex} from '../attributes'
 import {Curve, type Path, Segment, type Vertex} from '../index'
 import {planarPathArea} from '../pathPlanar'
-import {unite} from './boolean'
+import {type BooleanOptions, unite} from './boolean'
 import {fromSegment} from './compound'
 import {transform} from './modifiers'
 
@@ -98,7 +98,8 @@ function sweep(
 	path: Path,
 	matrix: mat2d,
 	cutTimes: (seg: Segment) => number[],
-	facing: (point: vec2, normal: vec2) => boolean
+	facing: (point: vec2, normal: vec2) => boolean,
+	options?: BooleanOptions
 ): Path {
 	const regions = path.curves
 		.filter(curve => curve.vertices.length > 1)
@@ -109,7 +110,7 @@ function sweep(
 	if (regions.length === 0) return {curves: []}
 
 	// The boolean may leave a sliver of no extent where a connector runs along the path
-	const {curves} = unite(regions)
+	const {curves} = unite(regions, options)
 	const extent = Math.max(
 		1,
 		...curves.map(curve => Math.max(...Rect.size(Curve.bounds(curve))))
@@ -135,13 +136,19 @@ function sweep(
  * stroke(p, 'black')
  * ```
  */
-export function shadow(path: Path, direction: vec2, length: number): Path {
+export function shadow(
+	path: Path,
+	direction: vec2,
+	length: number,
+	options?: BooleanOptions
+): Path {
 	const delta = vec2.scale(vec2.normalize(direction), length)
 	return sweep(
 		path,
 		mat2d.fromTranslation(delta),
 		seg => Segment.tangentTimes(seg, delta),
-		(_, normal) => vec2.dot(normal, delta) > 0
+		(_, normal) => vec2.dot(normal, delta) > 0,
+		options
 	)
 }
 
@@ -153,11 +160,17 @@ export function shadow(path: Path, direction: vec2, length: number): Path {
  * @returns The closed path of the shadow
  * @category Modifiers
  */
-export function shadowFrom(path: Path, origin: vec2, scale: number): Path {
+export function shadowFrom(
+	path: Path,
+	origin: vec2,
+	scale: number,
+	options?: BooleanOptions
+): Path {
 	return sweep(
 		path,
 		mat2d.fromScaling(scale, origin),
 		seg => Segment.tangentTimesFrom(seg, origin),
-		(point, normal) => vec2.dot(normal, vec2.sub(point, origin)) > 0
+		(point, normal) => vec2.dot(normal, vec2.sub(point, origin)) > 0,
+		options
 	)
 }

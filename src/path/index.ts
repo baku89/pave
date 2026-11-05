@@ -126,6 +126,7 @@ export {arcify} from './arcify'
 export type {ArcifyOptions} from './arcify'
 export {dash} from './dash'
 export type {DashOptions} from './dash'
+export type {BooleanOptions} from './boolean'
 export {
 	convexHull,
 	orientedBounds,

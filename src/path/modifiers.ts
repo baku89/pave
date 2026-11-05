@@ -72,6 +72,11 @@ export interface DistortOptions {
 	 * @default 0.05
 	 */
 	tolerance?: number
+	/**
+	 * How many times a segment can be halved to get within `tolerance`, each level allowing twice the pieces. Past this, it stays as far from the true image as it is.
+	 * @default 10
+	 */
+	maxDepth?: number
 }
 
 export function spawnVertex<
@@ -491,7 +496,7 @@ export function split(path: Path, locs: Iterable<PathLocation>): Path[] {
 export function distort(
 	path: Path,
 	map: (position: vec2) => vec2,
-	{tolerance = 0.05}: DistortOptions = {}
+	{tolerance = 0.05, maxDepth = 10}: DistortOptions = {}
 ) {
 	tolerance = Math.max(tolerance, 1e-9)
 
@@ -501,8 +506,6 @@ export function distort(
 		return vec2.scale(vec2.sub(forward, backward), 0.5)
 	}
 
-	// Each level halves the segment, so 10 levels allow up to 1024 pieces per segment
-	const maxDepth = 10
 	const checkTimes = [0.25, 0.5, 0.75]
 
 	const fit = (seg: SegmentC, depth: number): VertexC[] => {
