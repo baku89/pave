@@ -39,7 +39,7 @@ export {
 	orientation,
 } from './location'
 export {length, bounds, area, segmentCount, segments, segment} from './metrics'
-export {reflect, mirror} from './mirror'
+export {reflect, mirror, kaleidoscope, kaleidoscopeTile} from './mirror'
 export {
 	spawnVertex,
 	spawnCurve,
