@@ -27,6 +27,12 @@ export function fromSVGString(d: string): Path {
 				case 'L':
 					pen.L([seg[1], seg[2]])
 					break
+				case 'H':
+					pen.H(seg[1])
+					break
+				case 'V':
+					pen.V(seg[1])
+					break
 				case 'C':
 					pen.C([seg[1], seg[2]], [seg[3], seg[4]], [seg[5], seg[6]])
 					break
