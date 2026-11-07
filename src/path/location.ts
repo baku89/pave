@@ -1,3 +1,4 @@
+import type {Ray} from 'geome'
 import {mat2d, scalar, vec2} from 'linearly'
 
 import {Curve, type Path, Segment} from '../index'
@@ -190,6 +191,18 @@ export function tangent(path: Path, loc: PathLocation): vec2 {
 export function normal(path: Path, loc: PathLocation): vec2 {
 	const segLoc = toTime(path, loc)
 	return Segment.normal(segLoc.segment, segLoc)
+}
+
+/**
+ * Calculates the ray from the point of the path at the given location along its tangent.
+ * @param path The path to calculate
+ * @param loc The location on the path
+ * @returns The ray along the tangent
+ * @category Properties
+ */
+export function ray(path: Path, loc: PathLocation): Ray {
+	const segLoc = toTime(path, loc)
+	return Segment.ray(segLoc.segment, segLoc)
 }
 
 /**

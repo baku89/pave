@@ -36,6 +36,7 @@ export {
 	derivative,
 	tangent,
 	normal,
+	ray,
 	orientation,
 } from './location'
 export {length, bounds, area, segmentCount, segments, segment} from './metrics'

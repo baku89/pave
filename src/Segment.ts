@@ -1,4 +1,4 @@
-import {Rect} from 'geome'
+import {Ray, Rect} from 'geome'
 import {mat2d, vec2} from 'linearly'
 
 import {segmentAttrsAt, withSegmentAttrs} from './attributes'
@@ -74,13 +74,19 @@ export function normal(seg: Segment, loc: SegmentLocation): vec2 {
 }
 
 /**
- * Returns the orientation  matrix of the segment at the given location.
+ * Returns the ray from the point of the segment at the given location along its tangent. It has
+ * no speed or curvature, which {@link derivative} and {@link curvature} give.
+ */
+export function ray(seg: Segment, loc: SegmentLocation): Ray {
+	return Ray.of(point(seg, loc), vec2.angle(tangent(seg, loc)))
+}
+
+/**
+ * Returns the orientation matrix of the segment at the given location: that of its {@link ray}, with
+ * the x-axis along the tangent, the y-axis along the normal, and the translation at the point.
  */
 export function orientation(seg: Segment, loc: SegmentLocation): mat2d {
-	const p = point(seg, loc)
-	const xAxis = tangent(seg, loc)
-	const yAxis = vec2.rotate90(xAxis)
-	return [...xAxis, ...yAxis, ...p]
+	return Ray.toMat2d(ray(seg, loc))
 }
 
 /**

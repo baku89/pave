@@ -102,3 +102,23 @@ describe('centroid', () => {
 		expect(centroid(Path.line([0, 0], [10, 0]))).toEqual([5, 0])
 	})
 })
+
+describe('ray', () => {
+	it('starts at the point and goes along the tangent', () => {
+		const ray = Path.ray(Path.line([0, 0], [0, 10]), {time: 0.5})
+		expect(ray.origin[0]).toBeCloseTo(0)
+		expect(ray.origin[1]).toBeCloseTo(5)
+		expect(ray.angle).toBeCloseTo(90)
+	})
+
+	it('is the orientation, as a matrix', () => {
+		const loc = {offset: 30}
+		const m = Path.orientation(circle, loc)
+		const ray = Path.ray(circle, loc)
+		const tangent = Path.tangent(circle, loc)
+		const point = Path.point(circle, loc)
+		expect([m[0], m[1]].map(x => x.toFixed(9))).toEqual(tangent.map(x => x.toFixed(9)))
+		expect([m[4], m[5]].map(x => x.toFixed(9))).toEqual(point.map(x => x.toFixed(9)))
+		expect(ray.origin.map(x => x.toFixed(9))).toEqual(point.map(x => x.toFixed(9)))
+	})
+})
